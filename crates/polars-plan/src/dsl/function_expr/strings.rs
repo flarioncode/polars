@@ -760,17 +760,17 @@ pub(super) fn concat_hor(
         .map(|s| {
             match s.dtype() {
                 DataType::List(_) => s.cast(&DataType::List(Box::new(DataType::String))).and_then(|success| {
-                    success.list().unwrap().explode()
+                    success.list().unwrap().explode().map(|flattened| (true, flattened))
                 }),
-                _ => s.cast(&DataType::String)
+                _ => s.cast(&DataType::String).map(|cast| (false, cast))
             }
         })
         .collect::<PolarsResult<_>>()?;
 
-    let cas: Vec<_> = str_series.iter().map(|s| {
-        s.str().unwrap()
+    let cas: Vec<_> = str_series.iter().map(|(is_flattened, s)| {
+        (*is_flattened, s.str().unwrap())
     }).collect();
-    Ok(polars_ops::chunked_array::hor_str_concat(&cas, delimiter, ignore_nulls)?.into_series())
+    Ok(polars_ops::chunked_array::hor_str_concat(cas.as_slice(), delimiter, ignore_nulls)?.into_series())
 }
 
 impl From<StringFunction> for FunctionExpr {

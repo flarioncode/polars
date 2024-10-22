@@ -56,7 +56,7 @@ enum ColumnIter<I, T> {
 ///
 /// Each array should have length 1 or a length equal to the maximum length.
 pub fn hor_str_concat(
-    cas: &[&StringChunked],
+    cas: &[(bool, &StringChunked)],
     delimiter: &str,
     ignore_nulls: bool,
 ) -> PolarsResult<StringChunked> {
@@ -64,7 +64,7 @@ pub fn hor_str_concat(
         return Ok(StringChunked::full_null(PlSmallStr::EMPTY, 0));
     }
     if cas.len() == 1 {
-        let ca = cas[0];
+        let (_, ca) = cas[0];
         return if !ignore_nulls || ca.null_count() == 0 {
             Ok(ca.clone())
         } else {
@@ -75,23 +75,23 @@ pub fn hor_str_concat(
     // Calculate the post-broadcast length and ensure everything is consistent.
     let len = cas
         .iter()
-        .map(|ca| ca.len())
+        .map(|(_, ca)| ca.len())
         .filter(|l| *l != 1)
         .max()
         .unwrap_or(1);
     polars_ensure!(
-        cas.iter().all(|ca| ca.len() == 1 || ca.len() == len),
+        cas.iter().all(|(flattened, ca)| *flattened || (ca.len() == 1 || ca.len() == len)),
         ComputeError: "all series in `hor_str_concat` should have equal or unit length"
     );
 
-    let mut builder = StringChunkedBuilder::new(cas[0].name().clone(), len);
+    let mut builder = StringChunkedBuilder::new(cas[0].1.name().clone(), len);
 
     // Broadcast if appropriate.
     let mut cols: Vec<_> = cas
         .iter()
-        .map(|ca| match ca.len() {
-            0 => ColumnIter::Broadcast(None),
-            1 => ColumnIter::Broadcast(ca.get(0)),
+        .map(|(flattened, ca)| match (flattened, ca.len()) {
+            (false, 0) => ColumnIter::Broadcast(None),
+            (false, 1) => ColumnIter::Broadcast(ca.get(0)),
             _ => ColumnIter::Iter(ca.iter()),
         })
         .collect();
@@ -103,7 +103,7 @@ pub fn hor_str_concat(
         let mut found_not_null_value = false;
         for col in cols.iter_mut() {
             let val = match col {
-                ColumnIter::Iter(i) => i.next().unwrap(),
+                ColumnIter::Iter(i) => i.next().and_then(|s| s),
                 ColumnIter::Broadcast(s) => *s,
             };
 
@@ -154,11 +154,11 @@ mod test {
         let a = StringChunked::new("a".into(), &["foo", "bar"]);
         let b = StringChunked::new("b".into(), &["spam", "ham"]);
 
-        let out = hor_str_concat(&[&a, &b], "_", true).unwrap();
+        let out = hor_str_concat(&[(false, &a), (false, &b)], "_", true).unwrap();
         assert_eq!(Vec::from(&out), &[Some("foo_spam"), Some("bar_ham")]);
 
         let c = StringChunked::new("b".into(), &["literal"]);
-        let out = hor_str_concat(&[&a, &b, &c], "_", true).unwrap();
+        let out = hor_str_concat(&[(false, &a), (false, &b), (false, &c)], "_", true).unwrap();
         assert_eq!(
             Vec::from(&out),
             &[Some("foo_spam_literal"), Some("bar_ham_literal")]
