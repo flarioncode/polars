@@ -15,7 +15,8 @@ pub enum LambdaExpression {
     GreaterThan(Box<Self>, Box<Self>),
     LessThan(Box<Self>, Box<Self>),
     IfThenElse(Box<Self>, Box<Self>, Box<Self>),
-    CaseWhen(Vec<(Self, Self)>, Box<Self>)
+    Length(Box<Self>),
+    CaseWhen(Vec<(Self, Self)>, Box<Self>),
 }
 
 impl LambdaExpression {
@@ -56,6 +57,12 @@ impl LambdaExpression {
                     truthy.eval_numeric::<T>(args)
                 } else {
                     falsy.eval_numeric::<T>(args)
+                }
+            }
+            LambdaExpression::Length(expr) => {
+                match expr.eval_numeric::<T>(args) {
+                    AnyValue::Null => AnyValue::Null,
+                    _ => AnyValue::Int64(1)
                 }
             }
             LambdaExpression::CaseWhen(cases, otherwise) => {
@@ -113,6 +120,12 @@ impl LambdaExpression {
                     falsy.eval_bool(args)
                 }
             }
+            LambdaExpression::Length(expr) => {
+                match expr.eval_bool(args) {
+                    AnyValue::Null => AnyValue::Null,
+                    _ => AnyValue::Int64(1)
+                }
+            }
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
                     if unsafe {
@@ -166,6 +179,15 @@ impl LambdaExpression {
                     truthy.eval_slice(args)
                 } else {
                     falsy.eval_slice(args)
+                }
+            }
+            LambdaExpression::Length(expr) => {
+                match expr.eval_slice(args) {
+                    AnyValue::Null => AnyValue::Null,
+                    AnyValue::Binary(bytes) => AnyValue::Int64(bytes.len() as i64),
+                    AnyValue::String(s) => AnyValue::Int64(s.len() as i64),
+                    AnyValue::List(arr) => AnyValue::Int64(arr.len() as i64),
+                    _ => AnyValue::Int64(1)
                 }
             }
             LambdaExpression::CaseWhen(cases, otherwise) => {
