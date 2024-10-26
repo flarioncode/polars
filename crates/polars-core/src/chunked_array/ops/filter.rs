@@ -69,9 +69,7 @@ where
 
     fn filter_with_func(&self, _lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
         polars_bail!(
-            ComputeError: 
-            "filter_with_func not implemented for type: {}",
-            std::any::type_name::<T>()
+            ComputeError: "filter_with_func not implemented for type: {:?}", T::get_dtype()
         )
     }
 }
@@ -90,6 +88,23 @@ where
                 None => false
             }
         });
+        let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
+        self.filter(&bool_mask)
+    }
+}
+
+impl ChunkedArray<ListType> {
+    pub fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<ListType>> {
+        let mask = self.iter().map(|opt_val| {
+            match opt_val {
+                Some(arr) => match lambda.eval_array(&[arr.as_ref()]) {
+                    AnyValue::Boolean(b) => b,
+                    _ => panic!("Lambda must return boolean values")
+                },
+                None => false
+            }
+        });
+        
         let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
         self.filter(&bool_mask)
     }

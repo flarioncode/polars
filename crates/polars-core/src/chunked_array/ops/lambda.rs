@@ -2,6 +2,8 @@ use std::borrow::Cow;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 use crate::datatypes::{AnyValue, PolarsNumericType};
+use crate::prelude::Array;
+use crate::series::Series;
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 #[cfg_attr(feature = "serde-lazy", derive(Serialize, Deserialize))]
@@ -19,6 +21,58 @@ pub enum LambdaExpression {
 }
 
 impl LambdaExpression {
+    #[inline]
+    pub(crate) fn eval_array<'a>(&'a self, args: &'a[&'a dyn Array]) -> AnyValue<'a> {
+        match self {
+            LambdaExpression::Null => {
+                AnyValue::Null
+            }
+            LambdaExpression::Boolean(v) => {
+                AnyValue::Boolean(*v)
+            }
+            LambdaExpression::Int32(v) => {
+                AnyValue::Int32(*v)
+            }
+            LambdaExpression::Int64(v) => {
+                AnyValue::Int64(*v)
+            }
+            LambdaExpression::StaticStr(v) => {
+                AnyValue::String(v)
+            }
+            LambdaExpression::Variable(idx) => {
+                let arr = args[*idx];
+                let series = Series::from_arrow("".into(), arr.to_boxed())
+                    .expect("could not convert array to series");
+                AnyValue::List(series)
+            }
+            LambdaExpression::GreaterThan(left, right) => {
+                left.eval_array(args).gt(&right.eval_array(args)).into()
+            }
+            LambdaExpression::LessThan(left, right) => {
+                left.eval_array(args).lt(&right.eval_array(args)).into()
+            }
+            LambdaExpression::IfThenElse(cond, truthy, falsy) => {
+                if unsafe {
+                    match cond.eval_array(args) {
+                        AnyValue::Boolean(v) => v,
+                        _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                    }
+                } {
+                    truthy.eval_array(args)
+                } else {
+                    falsy.eval_array(args)
+                }
+            }
+            LambdaExpression::Length(expr) => {
+                match expr.eval_array(args) {
+                    AnyValue::Null => AnyValue::Null,
+                    AnyValue::List(arr) => AnyValue::Int64(arr.len() as i64),
+                    _ => AnyValue::Int64(1)
+                }
+            }
+        }
+    }
+
     #[inline]
     pub(crate) fn eval_numeric<T: PolarsNumericType>(&self, args: &[&T::Native]) -> AnyValue {
         match self {
