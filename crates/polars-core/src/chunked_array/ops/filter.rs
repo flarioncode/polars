@@ -38,7 +38,7 @@ where
         })
     }
 
-    fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
+    fn filter_with_func(&self, _lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
         polars_bail!(ComputeError: "filter_with_func not implemented for Generic data type")
     }
 }
