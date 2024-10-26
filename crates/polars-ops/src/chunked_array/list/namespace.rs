@@ -243,8 +243,8 @@ pub trait ListNameSpaceImpl: AsList {
 
     fn lst_filter_by_func(&self, lambda_expressions: Arc<LambdaExpression>) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
-        let out = ca.try_apply_amortized(|s| s.as_ref().filter_with_func(&lambda_expressions))?;
-        Ok(self.same_type(out))
+        let bool_mask = ca.filter_with_func(&lambda_expressions)?;
+        Ok(self.same_type(bool_mask))
     }
 
     fn lst_sort(&self, options: SortOptions) -> PolarsResult<ListChunked> {
