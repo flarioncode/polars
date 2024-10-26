@@ -14,6 +14,35 @@ macro_rules! check_filter_len {
     }};
 }
 
+/// Checks if a lambda expression is a length comparison
+fn is_length_comparison(lambda: &LambdaExpression) -> Option<(usize, bool)> {
+    match lambda {
+        LambdaExpression::GreaterThan(left, right) => {
+            match (left.as_ref(), right.as_ref()) {
+                (
+                    LambdaExpression::Length(var),
+                    LambdaExpression::Int64(threshold)
+                ) if matches!(&**var, LambdaExpression::Variable(_)) => {
+                    Some((*threshold as usize, true))
+                }
+                _ => None
+            }
+        }
+        LambdaExpression::LessThan(left, right) => {
+            match (left.as_ref(), right.as_ref()) {
+                (
+                    LambdaExpression::Length(var),
+                    LambdaExpression::Int64(threshold)
+                ) if matches!(&**var, LambdaExpression::Variable(_)) => {
+                    Some((*threshold as usize, false))
+                }
+                _ => None
+            }
+        }
+        _ => None
+    }
+}
+
 impl<T> ChunkFilter<T> for ChunkedArray<T>
 where
     T: PolarsDataType<HasViews = FalseT, IsObject = FalseT>,
@@ -91,6 +120,27 @@ impl ChunkFilter<StringType> for StringChunked {
     }
 
     fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<StringType>> {
+        // Check if this is a length comparison
+        if let Some((threshold, is_greater)) = is_length_comparison(lambda) {
+            // Use optimized length-based filtering
+            let mask = self.iter().map(|opt_val| {
+                match opt_val {
+                    Some(val) => {
+                        let len = val.len();
+                        if is_greater {
+                            len > threshold
+                        } else {
+                            len < threshold
+                        }
+                    }
+                    None => false
+                }
+            });
+
+            let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
+            return self.filter(&bool_mask);
+        }
+
         let mask = self.iter().map(|opt_val| {
             match opt_val {
                 Some(val) => match lambda.eval_slice(&[val.as_bytes()]) {
@@ -128,6 +178,27 @@ impl ChunkFilter<BinaryType> for BinaryChunked {
     }
 
     fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<BinaryType>> {
+        // Check if this is a length comparison
+        if let Some((threshold, is_greater)) = is_length_comparison(lambda) {
+            // Use optimized length-based filtering
+            let mask = self.iter().map(|opt_val| {
+                match opt_val {
+                    Some(val) => {
+                        let len = val.len();
+                        if is_greater {
+                            len > threshold
+                        } else {
+                            len < threshold
+                        }
+                    }
+                    None => false
+                }
+            });
+
+            let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
+            return self.filter(&bool_mask);
+        }
+
         let mask = self.iter().map(|opt_val| {
             match opt_val {
                 Some(val) => match lambda.eval_slice(&[val]) {
