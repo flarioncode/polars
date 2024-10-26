@@ -38,33 +38,29 @@ where
         })
     }
 
-    // TODO:: add support for numeric filter
-    fn filter_with_func(&self, _lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
+    fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
         polars_bail!(ComputeError: "filter_with_func not implemented for Generic data type")
     }
 }
 
-/*
-impl<T> ChunkFilter<T> for ChunkedArray<T>
-where 
+impl<T> ChunkedArray<T>
+where
     T: PolarsNumericType,
 {
-    fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
+    pub fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
         let mask = self.iter().map(|opt_val| {
             match opt_val {
-                Some(val) => match lambda.eval_numeric(&[(&val).into()]) {
+                Some(val) => match lambda.eval_numeric::<T>(&[(&val).into()]) {
                     AnyValue::Boolean(b) => b,
                     _ => panic!("Lambda must return boolean values")
                 },
                 None => false
             }
         });
-
         let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
         self.filter(&bool_mask)
     }
 }
-*/
 
 // impl ChunkFilter<BooleanType> for BooleanChunked {
 //     fn filter(&self, filter: &BooleanChunked) -> PolarsResult<ChunkedArray<BooleanType>> {
