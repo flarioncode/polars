@@ -85,6 +85,9 @@ fn extract_group_reg_lit(
             if reg.captures_read(&mut locs, s).is_some() {
                 builder.push(locs.get(group_index).map(|(start, stop)| &s[start..stop]));
                 continue;
+            } else {
+                builder.push(Some(""));
+                continue;
             }
         }
 
@@ -110,6 +113,9 @@ fn extract_group_array_lit(
                 builder.push(locs.get(group_index).map(|(start, stop)| &s[start..stop]));
                 continue;
             }
+        } else {
+            builder.push(Some(""));
+            continue;
         }
 
         // Push null if either the pat is null or there was no match.
@@ -134,9 +140,10 @@ fn extract_group_binary(
                 if reg.captures_read(&mut locs, s).is_some() {
                     builder.push(locs.get(group_index).map(|(start, stop)| &s[start..stop]));
                     continue;
+                } else {
+                    builder.push(Some(""));
+                    continue;
                 }
-                // Push null if there was no match.
-                builder.push_null()
             },
             _ => builder.push_null(),
         }
