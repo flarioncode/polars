@@ -229,10 +229,9 @@ where
     }
 }
 
-impl<'a> Into<Ordering> for AnyValue<'_> {
-    #[inline]
-    fn into(self) -> Ordering {
-        match self {
+impl From<AnyValue<'_>> for Ordering {
+    fn from(value: AnyValue) -> Self {
+        match value {
             AnyValue::Int8(val) => if val == 1 {
                 Ordering::Greater
             } else if val == -1 {
@@ -854,7 +853,7 @@ impl ChunkSort<BooleanType> for BooleanChunked {
             }
 
             self.downcast_iter().for_each(|arr| {
-                let iter = arr.iter().filter_map(|v| v);
+                let iter = arr.iter().flatten();
                 vals.extend(iter);
             });
             let mut_slice = if options.nulls_last {
