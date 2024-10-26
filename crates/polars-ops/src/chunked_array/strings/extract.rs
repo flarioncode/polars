@@ -84,11 +84,10 @@ fn extract_group_reg_lit(
         if let Some(s) = opt_v {
             if reg.captures_read(&mut locs, s).is_some() {
                 builder.push(locs.get(group_index).map(|(start, stop)| &s[start..stop]));
-                continue;
             } else {
                 builder.push(Some(""));
-                continue;
             }
+            continue;
         }
 
         // Push null if either the string is null or there was no match.
@@ -140,10 +139,9 @@ fn extract_group_binary(
                 if reg.captures_read(&mut locs, s).is_some() {
                     builder.push(locs.get(group_index).map(|(start, stop)| &s[start..stop]));
                     continue;
-                } else {
-                    builder.push(Some(""));
-                    continue;
                 }
+                
+                builder.push(Some(""));
             },
             _ => builder.push_null(),
         }
