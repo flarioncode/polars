@@ -18,6 +18,7 @@ pub enum LambdaExpression {
     LessThan(Box<Self>, Box<Self>),
     IfThenElse(Box<Self>, Box<Self>, Box<Self>),
     Length(Box<Self>),
+    CaseWhen(Vec<(Self, Self)>, Box<Self>)
 }
 
 impl LambdaExpression {
@@ -117,6 +118,18 @@ impl LambdaExpression {
                     AnyValue::Null => AnyValue::Null,
                     _ => AnyValue::Int32(1)
                 }
+            LambdaExpression::CaseWhen(cases, otherwise) => {
+                for (cond, value) in cases {
+                    if unsafe {
+                        match cond.eval_numeric::<T>(args) {
+                            AnyValue::Boolean(v) => v,
+                            _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                        }
+                    } {
+                        return value.eval_numeric::<T>(args)
+                    }
+                }
+                otherwise.eval_numeric::<T>(args)
             }
         }
     }
@@ -165,6 +178,18 @@ impl LambdaExpression {
                     AnyValue::Null => AnyValue::Null,
                     _ => AnyValue::Int32(1)
                 }
+            LambdaExpression::CaseWhen(cases, otherwise) => {
+                for (cond, value) in cases {
+                    if unsafe {
+                        match cond.eval_bool(args) {
+                            AnyValue::Boolean(v) => v,
+                            _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                        }
+                    } {
+                        return value.eval_bool(args)
+                    }
+                }
+                otherwise.eval_bool(args)
             }
         }
     }
@@ -217,6 +242,19 @@ impl LambdaExpression {
                     _ => AnyValue::Int32(1)
                 }
             }
+            LambdaExpression::CaseWhen(cases, otherwise) => {
+                for (cond, value) in cases {
+                    if unsafe {
+                        match cond.eval_slice(args) {
+                            AnyValue::Boolean(v) => v,
+                            _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                        }
+                    } {
+                        return value.eval_slice(args)
+                    }
+                }
+                otherwise.eval_slice(args)
+            },
         }
     }
 }
