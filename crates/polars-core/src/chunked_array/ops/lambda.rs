@@ -71,6 +71,19 @@ impl LambdaExpression {
                     _ => AnyValue::Int32(1)
                 }
             }
+            LambdaExpression::CaseWhen(cases, otherwise) => {
+                for (cond, value) in cases {
+                    if unsafe {
+                        match cond.eval_array(args) {
+                            AnyValue::Boolean(v) => v,
+                            _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                        }
+                    } {
+                        return value.eval_array(args)
+                    }
+                }
+                otherwise.eval_array(args)
+            }
         }
     }
 
@@ -118,6 +131,7 @@ impl LambdaExpression {
                     AnyValue::Null => AnyValue::Null,
                     _ => AnyValue::Int32(1)
                 }
+            }
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
                     if unsafe {
@@ -178,6 +192,7 @@ impl LambdaExpression {
                     AnyValue::Null => AnyValue::Null,
                     _ => AnyValue::Int32(1)
                 }
+            }
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
                     if unsafe {
@@ -254,7 +269,7 @@ impl LambdaExpression {
                     }
                 }
                 otherwise.eval_slice(args)
-            },
+            }
         }
     }
 }
