@@ -145,12 +145,6 @@ impl LambdaExpression {
                 }
                 otherwise.eval_numeric::<T>(args)
             }
-            LambdaExpression::Length(expr) => {
-                match expr.eval_numeric::<T>(args) {
-                    AnyValue::Null => AnyValue::Null,
-                    _ => AnyValue::Int64(1)
-                }
-            }
         }
     }
 
@@ -211,12 +205,6 @@ impl LambdaExpression {
                     }
                 }
                 otherwise.eval_bool(args)
-            }
-            LambdaExpression::Length(expr) => {
-                match expr.eval_bool(args) {
-                    AnyValue::Null => AnyValue::Null,
-                    _ => AnyValue::Int64(1)
-                }
             }
         }
     }
