@@ -241,10 +241,27 @@ pub trait ListNameSpaceImpl: AsList {
         }
     }
 
+    /*
     fn lst_filter_by_func(&self, lambda_expressions: Arc<LambdaExpression>) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
         let bool_mask = ca.filter_with_func(&lambda_expressions)?;
         Ok(self.same_type(bool_mask))
+    }
+    */
+
+    fn lst_filter_by_func(&self, lambda_expressions: Arc<LambdaExpression>) -> PolarsResult<ListChunked> {
+        let ca = self.as_list();
+        
+        // Apply the filter to each inner list while maintaining outer structure
+        let filtered = ca.try_apply_amortized(|s| {
+            // Convert AmortSeries to Series reference for filtering
+            match s.as_ref().filter_with_func(&lambda_expressions) {
+                Ok(filtered_inner) => Ok(filtered_inner),
+                Err(_) => Ok(s.as_ref().clone()) // Keep original on error
+            }
+        })?;
+        
+        Ok(filtered)
     }
 
     fn lst_sort(&self, options: SortOptions) -> PolarsResult<ListChunked> {

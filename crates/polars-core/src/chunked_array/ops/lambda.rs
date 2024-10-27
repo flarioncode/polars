@@ -67,8 +67,8 @@ impl LambdaExpression {
             LambdaExpression::Length(expr) => {
                 match expr.eval_array(args) {
                     AnyValue::Null => AnyValue::Null,
-                    AnyValue::List(arr) => AnyValue::Int64(arr.len() as i64),
-                    _ => AnyValue::Int64(1)
+                    AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
+                    _ => AnyValue::Int32(1)
                 }
             }
         }
@@ -116,7 +116,7 @@ impl LambdaExpression {
             LambdaExpression::Length(expr) => {
                 match expr.eval_numeric::<T>(args) {
                     AnyValue::Null => AnyValue::Null,
-                    _ => AnyValue::Int64(1)
+                    _ => AnyValue::Int32(1)
                 }
             }
             LambdaExpression::CaseWhen(cases, otherwise) => {
@@ -177,7 +177,7 @@ impl LambdaExpression {
             LambdaExpression::Length(expr) => {
                 match expr.eval_bool(args) {
                     AnyValue::Null => AnyValue::Null,
-                    _ => AnyValue::Int64(1)
+                    _ => AnyValue::Int32(1)
                 }
             }
             LambdaExpression::CaseWhen(cases, otherwise) => {
@@ -238,10 +238,10 @@ impl LambdaExpression {
             LambdaExpression::Length(expr) => {
                 match expr.eval_slice(args) {
                     AnyValue::Null => AnyValue::Null,
-                    AnyValue::Binary(bytes) => AnyValue::Int64(bytes.len() as i64),
-                    AnyValue::String(s) => AnyValue::Int64(s.len() as i64),
-                    AnyValue::List(arr) => AnyValue::Int64(arr.len() as i64),
-                    _ => AnyValue::Int64(1)
+                    AnyValue::Binary(bytes) => AnyValue::Int32(bytes.len() as i32),
+                    AnyValue::String(s) => AnyValue::Int32(s.len() as i32),
+                    AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
+                    _ => AnyValue::Int32(1)
                 }
             }
             LambdaExpression::CaseWhen(cases, otherwise) => {
