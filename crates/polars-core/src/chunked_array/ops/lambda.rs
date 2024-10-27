@@ -15,7 +15,7 @@ pub enum LambdaExpression {
     GreaterThan(Box<Self>, Box<Self>),
     LessThan(Box<Self>, Box<Self>),
     IfThenElse(Box<Self>, Box<Self>, Box<Self>),
-    CaseWhen(Vec<(Box<Self>, Box<Self>)>, Box<Self>)
+    CaseWhen(Vec<(Self, Self)>, Box<Self>)
 }
 
 impl LambdaExpression {
