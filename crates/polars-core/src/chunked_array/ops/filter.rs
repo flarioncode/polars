@@ -95,6 +95,26 @@ where
 
 impl ChunkedArray<ListType> {
     pub fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<ListType>> {
+        if let Some((threshold, is_greater)) = is_length_comparison(lambda) {
+            // Use optimized length-based filtering
+            let mask = self.iter().map(|opt_val| {
+                match opt_val {
+                    Some(arr) => {
+                        let len = arr.len();
+                        if is_greater {
+                            len > threshold
+                        } else {
+                            len < threshold
+                        }
+                    }
+                    None => false
+                }
+            });
+
+            let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
+            return self.filter(&bool_mask);
+        }
+
         let mask = self.iter().map(|opt_val| {
             match opt_val {
                 Some(arr) => match lambda.eval_array(&[arr.as_ref()]) {
