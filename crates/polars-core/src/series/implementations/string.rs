@@ -147,6 +147,10 @@ impl SeriesTrait for SeriesWrap<StringChunked> {
         ChunkFilter::filter(&self.0, filter).map(|ca| ca.into_series())
     }
 
+    fn transform(&self, lambda: &LambdaExpression) -> PolarsResult<Series> {
+        ChunkTransform::transform(&self.0, lambda)
+    }
+
     fn take(&self, indices: &IdxCa) -> PolarsResult<Series> {
         Ok(self.0.take(indices)?.into_series())
     }
@@ -258,5 +262,32 @@ impl SeriesTrait for SeriesWrap<StringChunked> {
 
     fn as_any(&self) -> &dyn Any {
         &self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::series::{IntoSeries, LambdaExpression, NamedFrom, StringChunked};
+
+    #[test]
+    fn test_transform_str() {
+        // we check that there is correct implementation for StringChunked inside series
+        // also we check that length returning Int32 type
+        let series = StringChunked::new("array".into(), &["Hi!", "I'm", "Mark"]).into_series();
+
+        let lambda = LambdaExpression::Instr(Box::new(LambdaExpression::Variable(0)), Box::new(LambdaExpression::StaticStr("H".into())));
+
+        let transformed = series.transform(&lambda);
+
+        assert!(matches!(transformed, Ok(_)));
+        
+        let transformed = transformed.unwrap();
+        eprintln!("{:?}", transformed.dtype());
+        let result = transformed.i32();
+
+        assert!(matches!(result, Ok(_)));
+
+        assert_eq!(Vec::from(result.unwrap()), vec![Some(1), Some(0), Some(0)]);
+
     }
 }

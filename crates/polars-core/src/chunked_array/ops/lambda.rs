@@ -3,6 +3,7 @@ use std::borrow::Cow;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 
+use super::DataType;
 use crate::datatypes::{AnyValue, PolarsNumericType};
 use crate::prelude::Array;
 use crate::series::Series;
@@ -21,6 +22,42 @@ pub enum LambdaExpression {
     IfThenElse(Box<Self>, Box<Self>, Box<Self>),
     Length(Box<Self>),
     CaseWhen(Vec<(Self, Self)>, Box<Self>),
+    Substring(Box<Self>, Box<Self>, Option<Box<Self>>),
+    Instr(Box<Self>, Box<Self>),
+    Add(Box<Self>, Box<Self>),
+}
+
+fn substring<'a>(s: AnyValue<'a>, from: AnyValue<'a>, len: Option<AnyValue<'a>>) -> AnyValue<'a> {
+    unsafe {
+        match (s, from, len) {
+            (AnyValue::String(s), AnyValue::Int32(from), Some(AnyValue::Int32(len))) => {
+                let from = from as usize - 1;
+                let to = (from + len as usize).min(s.len());
+                let result = &s[from..to];
+                AnyValue::String(result)
+            }
+            (AnyValue::String(s), AnyValue::Int32(from), None) => {
+                let from = from as usize - 1;
+                let to = s.len();
+                let result = &s[from..to];
+                AnyValue::String(result)
+            }
+            (AnyValue::Binary(bin), AnyValue::Int32(from), Some(AnyValue::Int32(len))) => {
+                let from = from as usize - 1;
+                let to = (from + len as usize).min(bin.len());
+                let result = &bin[from..to];
+                AnyValue::Binary(result)
+            }
+
+            (AnyValue::Binary(bin), AnyValue::Int32(from), None) => {
+                let from = from as usize - 1;
+                let to = bin.len();
+                let result = &bin[from..to];
+                AnyValue::Binary(result)
+            }
+            _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+        }
+    }
 }
 
 impl LambdaExpression {
@@ -73,6 +110,29 @@ impl LambdaExpression {
                     }
                 }
                 otherwise.eval_array(args)
+            }
+            LambdaExpression::Substring(s, from, len) => {
+                let s = s.eval_array(args);
+                let from = from.eval_array(args).cast(&DataType::Int32);
+                let len = len.as_ref().map(|v| v.eval_array(args).cast(&DataType::Int32));
+                substring(s, from, len)
+            }
+            LambdaExpression::Instr(s, pat) => {
+                let s = s.eval_array(args);
+                let pat = pat.eval_array(args);
+                unsafe {
+                    match (s, pat) {
+                        (AnyValue::String(s), AnyValue::String(pat)) => {
+                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                        }
+                        _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                    }
+                }
+            },
+            LambdaExpression::Add(left, right) => {
+                let left = left.eval_array(args);
+                let right = right.eval_array(args);
+                left.add(&right.cast(&left.dtype()))
             },
         }
     }
@@ -120,7 +180,32 @@ impl LambdaExpression {
                     }
                 }
                 otherwise.eval_numeric::<T>(args)
-            },
+            }
+            LambdaExpression::Substring(s, from, len) => {
+                let s = s.eval_numeric::<T>(args);
+                let from = from.eval_numeric::<T>(args).cast(&DataType::Int32);
+                let len = len.as_ref().map(|v| v.eval_numeric::<T>(args).cast(&DataType::Int32));
+                substring(s, from, len)
+            
+            }
+            LambdaExpression::Instr(s, pat) => {
+                let s = s.eval_numeric::<T>(args);
+                let pat = pat.eval_numeric::<T>(args);
+                unsafe {
+                    match (s, pat) {
+                        (AnyValue::String(s), AnyValue::String(pat)) => {
+                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                        }
+                        _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                    }
+                }
+            }
+            LambdaExpression::Add(left, right) => {
+                let left = left.eval_numeric::<T>(args);
+                let right = right.eval_numeric::<T>(args);
+                left.add(&right.cast(&left.dtype()))
+            }
+            
         }
     }
 
@@ -168,6 +253,30 @@ impl LambdaExpression {
                 }
                 otherwise.eval_bool(args)
             },
+            LambdaExpression::Substring(s, from, len) => {
+                let s = s.eval_bool(args);
+                let from = from.eval_bool(args).cast(&DataType::Int32);
+                let len = len.as_ref().map(|v| v.eval_bool(args).cast(&DataType::Int32));
+                substring(s, from, len)
+            },
+            LambdaExpression::Instr(s, pat) => {
+                let s = s.eval_bool(args);
+                let pat = pat.eval_bool(args);
+                unsafe {
+                    match (s, pat) {
+                        (AnyValue::String(s), AnyValue::String(pat)) => {
+                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                        }
+                        _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                    }
+                }
+            },
+            LambdaExpression::Add(left, right) => {
+                let left = left.eval_bool(args);
+                let right = right.eval_bool(args);
+                left.add(&right.cast(&left.dtype()))
+            },
+            
         }
     }
 
@@ -218,6 +327,123 @@ impl LambdaExpression {
                 }
                 otherwise.eval_slice(args)
             },
+            LambdaExpression::Substring(s, from, len) => {
+                let s = s.eval_slice(args);
+                let from = from.eval_slice(args).cast(&DataType::Int32);
+                let len = len.as_ref().map(|v| v.eval_slice(args).cast(&DataType::Int32));
+                substring(s, from, len)
+            },
+            LambdaExpression::Instr(s, pat) => {
+                let s = s.eval_slice(args);
+                let pat = pat.eval_slice(args);
+                unsafe {
+                    match (s, pat) {
+                        (AnyValue::String(s), AnyValue::String(pat)) => {
+                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                        }
+                        _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                    }
+                }
+            },
+            LambdaExpression::Add(left, right) => {
+                let left = left.eval_slice(args);
+                let right = right.eval_slice(args);
+                left.add(&right.cast(&left.dtype()))
+            },
+            
+        }
+    }
+
+
+    pub(crate) fn eval_any<'a>(&'a self, args: &[AnyValue<'a>]) -> AnyValue<'a> {
+        match self {
+            LambdaExpression::Null => AnyValue::Null,
+            LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            LambdaExpression::Int32(v) => AnyValue::Int32(*v),
+            LambdaExpression::Int64(v) => AnyValue::Int64(*v),
+            LambdaExpression::StaticStr(v) => AnyValue::String(v),
+            LambdaExpression::Variable(idx) => args[*idx].clone(),
+            LambdaExpression::GreaterThan(left, right) => {
+                left.eval_any(args).gt(&right.eval_any(args)).into()
+            },
+            LambdaExpression::LessThan(left, right) => {
+                left.eval_any(args).lt(&right.eval_any(args)).into()
+            },
+            LambdaExpression::IfThenElse(cond, truthy, falsy) => {
+                if unsafe {
+                    match cond.eval_any(args) {
+                        AnyValue::Boolean(v) => v,
+                        _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                    }
+                } {
+                    truthy.eval_any(args)
+                } else {
+                    falsy.eval_any(args)
+                }
+            },
+            LambdaExpression::Length(expr) => match expr.eval_any(args) {
+                AnyValue::Null => AnyValue::Null,
+                AnyValue::Binary(bytes) => AnyValue::Int32(bytes.len() as i32),
+                AnyValue::String(s) => AnyValue::Int32(s.len() as i32),
+                AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
+                _ => AnyValue::Int32(1),
+            },
+            LambdaExpression::CaseWhen(cases, otherwise) => {
+                for (cond, value) in cases {
+                    if unsafe {
+                        match cond.eval_any(args) {
+                            AnyValue::Boolean(v) => v,
+                            _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                        }
+                    } {
+                        return value.eval_any(args);
+                    }
+                }
+                otherwise.eval_any(args)
+            },
+            LambdaExpression::Substring(s, from, len) => {
+                let s = s.eval_any(args);
+                let from = from.eval_any(args).cast(&DataType::Int32);
+                let len = len.as_ref().map(|v| v.eval_any(args).cast(&DataType::Int32));
+                substring(s, from, len)
+            },
+            LambdaExpression::Instr(s, pat) => {
+                let s = s.eval_any(args);
+                let pat = pat.eval_any(args);
+                unsafe {
+                    match (s, pat) {
+                        (AnyValue::String(s), AnyValue::String(pat)) => {
+                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                        }
+                        _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
+                    }
+                }
+            },
+            LambdaExpression::Add(left, right) => {
+                let left = left.eval_any(args);
+                let right = right.eval_any(args);
+                left.add(&right.cast(&left.dtype()))
+            },
+        }
+    }
+
+    pub fn return_type(&self) -> Option<DataType> {
+        match self {
+            LambdaExpression::Null => Some(DataType::Null),
+            LambdaExpression::Boolean(_) => Some(DataType::Boolean),
+            LambdaExpression::Int32(_) => Some(DataType::Int32),
+            LambdaExpression::Int64(_) => Some(DataType::Int64),
+            LambdaExpression::StaticStr(_) => Some(DataType::String),
+            LambdaExpression::Variable(_) => None,
+            LambdaExpression::GreaterThan(_, _) => Some(DataType::Boolean),
+            LambdaExpression::LessThan(_, _) => Some(DataType::Boolean),
+            LambdaExpression::IfThenElse(_, then, _) => then.return_type(),
+            LambdaExpression::Length(_) => Some(DataType::Int32),
+            LambdaExpression::CaseWhen(_, otherwise) => otherwise.return_type(),
+            LambdaExpression::Substring(s, _, _) => s.return_type(), // substring is used for string and byte arrays
+            LambdaExpression::Instr(_, _) => Some(DataType::Int32),
+            LambdaExpression::Add(left, _) => left.return_type(), // TODO: support int conversion here
+            
         }
     }
 }

@@ -215,6 +215,10 @@ macro_rules! impl_dyn_series {
                 ChunkFilter::filter(&self.0, filter).map(|ca| ca.into_series())
             }
 
+            fn transform(&self, lambda: &LambdaExpression) -> PolarsResult<Series> {
+                ChunkTransform::transform(&self.0, lambda)
+            }
+
             fn _sum_as_f64(&self) -> f64 {
                 self.0._sum_as_f64()
             }
@@ -370,3 +374,30 @@ macro_rules! impl_dyn_series {
 
 impl_dyn_series!(Float32Chunked);
 impl_dyn_series!(Float64Chunked);
+
+
+#[cfg(test)]
+mod tests {
+    use crate::series::{ChunkedArray, Float32Type, IntoSeries, LambdaExpression};
+
+    #[test]
+    fn test_transform_float() {
+        // here we test integer conversion
+        // and thats we implemented transform on integer types
+        let series = ChunkedArray::<Float32Type>::from_vec("array".into(), vec![0.1, 0.2, 0.3]).into_series();
+
+        let lambda = LambdaExpression::Add(Box::new(LambdaExpression::Variable(0)), Box::new(LambdaExpression::Int64(1)));
+
+        let transformed = series.transform(&lambda);
+
+        assert!(matches!(transformed, Ok(_)));
+        
+        let transformed = transformed.unwrap();
+        eprintln!("{:?}", transformed.dtype());
+        let result = transformed.f32();
+
+        assert!(matches!(result, Ok(_)));
+
+        assert_eq!(Vec::from(result.unwrap()), vec![Some(1.1), Some(1.2), Some(1.3)]);
+    }
+}

@@ -44,6 +44,7 @@ pub enum ListFunction {
         null_behavior: NullBehavior,
     },
     FilterByFunc(Arc<LambdaExpression>),
+    Transform(Arc<LambdaExpression>),
     Sort(SortOptions),
     SortByFunc(SortOptions, Arc<LambdaExpression>),
     Reverse,
@@ -92,6 +93,12 @@ impl ListFunction {
             #[cfg(feature = "diff")]
             Diff { .. } => mapper.with_same_dtype(),
             FilterByFunc(_) => mapper.with_same_dtype(),
+            Transform(lambda) => {
+                match lambda.return_type() {
+                    Some(dtype) => mapper.with_dtype(dtype),
+                    None => mapper.with_same_dtype(),
+                }
+            }, // TODO: transform can produse different type
             Sort(_) => mapper.with_same_dtype(),
             SortByFunc(_, _) => mapper.with_same_dtype(),
             Reverse => mapper.with_same_dtype(),
@@ -160,6 +167,7 @@ impl Display for ListFunction {
             Diff { .. } => "diff",
             Length => "length",
             FilterByFunc(_) => "filter_by_func",
+            Transform(_) => "transform",
             Sort(_) => "sort",
             SortByFunc(_, _) => "sort_by_func",
             Reverse => "reverse",
@@ -229,6 +237,7 @@ impl From<ListFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             #[cfg(feature = "diff")]
             Diff { n, null_behavior } => map!(diff, n, null_behavior),
             FilterByFunc(lambda) => map!(filter_by_func, lambda.clone()),
+            Transform(lambda) => map!(transform, lambda.clone()),
             Sort(options) => map!(sort, options),
             SortByFunc(options, lambda) => map!(sort_by_func, options, lambda.clone()),
             Reverse => map!(reverse),
@@ -583,6 +592,10 @@ pub(super) fn diff(s: &Series, n: i64, null_behavior: NullBehavior) -> PolarsRes
 
 pub(super) fn filter_by_func(s: &Series, lambda: Arc<LambdaExpression>) -> PolarsResult<Series> {
     Ok(s.list()?.lst_filter_by_func(lambda)?.into_series())
+}
+
+pub(super) fn transform(s: &Series, lambda: Arc<LambdaExpression>) -> PolarsResult<Series> {
+    Ok(s.list()?.lst_transform(lambda)?.into_series())
 }
 
 pub(super) fn sort(s: &Series, options: SortOptions) -> PolarsResult<Series> {

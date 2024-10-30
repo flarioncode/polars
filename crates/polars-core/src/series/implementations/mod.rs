@@ -322,6 +322,10 @@ macro_rules! impl_dyn_series {
                 ChunkFilter::filter_with_func(&self.0, lambda).map(|ca| ca.into_series())
             }
 
+            fn transform(&self, lambda: &LambdaExpression) -> PolarsResult<Series> {
+                ChunkTransform::transform(&self.0, lambda)
+            }
+
             fn _sum_as_f64(&self) -> f64 {
                 self.0._sum_as_f64()
             }
@@ -540,5 +544,103 @@ impl private::PrivateSeriesNumeric for SeriesWrap<BooleanChunked> {
             .clone();
 
         Some(BitRepr::Small(repr))
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_transform_numeric_conversion() {
+        // here we test integer conversion
+        // and thats we implemented transform on integer types
+        let series = ChunkedArray::<Int32Type>::from_vec("array".into(), vec![1, 2, 3]).into_series();
+
+        let lambda = LambdaExpression::Add(Box::new(LambdaExpression::Variable(0)), Box::new(LambdaExpression::Int64(1)));
+
+        let transformed = series.transform(&lambda);
+
+        assert!(matches!(transformed, Ok(_)));
+        
+        let transformed = transformed.unwrap();
+        eprintln!("{:?}", transformed.dtype());
+        let result = transformed.i32();
+
+        assert!(matches!(result, Ok(_)));
+
+        assert_eq!(Vec::from(result.unwrap()), vec![Some(2), Some(3), Some(4)]);
+    }
+
+
+    #[test]
+    fn test_transform_numeric_different_type() {
+        // here we test that lambda can return complitly different type
+        let series = ChunkedArray::<Int32Type>::from_vec("array".into(), vec![1, 2, 3]).into_series();
+
+        let lambda = LambdaExpression::StaticStr("hello world".into());
+
+        let transformed = series.transform(&lambda);
+
+        assert!(matches!(transformed, Ok(_)));
+        
+        let transformed = transformed.unwrap();
+        eprintln!("{:?}", transformed.dtype());
+        let result = transformed.str();
+
+        assert!(matches!(result, Ok(_)));
+
+        assert_eq!(Vec::from(result.unwrap()), vec![Some("hello world"), Some("hello world"), Some("hello world")]);
+
+    }
+
+
+    #[test]
+    fn test_transform_numeric_nulls() {
+        // here we test integer conversion
+        // and thats we implemented transform on integer types
+        let series = {
+            let mut builder = PrimitiveChunkedBuilder::<Int32Type>::new("array".into(), 3);
+            builder.append_value(1);
+            builder.append_null();
+            builder.append_value(3);
+            builder.finish()
+        }.into_series();
+
+        let lambda = LambdaExpression::Add(Box::new(LambdaExpression::Variable(0)), Box::new(LambdaExpression::Int64(1)));
+
+        let transformed = series.transform(&lambda);
+
+        assert!(matches!(transformed, Ok(_)));
+        
+        let transformed = transformed.unwrap();
+        eprintln!("{:?}", transformed.dtype());
+        let result = transformed.i32();
+
+        assert!(matches!(result, Ok(_)));
+
+        assert_eq!(Vec::from(result.unwrap()), vec![Some(2), None, Some(4)]);
+    }
+
+    #[test]
+    fn test_transform_numberic_second_parameter() {
+        // here we test that lambda gets index as second parameter
+        let series = ChunkedArray::<Int32Type>::from_vec("array".into(), vec![0, 0, 0]).into_series();
+
+
+        let lambda = LambdaExpression::Add(Box::new(LambdaExpression::Variable(1)), Box::new(LambdaExpression::Int64(1)));
+
+        let transformed = series.transform(&lambda);
+
+        assert!(matches!(transformed, Ok(_)));
+        
+        let transformed = transformed.unwrap();
+        eprintln!("{:?}", transformed.dtype());
+        let result = transformed.i32();
+
+        assert!(matches!(result, Ok(_)));
+
+        assert_eq!(Vec::from(result.unwrap()), vec![Some(1), Some(2), Some(3)]);
     }
 }
