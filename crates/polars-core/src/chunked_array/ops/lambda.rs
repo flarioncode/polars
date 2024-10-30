@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use polars_utils::nulls::IsNull;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 
@@ -427,6 +428,7 @@ impl LambdaExpression {
         }
     }
 
+    // None encode that type same as input value
     pub fn return_type(&self) -> Option<DataType> {
         match self {
             LambdaExpression::Null => Some(DataType::Null),
@@ -439,10 +441,21 @@ impl LambdaExpression {
             LambdaExpression::LessThan(_, _) => Some(DataType::Boolean),
             LambdaExpression::IfThenElse(_, then, _) => then.return_type(),
             LambdaExpression::Length(_) => Some(DataType::Int32),
-            LambdaExpression::CaseWhen(_, otherwise) => otherwise.return_type(),
+            LambdaExpression::CaseWhen(cases, _) => {
+                cases
+                    .iter()
+                    .find_map(|pair| {
+                        if let Some(dtype) = pair.1.return_type() {
+                            dtype.is_null().then_some(dtype).map(Some)
+                        } else {
+                            Some(None)
+                        }
+                    })
+                    .unwrap_or(Some(DataType::Null))
+            }
             LambdaExpression::Substring(s, _, _) => s.return_type(), // substring is used for string and byte arrays
             LambdaExpression::Instr(_, _) => Some(DataType::Int32),
-            LambdaExpression::Add(left, _) => left.return_type(), // TODO: support int conversion here
+            LambdaExpression::Add(left, _) => left.return_type(),
             
         }
     }
