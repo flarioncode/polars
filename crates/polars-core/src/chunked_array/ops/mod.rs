@@ -35,6 +35,7 @@ pub mod search_sorted;
 mod set;
 mod shift;
 pub mod sort;
+mod transform;
 #[cfg(feature = "algorithm_group_by")]
 pub(crate) mod unique;
 #[cfg(feature = "zip_with")]
@@ -450,6 +451,11 @@ pub trait ChunkFullNull {
 pub trait ChunkReverse {
     /// Return a reversed version of this array.
     fn reverse(&self) -> Self;
+}
+
+
+pub trait ChunkTransform {
+    fn transform(&self, lambda: &super::LambdaExpression) -> polars_error::PolarsResult<Series>;
 }
 
 /// Filter values by a boolean mask.

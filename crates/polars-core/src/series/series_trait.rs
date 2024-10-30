@@ -276,6 +276,10 @@ pub trait SeriesTrait:
     /// This doesn't check any bounds.
     unsafe fn take_slice_unchecked(&self, _idx: &[IdxSize]) -> Series;
 
+    fn transform(&self, _lambda: &LambdaExpression) -> PolarsResult<Series> {
+        polars_bail!(opq = transform, self._dtype())
+    }
+
     /// Get length of series.
     fn len(&self) -> usize;
 

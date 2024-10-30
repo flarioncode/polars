@@ -267,6 +267,15 @@ pub trait ListNameSpaceImpl: AsList {
         Ok(filtered)
     }
 
+    fn lst_transform(
+        &self,
+        lambda_expressions: Arc<LambdaExpression>
+    ) -> PolarsResult<ListChunked> {
+        let ca = self.as_list();
+        let out = ca.try_apply_amortized(|s| s.as_ref().transform(&lambda_expressions) )?;
+        Ok(out)
+    }
+
     fn lst_sort(&self, options: SortOptions) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
         let out = ca.try_apply_amortized(|s| s.as_ref().sort_with(options))?;

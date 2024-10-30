@@ -98,6 +98,10 @@ impl SeriesTrait for SeriesWrap<ListChunked> {
         ChunkFilter::filter(&self.0, filter).map(|ca| ca.into_series())
     }
 
+    fn transform(&self, lambda: &LambdaExpression) -> PolarsResult<Series> {
+        ChunkTransform::transform(&self.0, lambda)
+    }
+
     fn take(&self, indices: &IdxCa) -> PolarsResult<Series> {
         Ok(self.0.take(indices)?.into_series())
     }
@@ -224,5 +228,43 @@ impl SeriesTrait for SeriesWrap<ListChunked> {
     /// Only implemented for ObjectType
     fn as_any_mut(&mut self) -> &mut dyn Any {
         &mut self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use arrow::array::Array;
+
+    use crate::series::{ChunkedArray, Int32Type, IntoSeries, LambdaExpression, ListChunked};
+
+    #[test]
+    fn test_transform_list() {
+        // here we test that we can handle double nested arrays
+
+        let row1 = ChunkedArray::<Int32Type>::from_vec("".into(), vec![1, 2, 3]);
+        let row2 = ChunkedArray::<Int32Type>::from_vec("".into(), vec![4, 5, 6]);
+        let row3 = ChunkedArray::<Int32Type>::from_vec("".into(), vec![7, 8, 9]);
+        let arr1 = row1.clone().downcast_into_array();
+        let arr2 = row2.clone().downcast_into_array();
+        let arr3 = row3.clone().downcast_into_array();
+        let series = ListChunked::from_iter(vec![
+            row1.into_series(), 
+            row2.into_series(), 
+            row3.into_series(), 
+        ]).into_series();
+
+        let lambda = LambdaExpression::Variable(0); // There is no functions that work on arrays
+
+        let transformed = series.transform(&lambda);
+        
+        assert!(matches!(transformed, Ok(_)));
+        
+        let transformed = transformed.unwrap();
+        eprintln!("{:?}", transformed.dtype());
+        let result = transformed.list();
+
+        assert!(matches!(result, Ok(_)));
+        let vec: Vec<Option<Box<dyn Array>>> = vec![Some(Box::new(arr1)), Some(Box::new(arr2)), Some(Box::new(arr3))];
+        assert_eq!(Vec::from(result.unwrap()), vec);
     }
 }
