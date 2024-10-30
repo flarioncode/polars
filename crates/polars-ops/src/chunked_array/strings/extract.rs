@@ -140,7 +140,7 @@ fn extract_group_binary(
                     builder.push(locs.get(group_index).map(|(start, stop)| &s[start..stop]));
                     continue;
                 }
-                
+
                 builder.push(Some(""));
             },
             _ => builder.push_null(),

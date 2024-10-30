@@ -589,7 +589,11 @@ pub(super) fn sort(s: &Series, options: SortOptions) -> PolarsResult<Series> {
     Ok(s.list()?.lst_sort(options)?.into_series())
 }
 
-pub(super) fn sort_by_func(s: &Series, options: SortOptions, lambda: Arc<LambdaExpression>) -> PolarsResult<Series> {
+pub(super) fn sort_by_func(
+    s: &Series,
+    options: SortOptions,
+    lambda: Arc<LambdaExpression>,
+) -> PolarsResult<Series> {
     Ok(s.list()?.lst_sort_by_func(options, lambda)?.into_series())
 }
 

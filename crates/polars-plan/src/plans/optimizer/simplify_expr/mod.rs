@@ -536,7 +536,12 @@ impl OptimizationRule for SimplifyExprRule {
                 #[allow(clippy::manual_map)]
                 let out = match op {
                     Plus => {
-                        match eval_binary_same_type!(left_aexpr, right_aexpr, |l, r| l.wrapping_add(*r), l + r) {
+                        match eval_binary_same_type!(
+                            left_aexpr,
+                            right_aexpr,
+                            |l, r| l.wrapping_add(*r),
+                            l + r
+                        ) {
                             Some(new) => Some(new),
                             None => {
                                 // try to replace addition of string columns with `concat_str`
@@ -559,8 +564,18 @@ impl OptimizationRule for SimplifyExprRule {
                             },
                         }
                     },
-                    Minus => eval_binary_same_type!(left_aexpr, right_aexpr, |l, r| l.wrapping_sub(*r), l - r),
-                    Multiply => eval_binary_same_type!(left_aexpr, right_aexpr, |l, r| l.wrapping_mul(*r), l * r),
+                    Minus => eval_binary_same_type!(
+                        left_aexpr,
+                        right_aexpr,
+                        |l, r| l.wrapping_sub(*r),
+                        l - r
+                    ),
+                    Multiply => eval_binary_same_type!(
+                        left_aexpr,
+                        right_aexpr,
+                        |l, r| l.wrapping_mul(*r),
+                        l * r
+                    ),
                     Divide => {
                         if let (AExpr::Literal(lit_left), AExpr::Literal(lit_right)) =
                             (left_aexpr, right_aexpr)
@@ -673,11 +688,12 @@ impl OptimizationRule for SimplifyExprRule {
                             None
                         }
                     },
-                    Modulus => eval_binary_same_type!(left_aexpr, right_aexpr, |l, r| l
-                        .wrapping_floor_div_mod(*r)
-                        .1, l
-                        .wrapping_floor_div_mod(*r)
-                        .1),
+                    Modulus => eval_binary_same_type!(
+                        left_aexpr,
+                        right_aexpr,
+                        |l, r| l.wrapping_floor_div_mod(*r).1,
+                        l.wrapping_floor_div_mod(*r).1
+                    ),
                     Lt => eval_binary_cmp_same_type!(left_aexpr, <, right_aexpr),
                     Gt => eval_binary_cmp_same_type!(left_aexpr, >, right_aexpr),
                     Eq | EqValidity => eval_binary_cmp_same_type!(left_aexpr, ==, right_aexpr),
@@ -689,11 +705,12 @@ impl OptimizationRule for SimplifyExprRule {
                     And | LogicalAnd => eval_bitwise(left_aexpr, right_aexpr, |l, r| l & r),
                     Or | LogicalOr => eval_bitwise(left_aexpr, right_aexpr, |l, r| l | r),
                     Xor => eval_bitwise(left_aexpr, right_aexpr, |l, r| l ^ r),
-                    FloorDivide => eval_binary_same_type!(left_aexpr, right_aexpr, |l, r| l
-                        .wrapping_floor_div_mod(*r)
-                        .0, l
-                        .wrapping_floor_div_mod(*r)
-                        .0),
+                    FloorDivide => eval_binary_same_type!(
+                        left_aexpr,
+                        right_aexpr,
+                        |l, r| l.wrapping_floor_div_mod(*r).0,
+                        l.wrapping_floor_div_mod(*r).0
+                    ),
                 };
                 if out.is_some() {
                     return Ok(out);

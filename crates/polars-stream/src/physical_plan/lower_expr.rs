@@ -135,7 +135,9 @@ fn is_input_independent_rec(
             is_input_independent_rec(*left, arena, cache)
                 && is_input_independent_rec(*right, arena, cache)
         },
-        AExpr::FlarionNormalizeNanAndZero {input} => is_input_independent_rec(*input, arena, cache),
+        AExpr::FlarionNormalizeNanAndZero { input } => {
+            is_input_independent_rec(*input, arena, cache)
+        },
         AExpr::Gather {
             expr,
             idx,
@@ -426,7 +428,7 @@ fn lower_exprs_with_ctx(
                 let node_key = ctx.phys_sm.insert(PhysNode::new(output_schema, node_kind));
                 input_nodes.insert(node_key);
                 transformed_exprs.push(ctx.expr_arena.add(AExpr::Column(flattened_name)));
-            }
+            },
             AExpr::Explode(inner) => {
                 // While explode is streamable, it is not elementwise, so we
                 // have to transform it to a select node.
@@ -560,7 +562,7 @@ fn lower_exprs_with_ctx(
                 transformed_exprs.push(ctx.expr_arena.add(AExpr::FlarionNormalizeNanAndZero {
                     input: trans_exprs[0],
                 }));
-            }
+            },
             AExpr::Gather { .. } => todo!(),
             AExpr::Filter { input: inner, by } => {
                 // Select our inputs (if we don't do this we'll waste time filtering irrelevant columns).

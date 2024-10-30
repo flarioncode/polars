@@ -1,12 +1,14 @@
 use std::sync::Arc;
+
 use arrow::legacy::error::PolarsResult;
 use polars_core::datatypes::{DataType, Field, ListChunked};
 use polars_core::error::PolarsError;
 use polars_core::export::num::Float;
 use polars_core::frame::DataFrame;
-use polars_core::POOL;
 use polars_core::prelude::{GroupsProxy, Schema, Series};
+use polars_core::POOL;
 use polars_plan::dsl::Expr;
+
 use crate::expressions::{AggregationContext, PhysicalExpr};
 use crate::prelude::ExecutionState;
 
@@ -38,27 +40,34 @@ impl NanNormalizer<f64> for f64 {
 
 fn normalize_series_with_dtype<const IS_AGG: bool>(input_series: &Series) -> PolarsResult<Series> {
     Ok(match input_series.dtype() {
-        DataType::Float32 => input_series.f32()?.iter().map(|item: Option<f32> | {
-                item.map(f32::normalize_func)
-            }).collect::<Series>(),
-        DataType::Float64 => input_series.f64()?.iter().map(|item: Option<f64> | {
-            item.map(f64::normalize_func)
-        }).collect::<Series>(),
+        DataType::Float32 => input_series
+            .f32()?
+            .iter()
+            .map(|item: Option<f32>| item.map(f32::normalize_func))
+            .collect::<Series>(),
+        DataType::Float64 => input_series
+            .f64()?
+            .iter()
+            .map(|item: Option<f64>| item.map(f64::normalize_func))
+            .collect::<Series>(),
         DataType::List(inner) if IS_AGG && inner.is_float() => {
             let normalized_list = input_series.list()?;
-            Series::from(ListChunked::from_iter(normalized_list
-                .into_iter()
-                .map(|maybe_series| {
-                    match maybe_series {
+            Series::from(ListChunked::from_iter(
+                normalized_list
+                    .into_iter()
+                    .map(|maybe_series| match maybe_series {
                         Some(inner_series) => {
                             normalize_series_with_dtype::<false>(&inner_series).map(Some)
                         },
-                        None => Ok(None)
-                    }
-                }).collect::<PolarsResult<Vec<Option<_>>>>()?))
-        }
+                        None => Ok(None),
+                    })
+                    .collect::<PolarsResult<Vec<Option<_>>>>()?,
+            ))
+        },
         DataType::Null => input_series.clone(),
-        _ => Err(PolarsError::ComputeError("FlarionNormalizeNanAndZero only supports floating point numbers".into()))?
+        _ => Err(PolarsError::ComputeError(
+            "FlarionNormalizeNanAndZero only supports floating point numbers".into(),
+        ))?,
     })
 }
 
@@ -81,12 +90,17 @@ impl PhysicalExpr for FlarionNormalizeNanAndZeroExpr {
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let s_f = || self.input.evaluate(df, state);
 
-        let series= POOL.install(s_f)?;
+        let series = POOL.install(s_f)?;
 
         normalize_series_with_dtype::<false>(&series)
     }
 
-    fn evaluate_on_groups<'a>(&self, df: &DataFrame, groups: &'a GroupsProxy, state: &ExecutionState) -> PolarsResult<AggregationContext<'a>> {
+    fn evaluate_on_groups<'a>(
+        &self,
+        df: &DataFrame,
+        groups: &'a GroupsProxy,
+        state: &ExecutionState,
+    ) -> PolarsResult<AggregationContext<'a>> {
         let ac_s_f = || self.input.evaluate_on_groups(df, groups, state);
         let mut ac_s: AggregationContext = POOL.install(ac_s_f)?;
 
@@ -117,6 +131,7 @@ mod tests {
     use polars_core::prelude::AnyValue;
     use polars_core::utils::Container;
     use polars_utils::pl_str::PlSmallStr;
+
     use super::*;
 
     #[test]
@@ -125,14 +140,29 @@ mod tests {
         let f32_nan2 = f32::from_bits(0x7FC00002);
         let f32_nan3 = f32::from_bits(0x7FC00003);
 
-        assert_eq!(f32::normalize_func(f32_nan1).to_le_bytes(), f32::from_bits(0x7FC00000).to_le_bytes());
-        assert_eq!(f32::normalize_func(f32_nan2).to_le_bytes(), f32::from_bits(0x7FC00000).to_le_bytes());
-        assert_eq!(f32::normalize_func(f32_nan3).to_le_bytes(), f32::from_bits(0x7FC00000).to_le_bytes());
+        assert_eq!(
+            f32::normalize_func(f32_nan1).to_le_bytes(),
+            f32::from_bits(0x7FC00000).to_le_bytes()
+        );
+        assert_eq!(
+            f32::normalize_func(f32_nan2).to_le_bytes(),
+            f32::from_bits(0x7FC00000).to_le_bytes()
+        );
+        assert_eq!(
+            f32::normalize_func(f32_nan3).to_le_bytes(),
+            f32::from_bits(0x7FC00000).to_le_bytes()
+        );
 
         let f32_neg_zero1 = f32::neg_zero();
         let f32_neg_zero2 = -0.0;
-        assert_eq!(f32::normalize_func(f32_neg_zero1).to_le_bytes(), 0.0f32.to_le_bytes());
-        assert_eq!(f32::normalize_func(f32_neg_zero2).to_le_bytes(), 0.0f32.to_le_bytes());
+        assert_eq!(
+            f32::normalize_func(f32_neg_zero1).to_le_bytes(),
+            0.0f32.to_le_bytes()
+        );
+        assert_eq!(
+            f32::normalize_func(f32_neg_zero2).to_le_bytes(),
+            0.0f32.to_le_bytes()
+        );
     }
 
     #[test]
@@ -141,14 +171,29 @@ mod tests {
         let f64_nan2 = f64::from_bits(0x7FF8000000000001);
         let f64_nan3 = f64::from_bits(0x7FF8000000000002);
 
-        assert_eq!(f64::normalize_func(f64_nan1).to_le_bytes(), f64::from_bits(0x7FF8000000000000).to_le_bytes());
-        assert_eq!(f64::normalize_func(f64_nan2).to_le_bytes(), f64::from_bits(0x7FF8000000000000).to_le_bytes());
-        assert_eq!(f64::normalize_func(f64_nan3).to_le_bytes(), f64::from_bits(0x7FF8000000000000).to_le_bytes());
+        assert_eq!(
+            f64::normalize_func(f64_nan1).to_le_bytes(),
+            f64::from_bits(0x7FF8000000000000).to_le_bytes()
+        );
+        assert_eq!(
+            f64::normalize_func(f64_nan2).to_le_bytes(),
+            f64::from_bits(0x7FF8000000000000).to_le_bytes()
+        );
+        assert_eq!(
+            f64::normalize_func(f64_nan3).to_le_bytes(),
+            f64::from_bits(0x7FF8000000000000).to_le_bytes()
+        );
 
         let f64_neg_zero1 = f64::neg_zero();
         let f64_neg_zero2 = -0.0;
-        assert_eq!(f64::normalize_func(f64_neg_zero1).to_le_bytes(), 0.0f64.to_le_bytes());
-        assert_eq!(f64::normalize_func(f64_neg_zero2).to_le_bytes(), 0.0f64.to_le_bytes());
+        assert_eq!(
+            f64::normalize_func(f64_neg_zero1).to_le_bytes(),
+            0.0f64.to_le_bytes()
+        );
+        assert_eq!(
+            f64::normalize_func(f64_neg_zero2).to_le_bytes(),
+            0.0f64.to_le_bytes()
+        );
     }
 
     #[test]
@@ -158,7 +203,7 @@ mod tests {
             Some(f32::from_bits(0x7FC00001)),
             None,
             Some(f32::from_bits(0x7FC00002)),
-            Some(f32::from_bits(0x7FC00003))
+            Some(f32::from_bits(0x7FC00003)),
         ];
         let f32_series = Series::from_iter(original_f32.clone());
 
@@ -167,53 +212,66 @@ mod tests {
             Some(f64::from_bits(0x7FF8000000000000)),
             None,
             Some(f64::from_bits(0x7FF8000000000001)),
-            Some(f64::from_bits(0x7FF8000000000002))
+            Some(f64::from_bits(0x7FF8000000000002)),
         ];
         let f64_series = Series::from_iter(original_f64.clone());
 
         let null_series = Series::new_null(PlSmallStr::from_static("empty"), 5);
 
         let f32_normalized = normalize_series_with_dtype::<false>(&f32_series).unwrap();
-        let f32_normalized_values = f32_normalized.iter().map(|a| {
-            match a {
+        let f32_normalized_values = f32_normalized
+            .iter()
+            .map(|a| match a {
                 AnyValue::Float32(f) => Some(f),
                 AnyValue::Null => None,
-                _ => unreachable!()
-            }
-        }).collect::<Vec<_>>();
-        original_f32.iter().zip(f32_normalized_values.iter()).for_each(|(a, b)| {
-            if a.is_none() {
-                assert_eq!(b, &None);
-            } else if !a.unwrap().is_nan() {
-                assert_eq!(a.unwrap(), b.unwrap());
-            } else  {
-                assert_eq!(b.unwrap().to_le_bytes(), f32::from_bits(0x7FC00000).to_le_bytes());
-            }
-        });
-
+                _ => unreachable!(),
+            })
+            .collect::<Vec<_>>();
+        original_f32
+            .iter()
+            .zip(f32_normalized_values.iter())
+            .for_each(|(a, b)| {
+                if a.is_none() {
+                    assert_eq!(b, &None);
+                } else if !a.unwrap().is_nan() {
+                    assert_eq!(a.unwrap(), b.unwrap());
+                } else {
+                    assert_eq!(
+                        b.unwrap().to_le_bytes(),
+                        f32::from_bits(0x7FC00000).to_le_bytes()
+                    );
+                }
+            });
 
         let f64_normalized = normalize_series_with_dtype::<false>(&f64_series).unwrap();
-        let f64_normalized_values = f64_normalized.iter().map(|a| {
-            match a {
+        let f64_normalized_values = f64_normalized
+            .iter()
+            .map(|a| match a {
                 AnyValue::Float64(d) => Some(d),
                 AnyValue::Null => None,
-                _ => unreachable!()
-            }
-        }).collect::<Vec<_>>();
-        original_f64.iter().zip(f64_normalized_values.iter()).for_each(|(a, b)| {
-            if a.is_none() {
-                assert_eq!(b, &None);
-            } else if !a.unwrap().is_nan() {
-                assert_eq!(a.unwrap(), b.unwrap());
-            } else  {
-                assert_eq!(b.unwrap().to_le_bytes(), f64::from_bits(0x7FF8000000000000).to_le_bytes());
-            }
-        });
+                _ => unreachable!(),
+            })
+            .collect::<Vec<_>>();
+        original_f64
+            .iter()
+            .zip(f64_normalized_values.iter())
+            .for_each(|(a, b)| {
+                if a.is_none() {
+                    assert_eq!(b, &None);
+                } else if !a.unwrap().is_nan() {
+                    assert_eq!(a.unwrap(), b.unwrap());
+                } else {
+                    assert_eq!(
+                        b.unwrap().to_le_bytes(),
+                        f64::from_bits(0x7FF8000000000000).to_le_bytes()
+                    );
+                }
+            });
 
         let null_normalized = normalize_series_with_dtype::<false>(&null_series).unwrap();
         assert_eq!(null_normalized.len(), null_series.len());
-        null_normalized.iter().for_each(|a| {
-            assert_eq!(a, AnyValue::Null)
-        });
+        null_normalized
+            .iter()
+            .for_each(|a| assert_eq!(a, AnyValue::Null));
     }
 }

@@ -387,7 +387,11 @@ macro_rules! impl_dyn_series {
                 Ok(ChunkSort::sort_with(&self.0, options).into_series())
             }
 
-            fn sort_with_func(&self, options: SortOptions, lambda: &LambdaExpression) -> PolarsResult<Series> {
+            fn sort_with_func(
+                &self,
+                options: SortOptions,
+                lambda: &LambdaExpression,
+            ) -> PolarsResult<Series> {
                 Ok(ChunkSort::sort_with_func(&self.0, options, lambda).into_series())
             }
 

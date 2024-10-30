@@ -70,8 +70,7 @@ impl AExpr {
                 let e = arena.get(*function);
                 e.to_field_impl(schema, arena, nested)
             },
-            Flatten(expr) |
-            Explode(expr) => {
+            Flatten(expr) | Explode(expr) => {
                 let field = arena.get(*expr).to_field_impl(schema, arena, nested)?;
 
                 if let List(inner) = field.dtype() {
@@ -124,7 +123,9 @@ impl AExpr {
                 Ok(field)
             },
             Sort { expr, .. } => arena.get(*expr).to_field_impl(schema, arena, nested),
-            FlarionNormalizeNanAndZero { input } => arena.get(*input).to_field_impl(schema, arena, nested),
+            FlarionNormalizeNanAndZero { input } => {
+                arena.get(*input).to_field_impl(schema, arena, nested)
+            },
             Gather {
                 expr,
                 returns_scalar,

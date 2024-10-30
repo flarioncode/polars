@@ -358,7 +358,11 @@ pub trait SeriesTrait:
         polars_bail!(opq = sort_with, self._dtype());
     }
 
-    fn sort_with_func(&self, _options: SortOptions, _lambda: &LambdaExpression) -> PolarsResult<Series> {
+    fn sort_with_func(
+        &self,
+        _options: SortOptions,
+        _lambda: &LambdaExpression,
+    ) -> PolarsResult<Series> {
         polars_bail!(opq = sort_with_func, self._dtype());
     }
 

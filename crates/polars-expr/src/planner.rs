@@ -325,7 +325,7 @@ fn create_physical_expr_inner(
                 phys_input,
                 node_to_expr(expression, expr_arena),
             )))
-        }
+        },
         Gather {
             expr,
             idx,

@@ -153,7 +153,9 @@ pub enum AExpr {
         expr: Node,
         options: SortOptions,
     },
-    FlarionNormalizeNanAndZero { input: Node },
+    FlarionNormalizeNanAndZero {
+        input: Node,
+    },
     Gather {
         expr: Node,
         idx: Node,

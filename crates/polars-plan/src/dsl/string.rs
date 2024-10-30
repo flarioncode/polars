@@ -398,7 +398,11 @@ impl StringNameSpace {
     /// Replace values that match a regex `pat` with a `value`.
     pub fn replace(self, pat: Expr, value: Expr, literal: bool) -> Expr {
         self.0.map_many_private(
-            FunctionExpr::StringExpr(StringFunction::Replace { n: 1, literal, group_index: 0 }),
+            FunctionExpr::StringExpr(StringFunction::Replace {
+                n: 1,
+                literal,
+                group_index: 0,
+            }),
             &[pat, value],
             false,
             Some(Default::default()),
@@ -409,7 +413,11 @@ impl StringNameSpace {
     /// Replace values that match a regex `pat` with a `value`.
     pub fn replace_n(self, pat: Expr, value: Expr, literal: bool, n: i64) -> Expr {
         self.0.map_many_private(
-            FunctionExpr::StringExpr(StringFunction::Replace { n, literal, group_index: 0 }),
+            FunctionExpr::StringExpr(StringFunction::Replace {
+                n,
+                literal,
+                group_index: 0,
+            }),
             &[pat, value],
             false,
             Some(Default::default()),
@@ -420,7 +428,11 @@ impl StringNameSpace {
     /// Replace all values that match a regex `pat` with a `value`.
     pub fn replace_all(self, pat: Expr, value: Expr, literal: bool) -> Expr {
         self.0.map_many_private(
-            FunctionExpr::StringExpr(StringFunction::Replace { n: -1, literal, group_index: 0 }),
+            FunctionExpr::StringExpr(StringFunction::Replace {
+                n: -1,
+                literal,
+                group_index: 0,
+            }),
             &[pat, value],
             false,
             Some(Default::default()),
@@ -597,15 +609,29 @@ impl StringNameSpace {
 impl StringNameSpace {
     /// Extract each successive non-overlapping match in an individual string as an array
     pub fn extract_all_with_group(self, pat: Expr, group_idx: usize) -> Expr {
-        self.0
-            .map_many_private(StringFunction::ExtractAll(group_idx).into(), &[pat], false, None)
+        self.0.map_many_private(
+            StringFunction::ExtractAll(group_idx).into(),
+            &[pat],
+            false,
+            None,
+        )
     }
 
     #[cfg(feature = "regex")]
     /// Replace all values that match a regex `pat` with a `value`.
-    pub fn replace_all_with_group(self, pat: Expr, value: Expr, literal: bool, group_index: usize) -> Expr {
+    pub fn replace_all_with_group(
+        self,
+        pat: Expr,
+        value: Expr,
+        literal: bool,
+        group_index: usize,
+    ) -> Expr {
         self.0.map_many_private(
-            FunctionExpr::StringExpr(StringFunction::Replace { n: -1, literal, group_index }),
+            FunctionExpr::StringExpr(StringFunction::Replace {
+                n: -1,
+                literal,
+                group_index,
+            }),
             &[pat, value],
             false,
             Some(Default::default()),

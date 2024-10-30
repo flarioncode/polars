@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+
 use arrow::array::ValueSize;
 use arrow::legacy::kernels::string::*;
 #[cfg(feature = "string_encoding")]
@@ -357,9 +358,10 @@ pub trait StringNameSpaceImpl: AsString {
         let ca = self.as_string();
         let reg = Regex::new(pat)?;
         Ok(ca.apply_values(|s| {
-            let pairs = reg.captures_iter(s).flat_map(|capt| {
-                capt.get(group_index).map(|m| (m.start(), m.end()))
-            }).collect::<Vec<_>>();
+            let pairs = reg
+                .captures_iter(s)
+                .flat_map(|capt| capt.get(group_index).map(|m| (m.start(), m.end())))
+                .collect::<Vec<_>>();
             if pairs.is_empty() {
                 return Cow::Borrowed(s);
             }
@@ -429,12 +431,13 @@ pub trait StringNameSpaceImpl: AsString {
             for opt_s in arr {
                 match opt_s {
                     None => builder.append_null(),
-                    Some(s) => builder.append_values_iter(reg.captures_iter(s).filter_map(|m|
+                    Some(s) => builder.append_values_iter(reg.captures_iter(s).filter_map(|m| {
                         if group_index == 0 {
                             Some(m.get(0).unwrap().as_str())
                         } else {
                             m.get(group_index).map(|m| m.as_str())
-                        })),
+                        }
+                    })),
                 }
             }
         }

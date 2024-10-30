@@ -14,16 +14,17 @@ pub(crate) mod compare_inner;
 #[cfg(feature = "dtype-decimal")]
 mod decimal;
 pub(crate) mod downcast;
-mod flatten;
 pub(crate) mod explode;
 mod explode_and_offsets;
 mod extend;
 pub mod fill_null;
 mod filter;
+mod flatten;
 pub mod float_sorted_arg_max;
 mod for_each;
 pub mod full;
 pub mod gather;
+pub mod lambda;
 #[cfg(feature = "zip_with")]
 pub(crate) mod min_max_binary;
 pub(crate) mod nulls;
@@ -38,13 +39,12 @@ pub mod sort;
 pub(crate) mod unique;
 #[cfg(feature = "zip_with")]
 pub mod zip;
-pub mod lambda;
 
+pub use lambda::*;
 use polars_utils::no_call_const;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 pub use sort::options::*;
-pub use lambda::*;
 
 use crate::chunked_array::cast::CastOptions;
 use crate::series::{BitRepr, IsSorted};
@@ -478,13 +478,13 @@ pub trait ChunkFilter<T: PolarsDataType> {
     ///     Box::new(LambdaExpression::Variable(0)),
     ///     Box::new(LambdaExpression::Int32(2))
     /// );
-    /// 
+    ///
     /// let filtered = array.filter_with_func(&lambda).unwrap();
     /// assert_eq!(Vec::from(&filtered), [Some(3)]);
     /// ```
     #[allow(unused_variables)]
-    fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> 
-    where 
+    fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>>
+    where
         Self: Sized,
     {
         polars_bail!(opq = filter_with_func, T::get_dtype());
@@ -684,16 +684,16 @@ mod tests {
     fn test_filter_with_func_numeric() {
         // Create test data
         let array = Int32Chunked::new("array".into(), &[1, 2, 3]);
-        
+
         // Create lambda expression: x > 2
         let lambda = LambdaExpression::GreaterThan(
             Box::new(LambdaExpression::Variable(0)),
-            Box::new(LambdaExpression::Int32(2))
+            Box::new(LambdaExpression::Int32(2)),
         );
-        
+
         // Apply filter
         let filtered = array.filter_with_func(&lambda).unwrap();
-        
+
         // Assert results
         assert_eq!(Vec::from(&filtered), vec![Some(3)]);
     }
@@ -702,19 +702,18 @@ mod tests {
     fn test_filter_with_func_string() {
         // Create test data
         let array = StringChunked::new("array".into(), &["abc", "def", "g"]);
-        
+
         // Create lambda expression: len(x) > 2
         let lambda = LambdaExpression::GreaterThan(
-                Box::new(LambdaExpression::Length(
-                    Box::new(LambdaExpression::Variable(0))
-                )),
-                Box::new(LambdaExpression::Int64(2))
-            )
-        ;
-        
+            Box::new(LambdaExpression::Length(Box::new(
+                LambdaExpression::Variable(0),
+            ))),
+            Box::new(LambdaExpression::Int64(2)),
+        );
+
         // Apply filter
         let filtered = array.filter_with_func(&lambda).unwrap();
-        
+
         // Assert results
         assert_eq!(Vec::from(&filtered), vec![Some("abc"), Some("def")]);
     }

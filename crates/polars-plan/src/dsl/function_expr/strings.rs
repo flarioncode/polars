@@ -70,7 +70,7 @@ pub enum StringFunction {
         // how many matches to replace
         n: i64,
         literal: bool,
-        group_index: usize
+        group_index: usize,
     },
     #[cfg(feature = "string_reverse")]
     Reverse,
@@ -348,7 +348,11 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
                 ignore_nulls,
             } => map_as_slice!(strings::concat_hor, &delimiter, ignore_nulls),
             #[cfg(feature = "regex")]
-            Replace { n, literal, group_index } => map_as_slice!(strings::replace, literal, n, group_index),
+            Replace {
+                n,
+                literal,
+                group_index,
+            } => map_as_slice!(strings::replace, literal, n, group_index),
             #[cfg(feature = "string_reverse")]
             Reverse => map!(strings::reverse),
             Uppercase => map!(uppercase),
@@ -751,17 +755,26 @@ pub(super) fn join(s: &Series, delimiter: &str, ignore_nulls: bool) -> PolarsRes
 
 #[cfg(feature = "concat_str")]
 fn pre_concat_series_for_concat_hor(input_series: Series, delimiter: &str) -> Series {
-    Series::new(input_series.name().clone(), input_series.list().unwrap().into_iter()
-        .map(|opt_series: Option<Series>| {
-            opt_series.and_then(|series| {
-                let non_null_strings: Vec<&str> = series.str().unwrap().iter()
-                    .flatten() // Remove None values
-                    .collect();
+    Series::new(
+        input_series.name().clone(),
+        input_series
+            .list()
+            .unwrap()
+            .into_iter()
+            .map(|opt_series: Option<Series>| {
+                opt_series.and_then(|series| {
+                    let non_null_strings: Vec<&str> = series
+                        .str()
+                        .unwrap()
+                        .iter()
+                        .flatten() // Remove None values
+                        .collect();
 
-                (!non_null_strings.is_empty()).then_some(non_null_strings.join(delimiter))
+                    (!non_null_strings.is_empty()).then_some(non_null_strings.join(delimiter))
+                })
             })
-        })
-        .collect::<Vec<_>>())
+            .collect::<Vec<_>>(),
+    )
 }
 
 // This function is Flarion-modified to match Spark behaviour
@@ -774,19 +787,15 @@ pub(super) fn concat_hor(
 ) -> PolarsResult<Series> {
     let str_series: Vec<_> = series
         .iter()
-        .map(|s| {
-            match s.dtype() {
-                DataType::List(_) => s
-                    .cast(&DataType::List(Box::new(DataType::String)))
-                    .map(|success| pre_concat_series_for_concat_hor(success, delimiter)),
-                _ => s.cast(&DataType::String)
-            }
+        .map(|s| match s.dtype() {
+            DataType::List(_) => s
+                .cast(&DataType::List(Box::new(DataType::String)))
+                .map(|success| pre_concat_series_for_concat_hor(success, delimiter)),
+            _ => s.cast(&DataType::String),
         })
         .collect::<PolarsResult<_>>()?;
 
-    let cas: Vec<_> = str_series.iter().map(|s| {
-        s.str().unwrap()
-    }).collect();
+    let cas: Vec<_> = str_series.iter().map(|s| s.str().unwrap()).collect();
     Ok(polars_ops::chunked_array::hor_str_concat(&cas, delimiter, ignore_nulls)?.into_series())
 }
 
@@ -878,9 +887,11 @@ fn replace_n<'a>(
                 if lit && (s.len() <= 32) {
                     Cow::Owned(s.replacen(&pat, val, 1))
                 } else {
-                    let pairs = reg.captures_iter(s).take(n).flat_map(|capt| {
-                        capt.get(group_index).map(|m| (m.start(), m.end()))
-                    }).collect::<Vec<_>>();
+                    let pairs = reg
+                        .captures_iter(s)
+                        .take(n)
+                        .flat_map(|capt| capt.get(group_index).map(|m| (m.start(), m.end())))
+                        .collect::<Vec<_>>();
                     if pairs.is_empty() {
                         return Cow::Borrowed(s);
                     }
@@ -951,7 +962,12 @@ fn replace_all<'a>(
 }
 
 #[cfg(feature = "regex")]
-pub(super) fn replace(s: &[Series], literal: bool, n: i64, group_index: usize) -> PolarsResult<Series> {
+pub(super) fn replace(
+    s: &[Series],
+    literal: bool,
+    n: i64,
+    group_index: usize,
+) -> PolarsResult<Series> {
     let column = &s[0];
     let pat = &s[1];
     let val = &s[2];

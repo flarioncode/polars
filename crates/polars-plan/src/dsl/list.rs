@@ -1,8 +1,8 @@
 #[cfg(feature = "list_to_struct")]
 use std::sync::RwLock;
 
-use polars_core::prelude::*;
 use polars_core::prelude::lambda::LambdaExpression;
+use polars_core::prelude::*;
 #[cfg(feature = "diff")]
 use polars_core::series::ops::NullBehavior;
 #[cfg(feature = "list_sets")]
@@ -128,7 +128,9 @@ impl ListNameSpace {
 
     pub fn filter_by_func(self, func: LambdaExpression) -> Expr {
         self.0
-            .map_private(FunctionExpr::ListExpr(ListFunction::FilterByFunc(func.into())))
+            .map_private(FunctionExpr::ListExpr(ListFunction::FilterByFunc(
+                func.into(),
+            )))
     }
 
     /// Sort every sublist.
@@ -139,7 +141,10 @@ impl ListNameSpace {
 
     pub fn sort_by_func(self, options: SortOptions, func: LambdaExpression) -> Expr {
         self.0
-            .map_private(FunctionExpr::ListExpr(ListFunction::SortByFunc(options, func.into())))
+            .map_private(FunctionExpr::ListExpr(ListFunction::SortByFunc(
+                options,
+                func.into(),
+            )))
     }
 
     /// Reverse every sublist
