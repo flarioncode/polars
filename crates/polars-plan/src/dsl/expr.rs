@@ -239,9 +239,7 @@ impl Hash for Expr {
                 idx.hash(state);
                 returns_scalar.hash(state);
             },
-            Expr::FlarionNormalizeNanAndZero {
-              input
-            } => {
+            Expr::FlarionNormalizeNanAndZero { input } => {
                 input.hash(state);
             },
             // already hashed by discriminant
