@@ -1,12 +1,12 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-
 use super::*;
 use crate::{map, map_as_slice};
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, PartialEq, Debug, Eq, Hash)]
 pub enum BinaryFunction {
+    Concat,
     Contains,
     StartsWith,
     EndsWith,
@@ -25,6 +25,7 @@ impl BinaryFunction {
     pub(super) fn get_field(&self, mapper: FieldsMapper) -> PolarsResult<Field> {
         use BinaryFunction::*;
         match self {
+            Concat => mapper.with_dtype(DataType::Binary),
             Contains { .. } => mapper.with_dtype(DataType::Boolean),
             EndsWith | StartsWith => mapper.with_dtype(DataType::Boolean),
             #[cfg(feature = "binary_encoding")]
@@ -40,6 +41,7 @@ impl Display for BinaryFunction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use BinaryFunction::*;
         let s = match self {
+            Concat => "concat",
             Contains { .. } => "contains",
             StartsWith => "starts_with",
             EndsWith => "ends_with",
@@ -61,6 +63,7 @@ impl From<BinaryFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
     fn from(func: BinaryFunction) -> Self {
         use BinaryFunction::*;
         match func {
+            Concat => map_as_slice!(concat),
             Contains => {
                 map_as_slice!(contains)
             },
@@ -81,6 +84,27 @@ impl From<BinaryFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             Size => map!(size_bytes),
         }
     }
+}
+
+pub(super) fn concat(s: &[Series]) -> PolarsResult<Series> {
+    let ca = s.iter().map(|inner_s| inner_s.binary()).collect::<PolarsResult<Vec<_>>>()?;
+    let len = ca.iter().map(|inner_s| inner_s.len()).max().unwrap();
+    Ok(BinaryChunked::from_iter((0..len).map(|idx| {
+        ca.iter().fold(None, |acc, it| {
+            match (acc, it.get(idx)) {
+                (None, Some(data)) => {
+                    let mut new_vec = Vec::with_capacity(1024);
+                    new_vec.extend_from_slice(data);
+                    Some(new_vec) },
+                (Some(mut acc), Some(data)) => {
+                    acc.extend(data);
+                    Some(acc)
+                }
+                (Some(acc), None) => Some(acc),
+                (None, None) => None
+            }
+        })
+    })).into_series())
 }
 
 pub(super) fn contains(s: &[Series]) -> PolarsResult<Series> {

@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use polars_utils::nulls::IsNull;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 
