@@ -33,6 +33,8 @@ pub enum LambdaExpression {
     Add(Box<Self>, Box<Self>),
 }
 
+impl Eq for LambdaExpression {}
+
 impl Hash for LambdaExpression {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
