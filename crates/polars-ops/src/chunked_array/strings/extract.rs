@@ -1,9 +1,8 @@
 use std::iter::zip;
-
 #[cfg(feature = "extract_groups")]
 use arrow::array::{Array, StructArray};
 use arrow::array::{MutablePlString, Utf8ViewArray};
-use polars_core::export::regex::Regex;
+use polars_core::export::regex::{Regex, RegexBuilder};
 use polars_core::prelude::arity::{try_binary_mut_with_options, try_unary_mut_with_options};
 
 use super::*;
@@ -45,7 +44,7 @@ pub(super) fn extract_groups(
     pat: &str,
     dtype: &DataType,
 ) -> PolarsResult<Series> {
-    let reg = Regex::new(pat)?;
+    let reg = RegexBuilder::new(pat).size_limit(31457280).build()?;
     let n_fields = reg.captures_len();
     if n_fields == 1 {
         return StructChunked::from_series(
@@ -106,7 +105,7 @@ fn extract_group_array_lit(
 
     for opt_pat in pat {
         if let Some(pat) = opt_pat {
-            let reg = Regex::new(pat)?;
+            let reg = RegexBuilder::new(pat).size_limit(31457280).build()?;
             let mut locs = reg.capture_locations();
             if reg.captures_read(&mut locs, s).is_some() {
                 builder.push(locs.get(group_index).map(|(start, stop)| &s[start..stop]));
@@ -134,7 +133,7 @@ fn extract_group_binary(
     for (opt_s, opt_pat) in zip(arr, pat) {
         match (opt_s, opt_pat) {
             (Some(s), Some(pat)) => {
-                let reg = Regex::new(pat)?;
+                let reg = RegexBuilder::new(pat).size_limit(31457280).build()?;
                 let mut locs = reg.capture_locations();
                 if reg.captures_read(&mut locs, s).is_some() {
                     builder.push(locs.get(group_index).map(|(start, stop)| &s[start..stop]));
@@ -158,7 +157,7 @@ pub(super) fn extract_group(
     match (ca.len(), pat.len()) {
         (_, 1) => {
             if let Some(pat) = pat.get(0) {
-                let reg = Regex::new(pat)?;
+                let reg = RegexBuilder::new(pat).size_limit(31457280).build()?;
                 try_unary_mut_with_options(ca, |arr| extract_group_reg_lit(arr, &reg, group_index))
             } else {
                 Ok(StringChunked::full_null(ca.name().clone(), ca.len()))
