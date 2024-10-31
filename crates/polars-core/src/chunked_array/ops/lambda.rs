@@ -1,5 +1,6 @@
 use std::borrow::Cow;
-
+use std::hash::{Hash, Hasher};
+use num_traits::ToBytes;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 
@@ -8,13 +9,18 @@ use crate::datatypes::{AnyValue, PolarsNumericType};
 use crate::prelude::Array;
 use crate::series::Series;
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "serde-lazy", derive(Serialize, Deserialize))]
 pub enum LambdaExpression {
     Null,
     Boolean(bool),
+    Int8(i8),
+    Int16(i16),
     Int32(i32),
     Int64(i64),
+    Float32(f32),
+    Float64(f64),
+    BinaryBlob(Vec<u8>),
     StaticStr(Cow<'static, str>),
     Variable(usize),
     GreaterThan(Box<Self>, Box<Self>),
@@ -25,6 +31,57 @@ pub enum LambdaExpression {
     Substring(Box<Self>, Box<Self>, Option<Box<Self>>),
     Instr(Box<Self>, Box<Self>),
     Add(Box<Self>, Box<Self>),
+}
+
+impl Hash for LambdaExpression {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            LambdaExpression::Null => 0.hash(state),
+            LambdaExpression::Boolean(v) => v.hash(state),
+            LambdaExpression::Int8(v) => v.hash(state),
+            LambdaExpression::Int16(v) => v.hash(state),
+            LambdaExpression::Int32(v) => v.hash(state),
+            LambdaExpression::Int64(v) => v.hash(state),
+            LambdaExpression::Float32(v) => v.to_le_bytes().hash(state),
+            LambdaExpression::Float64(v) => v.to_le_bytes().hash(state),
+            LambdaExpression::BinaryBlob(v) => v.hash(state),
+            LambdaExpression::StaticStr(v) => v.hash(state),
+            LambdaExpression::Variable(v) => v.hash(state),
+            LambdaExpression::GreaterThan(first, second) => {
+                first.hash(state);
+                second.hash(state);
+            }
+            LambdaExpression::LessThan(first, second) => {
+                first.hash(state);
+                second.hash(state);
+            }
+            LambdaExpression::IfThenElse(first, second, third) => {
+                first.hash(state);
+                second.hash(state);
+                third.hash(state);
+            }
+            LambdaExpression::Length(v) => {
+                v.hash(state)
+            }
+            LambdaExpression::CaseWhen(first, second) => {
+                first.hash(state);
+                second.hash(state);
+            }
+            LambdaExpression::Substring(first, second, third) => {
+                first.hash(state);
+                second.hash(state);
+                third.hash(state);
+            }
+            LambdaExpression::Instr(first, second) => {
+                first.hash(state);
+                second.hash(state);
+            }
+            LambdaExpression::Add(first, second) => {
+                first.hash(state);
+                second.hash(state);
+            }
+        }
+    }
 }
 
 fn substring<'a>(s: AnyValue<'a>, from: AnyValue<'a>, len: Option<AnyValue<'a>>) -> AnyValue<'a> {
@@ -66,8 +123,13 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
+            LambdaExpression::Float32(v) => AnyValue::Float32(*v),
+            LambdaExpression::Float64(v) => AnyValue::Float64(*v),
+            LambdaExpression::BinaryBlob(v) => AnyValue::Binary(v),
             LambdaExpression::StaticStr(v) => AnyValue::String(v),
             LambdaExpression::Variable(idx) => {
                 let arr = args[*idx];
@@ -142,8 +204,13 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
+            LambdaExpression::Float32(v) => AnyValue::Float32(*v),
+            LambdaExpression::Float64(v) => AnyValue::Float64(*v),
+            LambdaExpression::BinaryBlob(v) => AnyValue::Binary(v),
             LambdaExpression::StaticStr(v) => AnyValue::String(v),
             LambdaExpression::Variable(idx) => (*args[*idx]).into(),
             LambdaExpression::GreaterThan(left, right) => {
@@ -214,8 +281,13 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
+            LambdaExpression::Float32(v) => AnyValue::Float32(*v),
+            LambdaExpression::Float64(v) => AnyValue::Float64(*v),
+            LambdaExpression::BinaryBlob(v) => AnyValue::Binary(v),
             LambdaExpression::StaticStr(v) => AnyValue::String(v),
             LambdaExpression::Variable(idx) => (*args[*idx]).into(),
             LambdaExpression::GreaterThan(left, right) => {
@@ -285,8 +357,13 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
+            LambdaExpression::Float32(v) => AnyValue::Float32(*v),
+            LambdaExpression::Float64(v) => AnyValue::Float64(*v),
+            LambdaExpression::BinaryBlob(v) => AnyValue::Binary(v),
             LambdaExpression::StaticStr(v) => AnyValue::String(v),
             LambdaExpression::Variable(idx) => AnyValue::Binary(args[*idx]),
             LambdaExpression::GreaterThan(left, right) => {
@@ -359,8 +436,13 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
+            LambdaExpression::Float32(v) => AnyValue::Float32(*v),
+            LambdaExpression::Float64(v) => AnyValue::Float64(*v),
+            LambdaExpression::BinaryBlob(v) => AnyValue::Binary(v),
             LambdaExpression::StaticStr(v) => AnyValue::String(v),
             LambdaExpression::Variable(idx) => args[*idx].clone(),
             LambdaExpression::GreaterThan(left, right) => {
@@ -432,8 +514,13 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => Some(DataType::Null),
             LambdaExpression::Boolean(_) => Some(DataType::Boolean),
+            LambdaExpression::Int8(_) => Some(DataType::Int8),
+            LambdaExpression::Int16(_) => Some(DataType::Int16),
             LambdaExpression::Int32(_) => Some(DataType::Int32),
             LambdaExpression::Int64(_) => Some(DataType::Int64),
+            LambdaExpression::Float32(_) => Some(DataType::Float32),
+            LambdaExpression::Float64(_) => Some(DataType::Float64),
+            LambdaExpression::BinaryBlob(_) => Some(DataType::Binary),
             LambdaExpression::StaticStr(_) => Some(DataType::String),
             LambdaExpression::Variable(_) => None,
             LambdaExpression::GreaterThan(_, _) => Some(DataType::Boolean),
