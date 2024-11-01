@@ -367,10 +367,13 @@ pub(super) fn flarion_slice(args: &mut [Series]) -> PolarsResult<Option<Series>>
                 .amortized_iter()
                 .zip(length_ca)
                 .map(|(opt_s, opt_length)| match (opt_s, opt_length) {
-                    (Some(s), Some(length)) => Some(list_flarion_slice_amortized(s, offset, length)),
-                    _ => None,
+                    (Some(s), Some(length)) => {
+                        let (offset, length) = flarion_spark_offset_length(offset, length)?;
+                        Ok(Some(list_flarion_slice_amortized(s, offset, length)))
+                    },
+                    _ => Ok(None),
                 })
-                .collect_trusted()
+                .collect_trusted::<PolarsResult<_>>()?
         },
         (offset_len, 1) => {
             check_slice_arg_shape(offset_len, list_ca.len(), "offset")?;
@@ -385,10 +388,12 @@ pub(super) fn flarion_slice(args: &mut [Series]) -> PolarsResult<Option<Series>>
                 .amortized_iter()
                 .zip(offset_ca)
                 .map(|(opt_s, opt_offset)| match (opt_s, opt_offset) {
-                    (Some(s), Some(offset)) => Some(list_flarion_slice_amortized(s, offset, length_slice)),
-                    _ => None,
+                    (Some(s), Some(offset)) => {
+                        let (offset, length) = flarion_spark_offset_length(offset, length_slice)?;
+                        Ok(Some(list_flarion_slice_amortized(s, offset, length))) },
+                    _ => Ok(None),
                 })
-                .collect_trusted()
+                .collect_trusted::<PolarsResult<_>>()?
         },
         _ => {
             check_slice_arg_shape(offset_s.len(), list_ca.len(), "offset")?;
@@ -407,12 +412,13 @@ pub(super) fn flarion_slice(args: &mut [Series]) -> PolarsResult<Option<Series>>
                 .map(
                     |((opt_s, opt_offset), opt_length)| match (opt_s, opt_offset, opt_length) {
                         (Some(s), Some(offset), Some(length)) => {
-                            Some(list_flarion_slice_amortized(s, offset, length))
+                            let (offset, length) = flarion_spark_offset_length(offset, length)?;
+                            Ok(Some(list_flarion_slice_amortized(s, offset, length)))
                         },
-                        _ => None,
+                        _ => Ok(None),
                     },
                 )
-                .collect_trusted()
+                .collect_trusted::<PolarsResult<_>>()?
         },
     };
     out.rename(s.name().clone());

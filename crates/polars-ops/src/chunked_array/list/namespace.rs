@@ -75,8 +75,12 @@ fn cast_rhs(
     Ok(())
 }
 
-pub fn list_flarion_slice_amortized(s: AmortSeries, offset: i64, length: i64) -> Series {
-    if offset > 0 && offset < s.as_ref().len() as i64 {
+pub fn list_flarion_slice_amortized(s: AmortSeries, mut offset: i64, length: i64) -> Series {
+    let element_len = s.as_ref().len() as i64;
+    if offset < 0 {
+        offset += element_len;
+    }
+    if (0..element_len).contains(&offset) {
         s.as_ref().slice(offset, length as usize)
     } else {
         Series::new_empty(s.as_ref().name().clone(), s.as_ref().dtype())
