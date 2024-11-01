@@ -52,6 +52,23 @@ pub fn format_str<E: AsRef<[Expr]>>(format: &str, args: E) -> PolarsResult<Expr>
     Ok(concat_str(exprs, "", false))
 }
 
+/// Concat binary blobs
+pub fn concat_binary<E: AsRef<[IE]>, IE: Into<Expr> + Clone>(s: E) -> PolarsResult<Expr> {
+    let s: Vec<_> = s.as_ref().iter().map(|e| e.clone().into()).collect();
+
+    polars_ensure!(!s.is_empty(), ComputeError: "`concat_binary` needs one or more expressions");
+
+    Ok(Expr::Function {
+        input: s,
+        function: FunctionExpr::BinaryExpr(BinaryFunction::Concat),
+        options: FunctionOptions {
+            collect_groups: ApplyOptions::ElementWise,
+            flags: FunctionFlags::default() | FunctionFlags::INPUT_WILDCARD_EXPANSION,
+            ..Default::default()
+        },
+    })
+}
+
 /// Concat lists entries.
 pub fn concat_list<E: AsRef<[IE]>, IE: Into<Expr> + Clone>(s: E) -> PolarsResult<Expr> {
     let s: Vec<_> = s.as_ref().iter().map(|e| e.clone().into()).collect();

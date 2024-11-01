@@ -453,7 +453,6 @@ pub trait ChunkReverse {
     fn reverse(&self) -> Self;
 }
 
-
 pub trait ChunkTransform {
     fn transform(&self, lambda: &super::LambdaExpression) -> polars_error::PolarsResult<Series>;
 }

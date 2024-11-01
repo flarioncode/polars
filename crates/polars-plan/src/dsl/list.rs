@@ -135,9 +135,7 @@ impl ListNameSpace {
 
     pub fn transform(self, func: LambdaExpression) -> Expr {
         self.0
-            .map_private(FunctionExpr::ListExpr(ListFunction::Transform(
-                func.into(),
-            )))
+            .map_private(FunctionExpr::ListExpr(ListFunction::Transform(func.into())))
     }
 
     /// Sort every sublist.
@@ -270,6 +268,16 @@ impl ListNameSpace {
     pub fn slice(self, offset: Expr, length: Expr) -> Expr {
         self.0.map_many_private(
             FunctionExpr::ListExpr(ListFunction::Slice),
+            &[offset, length],
+            false,
+            None,
+        )
+    }
+
+    /// Slice every sublist.
+    pub fn flarion_slice(self, offset: Expr, length: Expr) -> Expr {
+        self.0.map_many_private(
+            FunctionExpr::ListExpr(ListFunction::FlarionSlice),
             &[offset, length],
             false,
             None,

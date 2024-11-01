@@ -110,8 +110,10 @@ fn expand_regex(
     pattern: &str,
     exclude: &PlHashSet<PlSmallStr>,
 ) -> PolarsResult<()> {
-    let re =
-        regex::Regex::new(pattern).map_err(|e| polars_err!(ComputeError: "invalid regex {}", e))?;
+    let re = regex::RegexBuilder::new(pattern)
+        .size_limit(31457280)
+        .build()
+        .map_err(|e| polars_err!(ComputeError: "invalid regex {}", e))?;
     for name in schema.iter_names() {
         if re.is_match(name) && !exclude.contains(name.as_str()) {
             let mut new_expr = remove_exclude(expr.clone());

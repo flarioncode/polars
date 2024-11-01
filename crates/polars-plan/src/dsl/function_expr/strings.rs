@@ -8,8 +8,10 @@ use polars_core::chunked_array::temporal::validate_time_zone;
 use polars_core::utils::handle_casting_failures;
 #[cfg(feature = "dtype-struct")]
 use polars_utils::format_pl_smallstr;
+#[cfg(all(feature = "regex", feature = "timezones"))]
+use regex::Regex;
 #[cfg(feature = "regex")]
-use regex::{escape, Regex};
+use regex::{escape, RegexBuilder};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -880,7 +882,7 @@ fn replace_n<'a>(
                 pat = escape(&pat)
             }
 
-            let reg = Regex::new(&pat)?;
+            let reg = RegexBuilder::new(&pat).size_limit(31457280).build()?;
             let lit = pat.chars().all(|c| !c.is_ascii_punctuation());
 
             let f = |s: &'a str, val: &'a str| {
@@ -950,7 +952,7 @@ fn replace_all<'a>(
                 pat = escape(&pat)
             }
 
-            let reg = Regex::new(&pat)?;
+            let reg = RegexBuilder::new(&pat).size_limit(31457280).build()?;
 
             let f = |s: &'a str, val: &'a str| reg.replace_all(s, val);
             Ok(iter_and_replace(ca, val, f))

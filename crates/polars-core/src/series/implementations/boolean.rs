@@ -318,7 +318,6 @@ impl SeriesTrait for SeriesWrap<BooleanChunked> {
 
 #[cfg(test)]
 mod tests {
-    
 
     use crate::series::{BooleanChunked, IntoSeries, LambdaExpression, NamedFrom};
 
@@ -327,12 +326,16 @@ mod tests {
         // here we test that transform is defined on series with booleanchunked array
         let series = BooleanChunked::new("array".into(), &vec![true, false, true]).into_series();
 
-        let lambda = LambdaExpression::IfThenElse(Box::new(LambdaExpression::Variable(0)), Box::new(LambdaExpression::Int32(1)), Box::new(LambdaExpression::Int32(0)));
+        let lambda = LambdaExpression::IfThenElse(
+            Box::new(LambdaExpression::Variable(0)),
+            Box::new(LambdaExpression::Int32(1)),
+            Box::new(LambdaExpression::Int32(0)),
+        );
 
         let transformed = series.transform(&lambda);
 
         assert!(matches!(transformed, Ok(_)));
-        
+
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
         let result = transformed.i32();

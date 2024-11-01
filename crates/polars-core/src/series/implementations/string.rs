@@ -275,12 +275,15 @@ mod tests {
         // also we check that length returning Int32 type
         let series = StringChunked::new("array".into(), &["Hi!", "I'm", "Mark"]).into_series();
 
-        let lambda = LambdaExpression::Instr(Box::new(LambdaExpression::Variable(0)), Box::new(LambdaExpression::StaticStr("H".into())));
+        let lambda = LambdaExpression::Instr(
+            Box::new(LambdaExpression::Variable(0)),
+            Box::new(LambdaExpression::StaticStr("H".into())),
+        );
 
         let transformed = series.transform(&lambda);
 
         assert!(matches!(transformed, Ok(_)));
-        
+
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
         let result = transformed.i32();
@@ -288,6 +291,5 @@ mod tests {
         assert!(matches!(result, Ok(_)));
 
         assert_eq!(Vec::from(result.unwrap()), vec![Some(1), Some(0), Some(0)]);
-
     }
 }

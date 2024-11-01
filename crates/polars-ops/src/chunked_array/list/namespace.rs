@@ -7,6 +7,7 @@ use polars_core::chunked_array::builder::get_list_builder;
 use polars_core::export::num::ToPrimitive;
 #[cfg(feature = "list_gather")]
 use polars_core::export::num::{NumCast, Signed, Zero};
+use polars_core::series::amortized_iter::AmortSeries;
 #[cfg(feature = "diff")]
 use polars_core::series::ops::NullBehavior;
 use polars_core::utils::try_get_supertype;
@@ -72,6 +73,18 @@ fn cast_rhs(
         }
     }
     Ok(())
+}
+
+pub fn list_flarion_slice_amortized(s: AmortSeries, mut offset: i64, length: i64) -> Series {
+    let element_len = s.as_ref().len() as i64;
+    if offset < 0 {
+        offset += element_len;
+    }
+    if (0..element_len).contains(&offset) {
+        s.as_ref().slice(offset, length as usize)
+    } else {
+        Series::new_empty(s.as_ref().name().clone(), s.as_ref().dtype())
+    }
 }
 
 pub trait ListNameSpaceImpl: AsList {
@@ -269,10 +282,10 @@ pub trait ListNameSpaceImpl: AsList {
 
     fn lst_transform(
         &self,
-        lambda_expressions: Arc<LambdaExpression>
+        lambda_expressions: Arc<LambdaExpression>,
     ) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
-        let out = ca.try_apply_amortized(|s| s.as_ref().transform(&lambda_expressions) )?;
+        let out = ca.try_apply_amortized(|s| s.as_ref().transform(&lambda_expressions))?;
         Ok(out)
     }
 
@@ -360,6 +373,12 @@ pub trait ListNameSpaceImpl: AsList {
             }),
         };
         Ok(self.same_type(out))
+    }
+
+    fn lst_flarion_slice(&self, (offset, length): (i64, i64)) -> ListChunked {
+        let ca = self.as_list();
+        let out = ca.apply_amortized(|s| list_flarion_slice_amortized(s, offset, length));
+        self.same_type(out)
     }
 
     fn lst_slice(&self, offset: i64, length: usize) -> ListChunked {

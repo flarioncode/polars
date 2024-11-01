@@ -1,3 +1,5 @@
+use polars_error::PolarsResult;
+
 use crate::array::PrimitiveArray;
 use crate::bitmap::utils::set_bit_unchecked;
 use crate::bitmap::MutableBitmap;
@@ -74,6 +76,30 @@ impl<T: NativeType> FromTrustedLenIterator<T> for PrimitiveArray<T> {
     {
         let iter = iter.into_iter();
         unsafe { PrimitiveArray::from_trusted_len_values_iter_unchecked(iter) }
+    }
+}
+
+// FLARION: This allows for efficient collection of PolarsResult<T> where T would normally support FromTrustedLenIterator
+impl<T, A> FromTrustedLenIterator<PolarsResult<A>> for PolarsResult<T>
+where
+    T: FromTrustedLenIterator<A>,
+{
+    fn from_iter_trusted_length<I: IntoIterator<Item = PolarsResult<A>>>(iter: I) -> Self
+    where
+        I::IntoIter: TrustedLen,
+    {
+        // First collect any errors that might occur
+        let iter = iter.into_iter();
+        let (ok_values, errors): (Vec<_>, Vec<_>) = iter.partition(Result::is_ok);
+
+        // If we found any errors, return the first one
+        if let Some(err) = errors.into_iter().next() {
+            return err.map(|_| unreachable!());
+        }
+
+        // Unwrap the Ok values and collect into the inner type
+        let ok_iter = ok_values.into_iter().map(Result::unwrap);
+        Ok(T::from_iter_trusted_length(ok_iter))
     }
 }
 
