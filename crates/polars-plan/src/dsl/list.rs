@@ -276,6 +276,16 @@ impl ListNameSpace {
         )
     }
 
+    /// Slice every sublist.
+    pub fn flarion_slice(self, offset: Expr, length: Expr) -> Expr {
+        self.0.map_many_private(
+            FunctionExpr::ListExpr(ListFunction::FlarionSlice),
+            &[offset, length],
+            false,
+            None,
+        )
+    }
+
     /// Get the head of every sublist
     pub fn head(self, n: Expr) -> Expr {
         self.slice(lit(0), n)
