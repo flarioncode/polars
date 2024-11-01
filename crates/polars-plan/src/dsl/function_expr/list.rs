@@ -43,10 +43,7 @@ pub enum ListFunction {
         n: i64,
         null_behavior: NullBehavior,
     },
-    FilterByFunc(Arc<LambdaExpression>),
-    Transform(Arc<LambdaExpression>),
     Sort(SortOptions),
-    SortByFunc(SortOptions, Arc<LambdaExpression>),
     Reverse,
     Unique(bool),
     NUnique,
@@ -59,6 +56,11 @@ pub enum ListFunction {
     Join(bool),
     #[cfg(feature = "dtype-array")]
     ToArray(usize),
+    // Flarion functions
+    FilterByFunc(Arc<LambdaExpression>),
+    SortByFunc(SortOptions, Arc<LambdaExpression>),
+    Transform(Arc<LambdaExpression>),
+    FlarionSlice
 }
 
 impl ListFunction {
@@ -92,15 +94,7 @@ impl ListFunction {
             ArgMax => mapper.with_dtype(IDX_DTYPE),
             #[cfg(feature = "diff")]
             Diff { .. } => mapper.with_same_dtype(),
-            FilterByFunc(_) => mapper.with_same_dtype(),
-            Transform(lambda) => {
-                match lambda.return_type() {
-                    Some(dtype) => mapper.with_dtype(dtype),
-                    None => mapper.with_same_dtype(),
-                }
-            }, // TODO: transform can produse different type
             Sort(_) => mapper.with_same_dtype(),
-            SortByFunc(_, _) => mapper.with_same_dtype(),
             Reverse => mapper.with_same_dtype(),
             Unique(_) => mapper.with_same_dtype(),
             Length => mapper.with_dtype(IDX_DTYPE),
@@ -114,6 +108,16 @@ impl ListFunction {
             #[cfg(feature = "dtype-array")]
             ToArray(width) => mapper.try_map_dtype(|dt| map_list_dtype_to_array_dtype(dt, *width)),
             NUnique => mapper.with_dtype(IDX_DTYPE),
+            // Flarion functinos
+            FilterByFunc(_) => mapper.with_same_dtype(),
+            SortByFunc(_, _) => mapper.with_same_dtype(),
+            Transform(lambda) => {
+                match lambda.return_type() {
+                    Some(dtype) => mapper.with_dtype(dtype),
+                    None => mapper.with_same_dtype(),
+                }
+            }, // TODO: transform can produse different type
+            FlarionSlice => mapper.with_same_dtype(),
         }
     }
 }
@@ -166,10 +170,7 @@ impl Display for ListFunction {
             #[cfg(feature = "diff")]
             Diff { .. } => "diff",
             Length => "length",
-            FilterByFunc(_) => "filter_by_func",
-            Transform(_) => "transform",
             Sort(_) => "sort",
-            SortByFunc(_, _) => "sort_by_func",
             Reverse => "reverse",
             Unique(is_stable) => {
                 if *is_stable {
@@ -188,6 +189,11 @@ impl Display for ListFunction {
             Join(_) => "join",
             #[cfg(feature = "dtype-array")]
             ToArray(_) => "to_array",
+            // Flarion functions
+            FilterByFunc(_) => "filter_by_func",
+            SortByFunc(_, _) => "sort_by_func",
+            Transform(_) => "transform",
+            FlarionSlice => "flarion_slice",
         };
         write!(f, "list.{name}")
     }
@@ -236,10 +242,7 @@ impl From<ListFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             ArgMax => map!(arg_max),
             #[cfg(feature = "diff")]
             Diff { n, null_behavior } => map!(diff, n, null_behavior),
-            FilterByFunc(lambda) => map!(filter_by_func, lambda.clone()),
-            Transform(lambda) => map!(transform, lambda.clone()),
             Sort(options) => map!(sort, options),
-            SortByFunc(options, lambda) => map!(sort_by_func, options, lambda.clone()),
             Reverse => map!(reverse),
             Unique(is_stable) => map!(unique, is_stable),
             #[cfg(feature = "list_sets")]
@@ -252,6 +255,11 @@ impl From<ListFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             #[cfg(feature = "dtype-array")]
             ToArray(width) => map!(to_array, width),
             NUnique => map!(n_unique),
+            // Flarion functions
+            FilterByFunc(lambda) => map!(filter_by_func, lambda.clone()),
+            SortByFunc(options, lambda) => map!(sort_by_func, options, lambda.clone()),
+            Transform(lambda) => map!(transform, lambda.clone()),
+            FlarionSlice => wrap!(flarion_slice),
         }
     }
 }
@@ -317,6 +325,98 @@ pub(super) fn shift(s: &[Series]) -> PolarsResult<Series> {
     let periods = &s[1];
 
     list.lst_shift(periods).map(|ok| ok.into_series())
+}
+
+fn flarion_spark_offset_length(mut offset: i64, length: i64) -> PolarsResult<(i64, i64)> {
+    // SQL compat, offset 0 is an error, we index from 1
+    if offset == 0 {
+        polars_bail!(ComputeError: "flarion_slice() failed: Offset cannot be 0");
+    } else if length < 0 {
+        polars_bail!(ComputeError: "flarion_slice() failed: Length cannot be negative");
+    }
+
+    // Convert to regular indexing
+    Ok((offset - 1, length))
+}
+
+pub(super) fn flarion_slice(args: &mut [Series]) -> PolarsResult<Option<Series>> {
+    let s = &args[0];
+    let list_ca = s.list()?;
+    let offset_s = &args[1];
+    let length_s = &args[2];
+
+    let mut out: ListChunked = match (offset_s.len(), length_s.len()) {
+        (1, 1) => {
+            let offset = offset_s.get(0).unwrap().try_extract::<i64>()?;
+            let slice_len = length_s
+                .get(0)
+                .unwrap()
+                .extract::<i64>()
+                .unwrap_or(i64::MAX);
+            return Ok(Some(list_ca.lst_flarion_slice(flarion_spark_offset_length(offset, slice_len)?).into_series()));
+        },
+        (1, length_slice_len) => {
+            check_slice_arg_shape(length_slice_len, list_ca.len(), "length")?;
+            let offset = offset_s.get(0).unwrap().try_extract::<i64>()?;
+            // cast to i64 as it is more likely that it is that dtype
+            // instead of usize/u64 (we never need that max length)
+            let length_ca = length_s.cast(&DataType::Int64)?;
+            let length_ca = length_ca.i64().unwrap();
+
+            list_ca
+                .amortized_iter()
+                .zip(length_ca)
+                .map(|(opt_s, opt_length)| match (opt_s, opt_length) {
+                    (Some(s), Some(length)) => Some(list_flarion_slice_amortized(s, offset, length)),
+                    _ => None,
+                })
+                .collect_trusted()
+        },
+        (offset_len, 1) => {
+            check_slice_arg_shape(offset_len, list_ca.len(), "offset")?;
+            let length_slice = length_s
+                .get(0)
+                .unwrap()
+                .try_extract::<i64>()
+                .unwrap_or(i64::MAX);
+            let offset_ca = offset_s.cast(&DataType::Int64)?;
+            let offset_ca = offset_ca.i64().unwrap();
+            list_ca
+                .amortized_iter()
+                .zip(offset_ca)
+                .map(|(opt_s, opt_offset)| match (opt_s, opt_offset) {
+                    (Some(s), Some(offset)) => Some(list_flarion_slice_amortized(s, offset, length_slice)),
+                    _ => None,
+                })
+                .collect_trusted()
+        },
+        _ => {
+            check_slice_arg_shape(offset_s.len(), list_ca.len(), "offset")?;
+            check_slice_arg_shape(length_s.len(), list_ca.len(), "length")?;
+            let offset_ca = offset_s.cast(&DataType::Int64)?;
+            let offset_ca = offset_ca.i64()?;
+            // cast to i64 as it is more likely that it is that dtype
+            // instead of usize/u64 (we never need that max length)
+            let length_ca = length_s.cast(&DataType::Int64)?;
+            let length_ca = length_ca.i64().unwrap();
+
+            list_ca
+                .amortized_iter()
+                .zip(offset_ca)
+                .zip(length_ca)
+                .map(
+                    |((opt_s, opt_offset), opt_length)| match (opt_s, opt_offset, opt_length) {
+                        (Some(s), Some(offset), Some(length)) => {
+                            Some(list_flarion_slice_amortized(s, offset, length))
+                        },
+                        _ => None,
+                    },
+                )
+                .collect_trusted()
+        },
+    };
+    out.rename(s.name().clone());
+    Ok(Some(out.into_series()))
 }
 
 //noinspection RsUnwrap
