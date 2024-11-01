@@ -248,23 +248,28 @@ mod tests {
         let arr2 = row2.clone().downcast_into_array();
         let arr3 = row3.clone().downcast_into_array();
         let series = ListChunked::from_iter(vec![
-            row1.into_series(), 
-            row2.into_series(), 
-            row3.into_series(), 
-        ]).into_series();
+            row1.into_series(),
+            row2.into_series(),
+            row3.into_series(),
+        ])
+        .into_series();
 
         let lambda = LambdaExpression::Variable(0); // There is no functions that work on arrays
 
         let transformed = series.transform(&lambda);
-        
+
         assert!(matches!(transformed, Ok(_)));
-        
+
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
         let result = transformed.list();
 
         assert!(matches!(result, Ok(_)));
-        let vec: Vec<Option<Box<dyn Array>>> = vec![Some(Box::new(arr1)), Some(Box::new(arr2)), Some(Box::new(arr3))];
+        let vec: Vec<Option<Box<dyn Array>>> = vec![
+            Some(Box::new(arr1)),
+            Some(Box::new(arr2)),
+            Some(Box::new(arr3)),
+        ];
         assert_eq!(Vec::from(result.unwrap()), vec);
     }
 }

@@ -1,4 +1,5 @@
 use std::iter::zip;
+
 #[cfg(feature = "extract_groups")]
 use arrow::array::{Array, StructArray};
 use arrow::array::{MutablePlString, Utf8ViewArray};

@@ -282,10 +282,10 @@ pub trait ListNameSpaceImpl: AsList {
 
     fn lst_transform(
         &self,
-        lambda_expressions: Arc<LambdaExpression>
+        lambda_expressions: Arc<LambdaExpression>,
     ) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
-        let out = ca.try_apply_amortized(|s| s.as_ref().transform(&lambda_expressions) )?;
+        let out = ca.try_apply_amortized(|s| s.as_ref().transform(&lambda_expressions))?;
         Ok(out)
     }
 
@@ -377,9 +377,7 @@ pub trait ListNameSpaceImpl: AsList {
 
     fn lst_flarion_slice(&self, (offset, length): (i64, i64)) -> ListChunked {
         let ca = self.as_list();
-        let out = ca.apply_amortized(|s| {
-            list_flarion_slice_amortized(s, offset, length)
-        });
+        let out = ca.apply_amortized(|s| list_flarion_slice_amortized(s, offset, length));
         self.same_type(out)
     }
 

@@ -252,30 +252,39 @@ impl SeriesTrait for SeriesWrap<BinaryChunked> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::series::{BinaryChunked, IntoSeries, LambdaExpression, NamedFrom};
-
 
     #[test]
     fn test_transform_bin() {
         // we check that there is correct implementation for StringChunked inside series
         // also we check that length returning Int32 type
-        let series = BinaryChunked::new("array".into(), &[b"Hi!" as &[u8], b"I'm" as &[u8], b"Yan" as &[u8]]).into_series();
+        let series = BinaryChunked::new(
+            "array".into(),
+            &[b"Hi!" as &[u8], b"I'm" as &[u8], b"Yan" as &[u8]],
+        )
+        .into_series();
 
         let lambda = LambdaExpression::Variable(0);
 
         let transformed = series.transform(&lambda);
 
         assert!(matches!(transformed, Ok(_)));
-        
+
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
         let result = transformed.binary();
 
         assert!(matches!(result, Ok(_)));
 
-        assert_eq!(Vec::from(result.unwrap()), vec![Some(b"Hi!" as &[u8]), Some(b"I'm" as &[u8]), Some(b"Yan" as &[u8])]);
+        assert_eq!(
+            Vec::from(result.unwrap()),
+            vec![
+                Some(b"Hi!" as &[u8]),
+                Some(b"I'm" as &[u8]),
+                Some(b"Yan" as &[u8])
+            ]
+        );
     }
 }

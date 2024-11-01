@@ -1,7 +1,9 @@
-
 use arrow::array::Array;
 
-use super::{BinaryChunked, BooleanChunked, ChunkTransform, ChunkedArray, ListChunked, PolarsNumericType, SeriesTrait, StringChunked};
+use super::{
+    BinaryChunked, BooleanChunked, ChunkTransform, ChunkedArray, ListChunked, PolarsNumericType,
+    SeriesTrait, StringChunked,
+};
 use crate::prelude::AnyValue;
 use crate::series::implementations::SeriesWrap;
 use crate::series::{IntoSeries, Series};
@@ -21,13 +23,14 @@ where
         let vec: Vec<AnyValue> = self
             .iter()
             .enumerate()
-            .map(|(i, value): (usize, Option<T::Native>)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
+            .map(|(i, value): (usize, Option<T::Native>)| {
+                lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)])
+            })
             .collect();
 
         Series::from_any_values("".into(), &vec, true)
     }
 }
-
 
 impl ChunkTransform for StringChunked {
     fn transform(&self, lambda: &super::LambdaExpression) -> polars_error::PolarsResult<Series> {
@@ -46,7 +49,10 @@ impl ChunkTransform for StringChunked {
 }
 
 impl ChunkTransform for BinaryChunked {
-    fn transform(&self, lambda: &crate::chunked_array::LambdaExpression) -> polars_error::PolarsResult<Series> {
+    fn transform(
+        &self,
+        lambda: &crate::chunked_array::LambdaExpression,
+    ) -> polars_error::PolarsResult<Series> {
         if self.is_empty() {
             return Ok(self.clone().into_series());
         }
@@ -64,8 +70,8 @@ impl ChunkTransform for BinaryChunked {
 fn array_to_any(value: Option<Box<dyn Array>>) -> AnyValue<'static> {
     match value {
         Some(value) => {
-            let series = Series::from_arrow("".into(), value)
-                .expect("could not convert array to series");
+            let series =
+                Series::from_arrow("".into(), value).expect("could not convert array to series");
             AnyValue::List(series)
         },
         None => AnyValue::Null,
@@ -73,7 +79,10 @@ fn array_to_any(value: Option<Box<dyn Array>>) -> AnyValue<'static> {
 }
 
 impl ChunkTransform for ListChunked {
-    fn transform(&self, lambda: &crate::chunked_array::LambdaExpression) -> polars_error::PolarsResult<Series> {
+    fn transform(
+        &self,
+        lambda: &crate::chunked_array::LambdaExpression,
+    ) -> polars_error::PolarsResult<Series> {
         if self.is_empty() {
             return Ok(self.clone().into_series());
         }
@@ -88,9 +97,11 @@ impl ChunkTransform for ListChunked {
     }
 }
 
-
 impl ChunkTransform for BooleanChunked {
-    fn transform(&self, lambda: &crate::chunked_array::LambdaExpression) -> polars_error::PolarsResult<Series> {
+    fn transform(
+        &self,
+        lambda: &crate::chunked_array::LambdaExpression,
+    ) -> polars_error::PolarsResult<Series> {
         if self.is_empty() {
             return Ok(self.clone().into_series());
         }

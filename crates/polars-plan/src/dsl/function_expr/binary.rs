@@ -1,5 +1,6 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+
 use super::*;
 use crate::{map, map_as_slice};
 
@@ -87,24 +88,27 @@ impl From<BinaryFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
 }
 
 pub(super) fn concat(s: &[Series]) -> PolarsResult<Series> {
-    let ca = s.iter().map(|inner_s| inner_s.binary()).collect::<PolarsResult<Vec<_>>>()?;
+    let ca = s
+        .iter()
+        .map(|inner_s| inner_s.binary())
+        .collect::<PolarsResult<Vec<_>>>()?;
     let len = ca.iter().map(|inner_s| inner_s.len()).max().unwrap();
     Ok(BinaryChunked::from_iter((0..len).map(|idx| {
-        ca.iter().fold(None, |acc, it| {
-            match (acc, it.get(idx)) {
-                (None, Some(data)) => {
-                    let mut new_vec = Vec::with_capacity(1024);
-                    new_vec.extend_from_slice(data);
-                    Some(new_vec) },
-                (Some(mut acc), Some(data)) => {
-                    acc.extend(data);
-                    Some(acc)
-                }
-                (Some(acc), None) => Some(acc),
-                (None, None) => None
-            }
+        ca.iter().fold(None, |acc, it| match (acc, it.get(idx)) {
+            (None, Some(data)) => {
+                let mut new_vec = Vec::with_capacity(1024);
+                new_vec.extend_from_slice(data);
+                Some(new_vec)
+            },
+            (Some(mut acc), Some(data)) => {
+                acc.extend(data);
+                Some(acc)
+            },
+            (Some(acc), None) => Some(acc),
+            (None, None) => None,
         })
-    })).into_series())
+    }))
+    .into_series())
 }
 
 pub(super) fn contains(s: &[Series]) -> PolarsResult<Series> {

@@ -1,4 +1,5 @@
 use polars_error::PolarsResult;
+
 use crate::array::PrimitiveArray;
 use crate::bitmap::utils::set_bit_unchecked;
 use crate::bitmap::MutableBitmap;

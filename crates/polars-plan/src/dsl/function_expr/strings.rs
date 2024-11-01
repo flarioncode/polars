@@ -8,9 +8,10 @@ use polars_core::chunked_array::temporal::validate_time_zone;
 use polars_core::utils::handle_casting_failures;
 #[cfg(feature = "dtype-struct")]
 use polars_utils::format_pl_smallstr;
+#[cfg(all(feature = "regex", feature = "timezones"))]
+use regex::Regex;
 #[cfg(feature = "regex")]
-use regex::{escape, Regex};
-use regex::RegexBuilder;
+use regex::{escape, RegexBuilder};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 

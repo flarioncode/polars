@@ -135,9 +135,7 @@ impl ListNameSpace {
 
     pub fn transform(self, func: LambdaExpression) -> Expr {
         self.0
-            .map_private(FunctionExpr::ListExpr(ListFunction::Transform(
-                func.into(),
-            )))
+            .map_private(FunctionExpr::ListExpr(ListFunction::Transform(func.into())))
     }
 
     /// Sort every sublist.

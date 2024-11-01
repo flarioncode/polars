@@ -60,7 +60,7 @@ pub enum ListFunction {
     FilterByFunc(Arc<LambdaExpression>),
     SortByFunc(SortOptions, Arc<LambdaExpression>),
     Transform(Arc<LambdaExpression>),
-    FlarionSlice
+    FlarionSlice,
 }
 
 impl ListFunction {
@@ -111,11 +111,9 @@ impl ListFunction {
             // Flarion functinos
             FilterByFunc(_) => mapper.with_same_dtype(),
             SortByFunc(_, _) => mapper.with_same_dtype(),
-            Transform(lambda) => {
-                match lambda.return_type() {
-                    Some(dtype) => mapper.with_dtype(dtype),
-                    None => mapper.with_same_dtype(),
-                }
+            Transform(lambda) => match lambda.return_type() {
+                Some(dtype) => mapper.with_dtype(dtype),
+                None => mapper.with_same_dtype(),
             }, // TODO: transform can produse different type
             FlarionSlice => mapper.with_same_dtype(),
         }
@@ -327,7 +325,7 @@ pub(super) fn shift(s: &[Series]) -> PolarsResult<Series> {
     list.lst_shift(periods).map(|ok| ok.into_series())
 }
 
-fn flarion_spark_offset_length(mut offset: i64, length: i64) -> PolarsResult<(i64, i64)> {
+fn flarion_spark_offset_length(offset: i64, length: i64) -> PolarsResult<(i64, i64)> {
     // SQL compat, offset 0 is an error, we index from 1
     if offset == 0 {
         polars_bail!(ComputeError: "flarion_slice() failed: Offset cannot be 0");
@@ -353,7 +351,11 @@ pub(super) fn flarion_slice(args: &mut [Series]) -> PolarsResult<Option<Series>>
                 .unwrap()
                 .extract::<i64>()
                 .unwrap_or(i64::MAX);
-            return Ok(Some(list_ca.lst_flarion_slice(flarion_spark_offset_length(offset, slice_len)?).into_series()));
+            return Ok(Some(
+                list_ca
+                    .lst_flarion_slice(flarion_spark_offset_length(offset, slice_len)?)
+                    .into_series(),
+            ));
         },
         (1, length_slice_len) => {
             check_slice_arg_shape(length_slice_len, list_ca.len(), "length")?;
@@ -390,7 +392,8 @@ pub(super) fn flarion_slice(args: &mut [Series]) -> PolarsResult<Option<Series>>
                 .map(|(opt_s, opt_offset)| match (opt_s, opt_offset) {
                     (Some(s), Some(offset)) => {
                         let (offset, length) = flarion_spark_offset_length(offset, length_slice)?;
-                        Ok(Some(list_flarion_slice_amortized(s, offset, length))) },
+                        Ok(Some(list_flarion_slice_amortized(s, offset, length)))
+                    },
                     _ => Ok(None),
                 })
                 .collect_trusted::<PolarsResult<_>>()?

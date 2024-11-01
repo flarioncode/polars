@@ -8,7 +8,6 @@ use base64::engine::general_purpose;
 use base64::Engine as _;
 #[cfg(feature = "string_to_integer")]
 use polars_core::export::num::Num;
-use polars_core::export::regex::Regex;
 use polars_core::prelude::arity::*;
 use polars_utils::cache::FastFixedCache;
 use regex::{escape, RegexBuilder};
@@ -152,8 +151,9 @@ pub trait StringNameSpaceImpl: AsString {
                     broadcast_try_binary_elementwise(ca, pat, |opt_src, opt_pat| {
                         match (opt_src, opt_pat) {
                             (Some(src), Some(pat)) => {
-                                let reg =
-                                    reg_cache.try_get_or_insert_with(pat, |p| RegexBuilder::new(p).size_limit(31457280).build())?;
+                                let reg = reg_cache.try_get_or_insert_with(pat, |p| {
+                                    RegexBuilder::new(p).size_limit(31457280).build()
+                                })?;
                                 Ok(Some(reg.is_match(src)))
                             },
                             _ => Ok(None),
@@ -166,7 +166,9 @@ pub trait StringNameSpaceImpl: AsString {
                         ca,
                         pat,
                         infer_re_match(|src, pat| {
-                            let reg = reg_cache.try_get_or_insert_with(pat?, |p| RegexBuilder::new(p).size_limit(31457280).build());
+                            let reg = reg_cache.try_get_or_insert_with(pat?, |p| {
+                                RegexBuilder::new(p).size_limit(31457280).build()
+                            });
                             Some(reg.ok()?.is_match(src?))
                         }),
                     ))
@@ -209,7 +211,9 @@ pub trait StringNameSpaceImpl: AsString {
             let mut rx_cache = FastFixedCache::new((ca.len() as f64).sqrt() as usize);
             let matcher = |src: Option<&str>, pat: Option<&str>| -> PolarsResult<Option<u32>> {
                 if let (Some(src), Some(pat)) = (src, pat) {
-                    let rx = rx_cache.try_get_or_insert_with(pat, |p| RegexBuilder::new(p).size_limit(31457280).build())?;
+                    let rx = rx_cache.try_get_or_insert_with(pat, |p| {
+                        RegexBuilder::new(p).size_limit(31457280).build()
+                    })?;
                     return Ok(rx.find(src).map(|m| m.start() as u32));
                 }
                 Ok(None)
@@ -530,7 +534,9 @@ pub trait StringNameSpaceImpl: AsString {
         binary_elementwise_for_each(ca, pat, |opt_s, opt_pat| match (opt_s, opt_pat) {
             (_, None) | (None, _) => builder.append_null(),
             (Some(s), Some(pat)) => {
-                let reg = reg_cache.get_or_insert_with(pat, |p| RegexBuilder::new(p).size_limit(31457280).build().unwrap());
+                let reg = reg_cache.get_or_insert_with(pat, |p| {
+                    RegexBuilder::new(p).size_limit(31457280).build().unwrap()
+                });
                 builder.append_values_iter(reg.find_iter(s).map(|m| m.as_str()));
             },
         });
@@ -548,7 +554,9 @@ pub trait StringNameSpaceImpl: AsString {
     fn count_matches(&self, pat: &str, literal: bool) -> PolarsResult<UInt32Chunked> {
         let ca = self.as_string();
         let reg = if literal {
-            RegexBuilder::new(escape(pat).as_str()).size_limit(31457280).build()?
+            RegexBuilder::new(escape(pat).as_str())
+                .size_limit(31457280)
+                .build()?
         } else {
             RegexBuilder::new(pat).size_limit(31457280).build()?
         };
@@ -578,7 +586,10 @@ pub trait StringNameSpaceImpl: AsString {
                 (Some(s), Some(pat)) => {
                     let reg = reg_cache.get_or_insert_with(pat, |p| {
                         if literal {
-                            RegexBuilder::new(escape(p).as_str()).size_limit(31457280).build().unwrap()
+                            RegexBuilder::new(escape(p).as_str())
+                                .size_limit(31457280)
+                                .build()
+                                .unwrap()
                         } else {
                             RegexBuilder::new(pat).size_limit(31457280).build().unwrap()
                         }
