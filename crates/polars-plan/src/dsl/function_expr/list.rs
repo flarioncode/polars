@@ -325,7 +325,7 @@ pub(super) fn shift(s: &[Series]) -> PolarsResult<Series> {
     list.lst_shift(periods).map(|ok| ok.into_series())
 }
 
-fn flarion_spark_offset_length(offset: i64, length: i64) -> PolarsResult<(i64, i64)> {
+fn flarion_spark_offset_length(mut offset: i64, length: i64) -> PolarsResult<(i64, i64)> {
     // SQL compat, offset 0 is an error, we index from 1
     if offset == 0 {
         polars_bail!(ComputeError: "flarion_slice() failed: Offset cannot be 0");
@@ -333,8 +333,12 @@ fn flarion_spark_offset_length(offset: i64, length: i64) -> PolarsResult<(i64, i
         polars_bail!(ComputeError: "flarion_slice() failed: Length cannot be negative");
     }
 
+    if offset > 0 {
+        offset -= 1;
+    }
+
     // Convert to regular indexing
-    Ok((offset - 1, length))
+    Ok((offset, length))
 }
 
 pub(super) fn flarion_slice(args: &mut [Series]) -> PolarsResult<Option<Series>> {
