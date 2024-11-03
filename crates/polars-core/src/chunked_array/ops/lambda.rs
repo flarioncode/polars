@@ -97,7 +97,7 @@ fn substring<'a>(s: AnyValue<'a>, from: AnyValue<'a>, len: AnyValue<'a>) -> AnyV
             from -= 1;
         }
         if from < 0 {
-            from = from + s_len;
+            from += s_len;
         }
         let to = (from + len).min(s_len);
         (from.max(0) as usize, to.max(0) as usize)
