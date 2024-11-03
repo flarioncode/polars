@@ -97,7 +97,7 @@ fn substring<'a>(s: AnyValue<'a>, from: AnyValue<'a>, len: AnyValue<'a>) -> AnyV
             from -= 1;
         }
         if from < 0 {
-            from = from + s_len;
+            from += s_len;
         }
         let to = (from + len).min(s_len);
         (from.max(0) as usize, to.max(0) as usize)
@@ -105,13 +105,13 @@ fn substring<'a>(s: AnyValue<'a>, from: AnyValue<'a>, len: AnyValue<'a>) -> AnyV
     unsafe {
         match (s, from, len) {
             (AnyValue::String(s), AnyValue::Int32(from), AnyValue::Int32(len)) => {
-                let (to, from) = convert_indexes(from, len, s.len());
-                let result = &s[from.max(0) as usize..to.max(0) as usize];
+                let (from, to) = convert_indexes(from, len, s.len());
+                let result = &s[from.max(0)..to.max(0)];
                 AnyValue::String(result)
             },
             (AnyValue::Binary(bin), AnyValue::Int32(from), AnyValue::Int32(len)) => {
-                let (to, from) = convert_indexes(from, len, bin.len());
-                let result = &bin[from.max(0) as usize..to.max(0) as usize];
+                let (from, to) = convert_indexes(from, len, bin.len());
+                let result = &bin[from.max(0)..to.max(0)];
                 AnyValue::Binary(result)
             },
             _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
