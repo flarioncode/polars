@@ -86,34 +86,31 @@ impl Hash for LambdaExpression {
 }
 
 fn substring<'a>(s: AnyValue<'a>, from: AnyValue<'a>, len: AnyValue<'a>) -> AnyValue<'a> {
+    fn convert_indexes(from: i32, len: i32, s_len: usize) -> (usize, usize) {
+        let mut from = from as i64;
+        let len = len as i64; // this can be int32_max
+        let s_len = s_len as i64;
+        if from == 0 {
+            panic!("From can't be zero in 1 based indexation")
+        }
+        if from > 0 {
+            from -= 1;
+        }
+        if from < 0 {
+            from = from + s_len;
+        }
+        let to = (from + len).min(s_len);
+        (from.max(0) as usize, to.max(0) as usize)
+    }
     unsafe {
         match (s, from, len) {
-            (AnyValue::String(s), AnyValue::Int32(mut from), AnyValue::Int32(len)) => {
-                if from == 0 {
-                    panic!("From can't be zero in 1 indexed string")
-                }
-                if from > 0 {
-                    from = from - 1;
-                }
-                if from < 0 {
-                    from = from + s.len() as i32;
-                }
-                
-                let to = (from + len).min(s.len() as i32);
+            (AnyValue::String(s), AnyValue::Int32(from), AnyValue::Int32(len)) => {
+                let (to, from) = convert_indexes(from, len, s.len());
                 let result = &s[from.max(0) as usize..to.max(0) as usize];
                 AnyValue::String(result)
             },
-            (AnyValue::Binary(bin), AnyValue::Int32(mut from), AnyValue::Int32(len)) => {
-                if from == 0 {
-                    panic!("From can't be zero in 1 indexed binary")
-                }
-                if from > 0 {
-                    from = from - 1;
-                }
-                if from < 0 {
-                    from = from + bin.len() as i32;
-                }
-                let to = (from + len).min(bin.len() as i32);
+            (AnyValue::Binary(bin), AnyValue::Int32(from), AnyValue::Int32(len)) => {
+                let (to, from) = convert_indexes(from, len, bin.len());
                 let result = &bin[from.max(0) as usize..to.max(0) as usize];
                 AnyValue::Binary(result)
             },
