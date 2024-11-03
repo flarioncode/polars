@@ -1,5 +1,5 @@
 use std::hash::Hash;
-
+use std::ops::BitOr;
 use polars_core::prelude::arity::unary_elementwise_values;
 use polars_core::prelude::*;
 use polars_core::utils::{try_get_supertype, CustomIterTools};
@@ -737,4 +737,60 @@ pub fn is_in(s: &Series, other: &Series) -> PolarsResult<BooleanChunked> {
         },
         dt => polars_bail!(opq = is_in, dt),
     }
+}
+
+pub fn flarion_is_in(s: &Series, others: &[Series]) -> PolarsResult<BooleanChunked> {
+    let others_mask = others.iter().map(|other| {
+        match s.dtype() {
+            #[cfg(feature = "dtype-categorical")]
+            DataType::Categorical(_, _) | DataType::Enum(_, _) => {
+                let ca = s.categorical().unwrap();
+                is_in_cat(ca, other)
+            },
+            #[cfg(feature = "dtype-struct")]
+            DataType::Struct(_) => {
+                let ca = s.struct_().unwrap();
+                is_in_struct(ca, other)
+            },
+            DataType::String => {
+                let ca = s.str().unwrap();
+                is_in_string(ca, other)
+            },
+            DataType::Binary => {
+                let ca = s.binary().unwrap();
+                is_in_binary(ca, other)
+            },
+            DataType::Boolean => {
+                let ca = s.bool().unwrap();
+                is_in_boolean(ca, other)
+            },
+            DataType::Null => {
+                let series_bool = s.cast(&DataType::Boolean)?;
+                let ca = series_bool.bool().unwrap();
+                Ok(ca.clone())
+            },
+            #[cfg(feature = "dtype-decimal")]
+            DataType::Decimal(_, _) => {
+                let s = s.decimal()?;
+                let other = other.decimal()?;
+                let scale = s.scale().max(other.scale());
+                let s = s.to_scale(scale)?;
+                let other = other.to_scale(scale)?.into_owned().into_series();
+
+                is_in_numeric(s.physical(), &other)
+            },
+            dt if dt.to_physical().is_numeric() => {
+                let s = s.to_physical_repr();
+                with_match_physical_numeric_polars_type!(s.dtype(), |$T| {
+                let ca: &ChunkedArray<$T> = s.as_ref().as_ref().as_ref();
+                is_in_numeric(ca, other)
+            })
+            },
+            dt => polars_bail!(opq = is_in, dt),
+        }
+    }).collect::<PolarsResult<Vec<_>>>()?;
+    Ok(others_mask.into_iter()
+        .fold(BooleanChunked::full(s.name().clone(), false, s.len()), |acc, chunk| {
+        acc.bitor(chunk)
+    }))
 }

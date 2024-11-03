@@ -1179,6 +1179,34 @@ impl Expr {
         }
     }
 
+    /// Check if the values of the left expression are in the lists of the right expr.
+    #[allow(clippy::wrong_self_convention)]
+    #[cfg(feature = "is_in")]
+    pub fn flarion_is_in<E: AsRef<[Expr]>>(self, others: E) -> Self {
+        let arguments = others.as_ref();
+        let have_literal = others.as_ref().iter().all(has_leaf_literal);
+
+        // lit(true).is_in() returns a scalar.
+        let returns_scalar = all_return_scalar(&self);
+
+        // If all are literals, we don't have to apply on groups, so this is faster
+        if have_literal {
+            self.map_many_private(
+                BooleanFunction::FlarionIsIn.into(),
+                arguments,
+                returns_scalar,
+                Some(Default::default()),
+            )
+        } else {
+            self.apply_many_private(
+                BooleanFunction::FlarionIsIn.into(),
+                arguments,
+                returns_scalar,
+                true,
+            )
+        }
+    }
+
     /// Sort this column by the ordering of another column evaluated from given expr.
     /// Can also be used in a group_by context to sort the groups.
     ///

@@ -41,6 +41,9 @@ pub enum BooleanFunction {
     AnyHorizontal,
     // Also bitwise negate
     Not,
+
+    // Flarion functions
+    FlarionIsIn
 }
 
 impl BooleanFunction {
@@ -88,6 +91,9 @@ impl Display for BooleanFunction {
             AnyHorizontal => "any_horizontal",
             AllHorizontal => "all_horizontal",
             Not => "not",
+
+            // Flarion functions
+            FlarionIsIn => "flarion_is_in"
         };
         write!(f, "{s}")
     }
@@ -120,6 +126,9 @@ impl From<BooleanFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             Not => map!(not),
             AllHorizontal => map_as_slice!(all_horizontal),
             AnyHorizontal => map_as_slice!(any_horizontal),
+
+            // Flarion functions
+            FlarionIsIn => wrap!(flarion_is_in)
         }
     }
 }
@@ -205,6 +214,13 @@ fn is_in(s: &mut [Series]) -> PolarsResult<Option<Series>> {
     let left = &s[0];
     let other = &s[1];
     polars_ops::prelude::is_in(left, other).map(|ca| Some(ca.into_series()))
+}
+
+#[cfg(feature = "is_in")]
+fn flarion_is_in(s: &mut [Series]) -> PolarsResult<Option<Series>> {
+    let left = &s[0];
+    let others = &s[1..];
+    polars_ops::prelude::flarion_is_in(left, others).map(|ca| Some(ca.into_series()))
 }
 
 fn not(s: &Series) -> PolarsResult<Series> {
