@@ -29,7 +29,7 @@ pub enum LambdaExpression {
     IfThenElse(Box<Self>, Box<Self>, Box<Self>),
     Length(Box<Self>),
     CaseWhen(Vec<(Self, Self)>, Box<Self>),
-    Substring(Box<Self>, Box<Self>, Option<Box<Self>>),
+    Substring(Box<Self>, Box<Self>, Box<Self>),
     Instr(Box<Self>, Box<Self>),
     Add(Box<Self>, Box<Self>),
 }
@@ -85,32 +85,36 @@ impl Hash for LambdaExpression {
     }
 }
 
-fn substring<'a>(s: AnyValue<'a>, from: AnyValue<'a>, len: Option<AnyValue<'a>>) -> AnyValue<'a> {
+fn substring<'a>(s: AnyValue<'a>, from: AnyValue<'a>, len: AnyValue<'a>) -> AnyValue<'a> {
     unsafe {
         match (s, from, len) {
-            (AnyValue::String(s), AnyValue::Int32(from), Some(AnyValue::Int32(len))) => {
-                let from = from as usize - 1;
-                let to = (from + len as usize).min(s.len());
-                let result = &s[from..to];
+            (AnyValue::String(s), AnyValue::Int32(mut from), AnyValue::Int32(len)) => {
+                if from == 0 {
+                    panic!("From can't be zero in 1 indexed string")
+                }
+                if from > 0 {
+                    from = from - 1;
+                }
+                if from < 0 {
+                    from = from + s.len() as i32;
+                }
+                
+                let to = (from + len).min(s.len() as i32);
+                let result = &s[from.max(0) as usize..to.max(0) as usize];
                 AnyValue::String(result)
             },
-            (AnyValue::String(s), AnyValue::Int32(from), None) => {
-                let from = from as usize - 1;
-                let to = s.len();
-                let result = &s[from..to];
-                AnyValue::String(result)
-            },
-            (AnyValue::Binary(bin), AnyValue::Int32(from), Some(AnyValue::Int32(len))) => {
-                let from = from as usize - 1;
-                let to = (from + len as usize).min(bin.len());
-                let result = &bin[from..to];
-                AnyValue::Binary(result)
-            },
-
-            (AnyValue::Binary(bin), AnyValue::Int32(from), None) => {
-                let from = from as usize - 1;
-                let to = bin.len();
-                let result = &bin[from..to];
+            (AnyValue::Binary(bin), AnyValue::Int32(mut from), AnyValue::Int32(len)) => {
+                if from == 0 {
+                    panic!("From can't be zero in 1 indexed binary")
+                }
+                if from > 0 {
+                    from = from - 1;
+                }
+                if from < 0 {
+                    from = from + bin.len() as i32;
+                }
+                let to = (from + len).min(bin.len() as i32);
+                let result = &bin[from.max(0) as usize..to.max(0) as usize];
                 AnyValue::Binary(result)
             },
             _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
@@ -177,9 +181,7 @@ impl LambdaExpression {
             LambdaExpression::Substring(s, from, len) => {
                 let s = s.eval_array(args);
                 let from = from.eval_array(args).cast(&DataType::Int32);
-                let len = len
-                    .as_ref()
-                    .map(|v| v.eval_array(args).cast(&DataType::Int32));
+                let len = len.eval_array(args).cast(&DataType::Int32);
                 substring(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
@@ -254,9 +256,7 @@ impl LambdaExpression {
             LambdaExpression::Substring(s, from, len) => {
                 let s = s.eval_numeric::<T>(args);
                 let from = from.eval_numeric::<T>(args).cast(&DataType::Int32);
-                let len = len
-                    .as_ref()
-                    .map(|v| v.eval_numeric::<T>(args).cast(&DataType::Int32));
+                let len = len.eval_numeric::<T>(args).cast(&DataType::Int32);
                 substring(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
@@ -331,9 +331,7 @@ impl LambdaExpression {
             LambdaExpression::Substring(s, from, len) => {
                 let s = s.eval_bool(args);
                 let from = from.eval_bool(args).cast(&DataType::Int32);
-                let len = len
-                    .as_ref()
-                    .map(|v| v.eval_bool(args).cast(&DataType::Int32));
+                let len = len.eval_bool(args).cast(&DataType::Int32);
                 substring(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
@@ -411,9 +409,7 @@ impl LambdaExpression {
             LambdaExpression::Substring(s, from, len) => {
                 let s = s.eval_slice(args);
                 let from = from.eval_slice(args).cast(&DataType::Int32);
-                let len = len
-                    .as_ref()
-                    .map(|v| v.eval_slice(args).cast(&DataType::Int32));
+                let len = len.eval_slice(args).cast(&DataType::Int32);
                 substring(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
@@ -490,9 +486,7 @@ impl LambdaExpression {
             LambdaExpression::Substring(s, from, len) => {
                 let s = s.eval_any(args);
                 let from = from.eval_any(args).cast(&DataType::Int32);
-                let len = len
-                    .as_ref()
-                    .map(|v| v.eval_any(args).cast(&DataType::Int32));
+                let len = len.eval_any(args).cast(&DataType::Int32);
                 substring(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
