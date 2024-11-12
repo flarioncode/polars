@@ -8,7 +8,7 @@ on:
       - .github/workflows/test-coverage.yml
   push:
     branches:
-      - flarion-0.43
+      - main
     paths:
       - '**.rs'
       - '**.py'
@@ -107,7 +107,7 @@ jobs:
           # Install typing-extensions separately whilst the `--extra-index-url` in `requirements-ci.txt`
           # doesn't have an up-to-date typing-extensions, see
           # https://github.com/astral-sh/uv/issues/6028#issuecomment-2287232150
-          uv pip install -U typing-extensions 
+          uv pip install -U typing-extensions
           uv pip install --compile-bytecode -r requirements-dev.txt -r requirements-ci.txt --verbose
 
       - name: Set up Rust
@@ -159,7 +159,7 @@ jobs:
             py-polars/async.xml
 
   upload-coverage:
-    needs: [coverage-rust, coverage-python]
+    needs: [coverage-rust]
     runs-on: ubuntu-latest
 
     steps:

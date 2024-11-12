@@ -334,13 +334,13 @@ mod tests {
 
         let transformed = series.transform(&lambda);
 
-        assert!(matches!(transformed, Ok(_)));
+        assert!(transformed.is_ok());
 
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
         let result = transformed.i32();
 
-        assert!(matches!(result, Ok(_)));
+        assert!(result.is_ok());
 
         assert_eq!(Vec::from(result.unwrap()), vec![Some(1), Some(0), Some(1)]);
     }

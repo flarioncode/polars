@@ -114,7 +114,7 @@ impl ListFunction {
             Transform(lambda) => match lambda.return_type() {
                 Some(dtype) => mapper.with_dtype(dtype),
                 None => mapper.with_same_dtype(),
-            }, // TODO: transform can produse different type
+            }, // TODO: transform can produce different type
             FlarionSlice => mapper.with_same_dtype(),
         }
     }

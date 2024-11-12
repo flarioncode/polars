@@ -74,7 +74,7 @@ where
 {
     pub fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
         let mask = self.iter().map(|opt_val| match opt_val {
-            Some(val) => match lambda.eval_numeric::<T>(&[(&val).into()]) {
+            Some(val) => match lambda.eval_numeric::<T>(&[&val]) {
                 AnyValue::Boolean(b) => b,
                 _ => panic!("Lambda must return boolean values"),
             },

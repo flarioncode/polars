@@ -270,13 +270,13 @@ mod tests {
 
         let transformed = series.transform(&lambda);
 
-        assert!(matches!(transformed, Ok(_)));
+        assert!(transformed.is_ok());
 
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
         let result = transformed.binary();
 
-        assert!(matches!(result, Ok(_)));
+        assert!(result.is_ok());
 
         assert_eq!(
             Vec::from(result.unwrap()),
