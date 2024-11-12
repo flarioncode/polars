@@ -8,7 +8,7 @@ on:
       - .github/workflows/test-coverage.yml
   push:
     branches:
-      - flarion-0.43
+      - main
     paths:
       - '**.rs'
       - '**.py'
