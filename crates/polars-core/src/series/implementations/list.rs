@@ -258,13 +258,13 @@ mod tests {
 
         let transformed = series.transform(&lambda);
 
-        assert!(matches!(transformed, Ok(_)));
+        assert!(transformed.is_ok());
 
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
         let result = transformed.list();
 
-        assert!(matches!(result, Ok(_)));
+        assert!(result.is_ok());
         let vec: Vec<Option<Box<dyn Array>>> = vec![
             Some(Box::new(arr1)),
             Some(Box::new(arr2)),
