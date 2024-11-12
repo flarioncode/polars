@@ -411,13 +411,13 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "regex parse error:")]
     fn test_invalid_regex_pattern() {
         let input = create_string_chunked("input", vec![Some("test")]);
         let by = create_string_chunked("by", vec![Some("[")]); // Invalid regex pattern
         let n = create_int32_chunked("n", vec![Some(-1)]);
 
-        let result = flarion_split_helper(&input, &by, &n);
-        assert!(result.is_err());
+        let _ = flarion_split_helper(&input, &by, &n);
     }
 
     #[test]
