@@ -98,7 +98,10 @@ pub fn apply_operator(left: &Series, right: &Series, op: Operator) -> PolarsResu
             // we just need to make sure we choose the actual series and not a literal or something like that,
             // so we select the biggest len
             if left.dtype().is_null() || right.dtype().is_null() {
-                Ok(Series::new_null(PlSmallStr::EMPTY, left.len().max(right.len())))
+                Ok(Series::new_null(
+                    PlSmallStr::EMPTY,
+                    left.len().max(right.len()),
+                ))
             } else {
                 left.bitor(right)
             }
@@ -108,18 +111,18 @@ pub fn apply_operator(left: &Series, right: &Series, op: Operator) -> PolarsResu
             // we just need to make sure we choose the actual series and not a literal or something like that,
             // so we select the biggest len
             if left.dtype().is_null() || right.dtype().is_null() {
-                Ok(Series::new_null(PlSmallStr::EMPTY, left.len().max(right.len())))
+                Ok(Series::new_null(
+                    PlSmallStr::EMPTY,
+                    left.len().max(right.len()),
+                ))
             } else {
-                left
-                    .cast(&DataType::Boolean)?
+                left.cast(&DataType::Boolean)?
                     .bitand(&right.cast(&DataType::Boolean)?)
             }
-        }
-        Operator::LogicalAnd => {
-            left
-                .cast(&DataType::Boolean)?
-                .bitand(&right.cast(&DataType::Boolean)?)
         },
+        Operator::LogicalAnd => left
+            .cast(&DataType::Boolean)?
+            .bitand(&right.cast(&DataType::Boolean)?),
         Operator::Xor => left.bitxor(right),
         Operator::Modulus => left % right,
         Operator::EqValidity => left.equal_missing(right).map(|ca| ca.into_series()),
