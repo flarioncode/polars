@@ -103,10 +103,7 @@ pub fn apply_operator(left: &Series, right: &Series, op: Operator) -> PolarsResu
                 left.bitor(right)
             }
         },
-        Operator::LogicalOr => left
-            .cast(&DataType::Boolean)?
-            .bitor(&right.cast(&DataType::Boolean)?),
-        Operator::LogicalAnd => {
+        Operator::LogicalOr => {
             // If any of them is of dtype null, then the entire series is null,
             // we just need to make sure we choose the actual series and not a literal or something like that,
             // so we select the biggest len
@@ -117,6 +114,11 @@ pub fn apply_operator(left: &Series, right: &Series, op: Operator) -> PolarsResu
                     .cast(&DataType::Boolean)?
                     .bitand(&right.cast(&DataType::Boolean)?)
             }
+        }
+        Operator::LogicalAnd => {
+            left
+                .cast(&DataType::Boolean)?
+                .bitand(&right.cast(&DataType::Boolean)?)
         },
         Operator::Xor => left.bitxor(right),
         Operator::Modulus => left % right,
