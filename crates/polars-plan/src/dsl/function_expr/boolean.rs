@@ -50,6 +50,7 @@ impl BooleanFunction {
                 mapper.try_map_dtype(|dtype| {
                     match dtype {
                         DataType::Boolean => Ok(DataType::Boolean),
+                        DataType::Null => Ok(DataType::Null),
                         dt if dt.is_integer() => Ok(dt.clone()),
                         dt => polars_bail!(InvalidOperation: "dtype {:?} not supported in 'not' operation", dt) 
                     }
