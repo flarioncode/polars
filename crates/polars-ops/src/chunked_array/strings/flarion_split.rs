@@ -1,4 +1,5 @@
 use arrow::array::ValueSize;
+use polars_utils::cache::FastFixedCache;
 use regex::RegexBuilder;
 
 use super::*;
@@ -108,7 +109,7 @@ fn handle_all_literals(
                 });
             };
         } else {
-            let re = RegexBuilder::new(by).size_limit(31457280).build()?;
+            let re = RegexBuilder::new(by).size_limit(31457280).build().unwrap();
 
             // When n is already a literal, we can check it ahead, and optimize for a negative number(no limit)
             if n >= 0 {
@@ -151,7 +152,7 @@ fn handle_literal_by(
                 split_chars_helper(&mut builder, opt_s, n);
             }
         } else {
-            let re = RegexBuilder::new(by).size_limit(31457280).build()?;
+            let re = RegexBuilder::new(by).size_limit(31457280).build().unwrap();
 
             // Regex is provided, we compile it, and split every string accordingly
             for (opt_s, opt_n) in ca.into_iter().zip(n) {
@@ -183,6 +184,9 @@ fn handle_literal_n(
 
     let mut builder =
         ListStringChunkedBuilder::new(ca.name().clone(), ca.len(), ca.get_values_size());
+
+    // Since the regex is not a literal, we want to use a cache so we don't compile the same regex multiple times
+    let mut reg_cache = FastFixedCache::new((ca.len() as f64).sqrt() as usize);
     if n >= 0 {
         ca.into_iter()
             .zip(by)
@@ -191,8 +195,10 @@ fn handle_literal_n(
                     if by.is_empty() {
                         split_charsn(builder, opt_s, n as usize);
                     } else {
-                        let re = RegexBuilder::new(by).size_limit(31457280).build().unwrap();
-                        regex_splitn(builder, opt_s, &re, n as usize);
+                        let re = reg_cache.get_or_insert_with(by, |by| {
+                            RegexBuilder::new(by).size_limit(31457280).build().unwrap()
+                        });
+                        regex_splitn(builder, opt_s, re, n as usize);
                     }
                 } else {
                     builder.append_null();
@@ -207,8 +213,10 @@ fn handle_literal_n(
                     if by.is_empty() {
                         split_chars_no_limit(builder, opt_s)
                     } else {
-                        let re = RegexBuilder::new(by).size_limit(31457280).build().unwrap();
-                        regex_split_no_limit(builder, opt_s, &re)
+                        let re = reg_cache.get_or_insert_with(by, |by| {
+                            RegexBuilder::new(by).size_limit(31457280).build().unwrap()
+                        });
+                        regex_split_no_limit(builder, opt_s, re)
                     }
                 } else {
                     builder.append_null()
@@ -230,6 +238,9 @@ fn handle_regular_case(
 ) -> PolarsResult<ListChunked> {
     let mut builder =
         ListStringChunkedBuilder::new(ca.name().clone(), ca.len(), ca.get_values_size());
+
+    // Since the regex is not a literal, we want to use a cache so we don't compile the same regex multiple times
+    let mut reg_cache = FastFixedCache::new((ca.len() as f64).sqrt() as usize);
     for ((opt_s, opt_by), opt_n) in ca.into_iter().zip(by).zip(n) {
         let n = opt_n.ok_or(polars_err!(ComputeError: "n must be provided for split operation"))?;
         if n >= 0 {
@@ -239,8 +250,10 @@ fn handle_regular_case(
                     continue;
                 }
 
-                let re = RegexBuilder::new(by).size_limit(31457280).build()?;
-                regex_splitn(&mut builder, opt_s, &re, n as usize);
+                let re = reg_cache.get_or_insert_with(by, |by| {
+                    RegexBuilder::new(by).size_limit(31457280).build().unwrap()
+                });
+                regex_splitn(&mut builder, opt_s, re, n as usize);
                 continue;
             }
 
@@ -254,8 +267,10 @@ fn handle_regular_case(
                 continue;
             }
 
-            let re = RegexBuilder::new(by).size_limit(31457280).build()?;
-            regex_split_no_limit(&mut builder, opt_s, &re);
+            let re = reg_cache.get_or_insert_with(by, |by| {
+                RegexBuilder::new(by).size_limit(31457280).build().unwrap()
+            });
+            regex_split_no_limit(&mut builder, opt_s, re);
             continue;
         }
         builder.append_null();

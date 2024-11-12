@@ -640,6 +640,7 @@ impl StringNameSpace {
     }
 
     /// Split the string by a substring regex. The resulting dtype is `List<String>`.
+    #[cfg(all(feature = "regex", feature = "dtype-struct"))]
     pub fn flarion_split(self, by: Expr, n: Expr) -> Expr {
         self.0
             .map_many_private(StringFunction::FlarionSplit.into(), &[by, n], false, None)

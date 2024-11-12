@@ -518,6 +518,7 @@ pub trait StringNameSpaceImpl: AsString {
         split_helper(ca, by, str::split_inclusive)
     }
 
+    #[cfg(feature = "dtype-struct")]
     fn flarion_split(&self, by: &StringChunked, n: &Int32Chunked) -> PolarsResult<ListChunked> {
         let ca = self.as_string();
 
