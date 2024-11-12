@@ -379,7 +379,7 @@ mod tests {
     #[test]
     fn test_split_with_variable_pattern() {
         let input = create_string_chunked("input", vec![Some("a,b,c"), Some("d|e|f")]);
-        let by = create_string_chunked("by", vec![Some(","), Some("|")]);
+        let by = create_string_chunked("by", vec![Some(","), Some(r"\|")]);
         let n = create_int32_chunked("n", vec![Some(-1), Some(-1)]);
 
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
@@ -460,7 +460,7 @@ mod tests {
     fn test_mixed_scenarios() {
         let input =
             create_string_chunked("input", vec![Some("a,b"), Some("c|d"), None, Some("e;f")]);
-        let by = create_string_chunked("by", vec![Some(","), Some("|"), Some(";"), Some(";")]);
+        let by = create_string_chunked("by", vec![Some(","), Some(r"\|"), Some(";"), Some(";")]);
         let n = create_int32_chunked("n", vec![Some(2), Some(-1), Some(1), Some(2)]);
 
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
