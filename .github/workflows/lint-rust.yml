@@ -12,7 +12,7 @@ on:
       - .github/workflows/lint-rust.yml
   push:
     branches:
-      - main
+      - flarion-0.43
     paths:
       - crates/**
       - docs/src/rust/**

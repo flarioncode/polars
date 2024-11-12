@@ -9,7 +9,7 @@ on:
       - .github/workflows/benchmark.yml
   push:
     branches:
-      - main
+      - flarion-0.43
     paths:
       - crates/**
       - Cargo.toml

@@ -7,7 +7,7 @@ on:
       - .github/workflows/docs-rust.yml
   push:
     branches:
-      - main
+      - flarion-0.43
     paths:
       - crates/**
       - .github/workflows/docs-rust.yml
