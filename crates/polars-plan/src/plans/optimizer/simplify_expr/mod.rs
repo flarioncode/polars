@@ -200,7 +200,25 @@ impl OptimizationRule for SimplifyBooleanRule {
                 Some(AExpr::Literal(LiteralValue::Boolean(false)))
             },
 
-            // false or x => x
+            // x OR null -> null
+            // null OR x -> null
+            AExpr::BinaryExpr {
+                left,
+                op: Operator::Or,
+                right,
+                ..
+            } if matches!(
+                expr_arena.get(*left),
+                AExpr::Literal(LiteralValue::Null)
+            ) || matches!(
+                expr_arena.get(*right),
+                AExpr::Literal(LiteralValue::Null)
+            ) =>
+            {
+                Some(AExpr::Literal(LiteralValue::Null))
+            },
+
+            // false OR x -> x
             AExpr::BinaryExpr {
                 left,
                 op: Operator::Or,
@@ -214,7 +232,8 @@ impl OptimizationRule for SimplifyBooleanRule {
                 // to whatever lhs columns is.
                 return Ok(Some(expr_arena.get(*right).clone()));
             },
-            // x or false => x
+
+            // x OR false -> x
             AExpr::BinaryExpr {
                 left,
                 op: Operator::Or,
@@ -228,7 +247,7 @@ impl OptimizationRule for SimplifyBooleanRule {
                 Some(expr_arena.get(*left).clone())
             },
 
-            // true OR x => true
+            // true OR x -> true
             // FIXME: we need an optimizer redesign to allow true | x to be optimized
             // in general as we can forget the length of a series otherwise.
             AExpr::BinaryExpr {
@@ -244,7 +263,7 @@ impl OptimizationRule for SimplifyBooleanRule {
                 Some(AExpr::Literal(LiteralValue::Boolean(true)))
             },
 
-            // x OR true => true
+            // x OR true -> true
             // FIXME: we need an optimizer redesign to allow true | x to be optimized
             // in general as we can forget the length of a series otherwise.
             AExpr::BinaryExpr {
@@ -258,6 +277,8 @@ impl OptimizationRule for SimplifyBooleanRule {
             {
                 Some(AExpr::Literal(LiteralValue::Boolean(true)))
             },
+
+            // Negate
             AExpr::Function {
                 input,
                 function: FunctionExpr::Negate,
