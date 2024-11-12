@@ -13,7 +13,6 @@ use polars_utils::cache::FastFixedCache;
 use regex::{escape, RegexBuilder};
 
 use super::*;
-
 #[cfg(feature = "binary_encoding")]
 use crate::chunked_array::binary::BinaryNameSpaceImpl;
 

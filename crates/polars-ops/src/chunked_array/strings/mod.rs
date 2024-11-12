@@ -30,6 +30,8 @@ mod unicode_internals;
 pub use concat::*;
 #[cfg(feature = "find_many")]
 pub use find_many::*;
+#[cfg(feature = "strings")]
+pub use flarion_split::*;
 #[cfg(feature = "extract_jsonpath")]
 pub use json_path::*;
 #[cfg(feature = "strings")]
@@ -37,8 +39,6 @@ pub use namespace::*;
 use polars_core::prelude::*;
 #[cfg(feature = "strings")]
 pub use split::*;
-#[cfg(feature = "strings")]
-pub use flarion_split::*;
 #[cfg(feature = "strings")]
 pub use strip::*;
 

@@ -304,28 +304,41 @@ mod tests {
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
 
         assert_eq!(result.len(), 3);
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["h", "e"])));
-        assert_eq!(result.get(1).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["世", "界"])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["h", "e"]))
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["世", "界"]))
+        );
         assert!(result.get(2).unwrap().is_null());
     }
 
     #[test]
     fn test_split_with_regex() {
-        let input = create_string_chunked("input", vec![
-            Some("a,b,c"),
-            Some("x;y;z"),
-            Some("1||2||3"),
-            None
-        ]);
+        let input = create_string_chunked(
+            "input",
+            vec![Some("a,b,c"), Some("x;y;z"), Some("1||2||3"), None],
+        );
         let by = create_string_chunked("by", vec![Some("[,;|]+")]);
         let n = create_int32_chunked("n", vec![Some(-1)]);
 
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
 
         assert_eq!(result.len(), 4);
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b", "c"])));
-        assert_eq!(result.get(1).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["x", "y", "z"])));
-        assert_eq!(result.get(2).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["1", "2", "3"])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b", "c"]))
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["x", "y", "z"]))
+        );
+        assert_eq!(
+            result.get(2).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["1", "2", "3"]))
+        );
         assert!(result.get(3).unwrap().is_null());
     }
 
@@ -338,7 +351,10 @@ mod tests {
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
 
         assert_eq!(result.len(), 1);
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b,c,d"])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b,c,d"]))
+        );
     }
 
     #[test]
@@ -350,8 +366,14 @@ mod tests {
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
 
         assert_eq!(result.len(), 2);
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b,c"])));
-        assert_eq!(result.get(1).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["d", "e", "f"])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b,c"]))
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["d", "e", "f"]))
+        );
     }
 
     #[test]
@@ -363,14 +385,20 @@ mod tests {
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
 
         assert_eq!(result.len(), 2);
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b", "c"])));
-        assert_eq!(result.get(1).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["d", "e", "f"])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b", "c"]))
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["d", "e", "f"]))
+        );
     }
 
     #[test]
     fn test_invalid_regex_pattern() {
         let input = create_string_chunked("input", vec![Some("test")]);
-        let by = create_string_chunked("by", vec![Some("[")]);  // Invalid regex pattern
+        let by = create_string_chunked("by", vec![Some("[")]); // Invalid regex pattern
         let n = create_int32_chunked("n", vec![Some(-1)]);
 
         let result = flarion_split_helper(&input, &by, &n);
@@ -407,7 +435,10 @@ mod tests {
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
 
         assert_eq!(result.len(), 1);
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["你好", "世界"])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["你好", "世界"]))
+        );
     }
 
     #[test]
@@ -419,31 +450,35 @@ mod tests {
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
 
         assert_eq!(result.len(), 1);
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &[""])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &[""]))
+        );
     }
 
     #[test]
     fn test_mixed_scenarios() {
-        let input = create_string_chunked(
-            "input",
-            vec![Some("a,b"), Some("c|d"), None, Some("e;f")]
-        );
-        let by = create_string_chunked(
-            "by",
-            vec![Some(","), Some("|"), Some(";"), Some(";")]
-        );
-        let n = create_int32_chunked(
-            "n",
-            vec![Some(2), Some(-1), Some(1), Some(2)]
-        );
+        let input =
+            create_string_chunked("input", vec![Some("a,b"), Some("c|d"), None, Some("e;f")]);
+        let by = create_string_chunked("by", vec![Some(","), Some("|"), Some(";"), Some(";")]);
+        let n = create_int32_chunked("n", vec![Some(2), Some(-1), Some(1), Some(2)]);
 
         let result = flarion_split_helper(&input, &by, &n).unwrap().into_series();
 
         assert_eq!(result.len(), 4);
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b"])));
-        assert_eq!(result.get(1).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["c", "d"])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b"]))
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["c", "d"]))
+        );
         assert!(result.get(2).unwrap().is_null());
-        assert_eq!(result.get(3).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["e", "f"])));
+        assert_eq!(
+            result.get(3).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["e", "f"]))
+        );
     }
 
     // Helper function tests
@@ -457,8 +492,14 @@ mod tests {
         split_chars_helper(&mut builder, Some("world"), -1);
 
         let result = builder.finish().into_series();
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["h", "e"])));
-        assert_eq!(result.get(1).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["w", "o", "r", "l", "d"])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["h", "e"]))
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["w", "o", "r", "l", "d"]))
+        );
     }
 
     #[test]
@@ -472,7 +513,13 @@ mod tests {
         regex_split_helper(&mut builder, Some("d,e,f"), &re, -1);
 
         let result = builder.finish().into_series();
-        assert_eq!(result.get(0).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b,c"])));
-        assert_eq!(result.get(1).unwrap(), AnyValue::List(Series::new(PlSmallStr::EMPTY, &["d", "e", "f"])));
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["a", "b,c"]))
+        );
+        assert_eq!(
+            result.get(1).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["d", "e", "f"]))
+        );
     }
 }
