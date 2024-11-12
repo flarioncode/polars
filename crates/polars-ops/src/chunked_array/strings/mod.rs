@@ -38,6 +38,8 @@ use polars_core::prelude::*;
 #[cfg(feature = "strings")]
 pub use split::*;
 #[cfg(feature = "strings")]
+pub use flarion_split::*;
+#[cfg(feature = "strings")]
 pub use strip::*;
 
 pub trait AsString {
