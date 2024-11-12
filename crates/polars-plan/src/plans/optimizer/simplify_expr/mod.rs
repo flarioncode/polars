@@ -207,13 +207,8 @@ impl OptimizationRule for SimplifyBooleanRule {
                 op: Operator::Or,
                 right,
                 ..
-            } if matches!(
-                expr_arena.get(*left),
-                AExpr::Literal(LiteralValue::Null)
-            ) || matches!(
-                expr_arena.get(*right),
-                AExpr::Literal(LiteralValue::Null)
-            ) =>
+            } if matches!(expr_arena.get(*left), AExpr::Literal(LiteralValue::Null))
+                || matches!(expr_arena.get(*right), AExpr::Literal(LiteralValue::Null)) =>
             {
                 Some(AExpr::Literal(LiteralValue::Null))
             },
