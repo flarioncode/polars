@@ -6,6 +6,7 @@ use super::*;
 
 pub fn negate_bitwise(s: &Series) -> PolarsResult<Series> {
     match s.dtype() {
+        DataType::Null => Ok(s.clone()),
         DataType::Boolean => Ok(s.bool().unwrap().not().into_series()),
         dt if dt.is_integer() => {
             with_match_physical_integer_polars_type!(dt, |$T| {
