@@ -136,7 +136,10 @@ pub enum StringFunction {
 
     // Flarion functions
     #[cfg(all(feature = "regex", feature = "dtype-struct"))]
-    FlarionSplit,
+    FlarionSplit {
+        pattern: PlSmallStr,
+        n: i32,
+    },
 }
 
 impl StringFunction {
@@ -206,7 +209,7 @@ impl StringFunction {
             ExtractMany { .. } => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
 
             #[cfg(all(feature = "regex", feature = "dtype-struct"))]
-            FlarionSplit => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
+            FlarionSplit { .. } => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
         }
     }
 }
@@ -298,7 +301,7 @@ impl Display for StringFunction {
 
             // Flarion functions
             #[cfg(all(feature = "regex", feature = "dtype-struct"))]
-            FlarionSplit => "flarion_split",
+            FlarionSplit { .. } => "flarion_split",
         };
         write!(f, "str.{s}")
     }
@@ -421,8 +424,8 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
 
             // Flarion functions
             #[cfg(all(feature = "regex", feature = "dtype-struct"))]
-            FlarionSplit => {
-                map_as_slice!(strings::flarion_split)
+            FlarionSplit { pattern, n } => {
+                map_as_slice!(strings::flarion_split, pattern.as_str(), n)
             },
         }
     }
@@ -683,12 +686,10 @@ pub(super) fn split(s: &[Series], inclusive: bool) -> PolarsResult<Series> {
 }
 
 #[cfg(all(feature = "regex", feature = "dtype-struct"))]
-pub(super) fn flarion_split(s: &[Series]) -> PolarsResult<Series> {
+pub(super) fn flarion_split(s: &[Series], pattern: &str, n: i32) -> PolarsResult<Series> {
     let ca = s[0].str()?;
-    let by = s[1].str()?;
-    let n = s[2].i32()?;
 
-    ca.flarion_split(by, n).map(ListChunked::into_series)
+    ca.flarion_split(pattern, n).map(ListChunked::into_series)
 }
 
 #[cfg(feature = "dtype-date")]

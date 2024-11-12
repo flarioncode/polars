@@ -519,10 +519,10 @@ pub trait StringNameSpaceImpl: AsString {
     }
 
     #[cfg(feature = "dtype-struct")]
-    fn flarion_split(&self, by: &StringChunked, n: &Int32Chunked) -> PolarsResult<ListChunked> {
+    fn flarion_split(&self, pattern: &str, n: i32) -> PolarsResult<ListChunked> {
         let ca = self.as_string();
 
-        flarion_split_helper(ca, by, n)
+        flarion_split_helper(ca, pattern, n)
     }
 
     /// Extract each successive non-overlapping regex match in an individual string as an array.
