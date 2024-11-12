@@ -133,6 +133,9 @@ pub enum StringFunction {
         ascii_case_insensitive: bool,
         overlapping: bool,
     },
+
+    // Flarion functions
+    FlarionSplit,
 }
 
 impl StringFunction {
@@ -200,6 +203,8 @@ impl StringFunction {
             ReplaceMany { .. } => mapper.with_same_dtype(),
             #[cfg(feature = "find_many")]
             ExtractMany { .. } => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
+
+            FlarionSplit => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
         }
     }
 }
@@ -288,6 +293,9 @@ impl Display for StringFunction {
             ReplaceMany { .. } => "replace_many",
             #[cfg(feature = "find_many")]
             ExtractMany { .. } => "extract_many",
+
+            // Flarion functions
+            FlarionSplit => "flarion_split",
         };
         write!(f, "str.{s}")
     }
@@ -406,6 +414,11 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
                 overlapping,
             } => {
                 map_as_slice!(extract_many, ascii_case_insensitive, overlapping)
+            },
+
+            // Flarion functions
+            FlarionSplit => {
+                map_as_slice!(strings::flarion_split)
             },
         }
     }
@@ -663,6 +676,14 @@ pub(super) fn split(s: &[Series], inclusive: bool) -> PolarsResult<Series> {
     } else {
         Ok(ca.split(by).into_series())
     }
+}
+
+pub(super) fn flarion_split(s: &[Series]) -> PolarsResult<Series> {
+    let ca = s[0].str()?;
+    let by = s[1].str()?;
+    let n = s[2].i32()?;
+
+    ca.flarion_split(by, n).map(ListChunked::into_series)
 }
 
 #[cfg(feature = "dtype-date")]

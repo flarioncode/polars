@@ -606,6 +606,7 @@ impl StringNameSpace {
     }
 }
 
+// Flarion functions
 impl StringNameSpace {
     /// Extract each successive non-overlapping match in an individual string as an array
     pub fn extract_all_with_group(self, pat: Expr, group_idx: usize) -> Expr {
@@ -636,5 +637,11 @@ impl StringNameSpace {
             false,
             Some(Default::default()),
         )
+    }
+
+    /// Split the string by a substring regex. The resulting dtype is `List<String>`.
+    pub fn flarion_split(self, by: Expr, n: Expr) -> Expr {
+        self.0
+            .map_many_private(StringFunction::FlarionSplit.into(), &[by, n], false, None)
     }
 }

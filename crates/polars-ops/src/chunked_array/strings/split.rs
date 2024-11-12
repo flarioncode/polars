@@ -36,7 +36,7 @@ impl<'a> Iterator for SplitNChars<'a> {
 /// Returns at most n strings, where the last string is the entire remainder
 /// of the string if keep_remainder is True, and just the nth character otherwise.
 #[cfg(feature = "dtype-struct")]
-fn splitn_chars(s: &str, n: usize, keep_remainder: bool) -> SplitNChars<'_> {
+pub(super) fn splitn_chars(s: &str, n: usize, keep_remainder: bool) -> SplitNChars<'_> {
     SplitNChars {
         s,
         n,
@@ -45,7 +45,7 @@ fn splitn_chars(s: &str, n: usize, keep_remainder: bool) -> SplitNChars<'_> {
 }
 
 /// Splits a string into substrings consisting of single characters.
-fn split_chars(s: &str) -> SplitNChars<'_> {
+pub(super) fn split_chars(s: &str) -> SplitNChars<'_> {
     SplitNChars {
         s,
         n: usize::MAX,

@@ -6,6 +6,8 @@ mod concat;
 mod extract;
 #[cfg(feature = "find_many")]
 mod find_many;
+#[cfg(feature = "strings")]
+mod flarion_split;
 #[cfg(feature = "extract_jsonpath")]
 mod json_path;
 #[cfg(feature = "strings")]

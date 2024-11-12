@@ -15,6 +15,7 @@ use regex::{escape, RegexBuilder};
 use super::*;
 #[cfg(feature = "binary_encoding")]
 use crate::chunked_array::binary::BinaryNameSpaceImpl;
+use crate::chunked_array::strings::flarion_split::flarion_split_helper;
 
 // We need this to infer the right lifetimes for the match closure.
 #[inline(always)]
@@ -516,6 +517,12 @@ pub trait StringNameSpaceImpl: AsString {
         let ca = self.as_string();
 
         split_helper(ca, by, str::split_inclusive)
+    }
+
+    fn flarion_split(&self, by: &StringChunked, n: &Int32Chunked) -> PolarsResult<ListChunked> {
+        let ca = self.as_string();
+
+        flarion_split_helper(ca, by, n)
     }
 
     /// Extract each successive non-overlapping regex match in an individual string as an array.
