@@ -636,7 +636,7 @@ mod tests {
     }
 
     #[test]
-    fn test_transform_numberic_second_parameter() {
+    fn test_transform_numeric_second_parameter() {
         // here we test that lambda gets index as second parameter
         let series =
             ChunkedArray::<Int32Type>::from_vec("array".into(), vec![0, 0, 0]).into_series();
