@@ -3,6 +3,17 @@ use regex::RegexBuilder;
 
 use super::*;
 
+// I'm hoping the compiler optimizes this out, but it is required for correct outputs
+#[inline]
+fn fill_empty_iter<'a, I: Iterator<Item = &'a str>>(in_iter: I) -> impl Iterator<Item = &'a str> {
+    let chars = in_iter.collect::<Vec<_>>();
+    if chars.is_empty() {
+        vec![""].into_iter()
+    } else {
+        chars.into_iter()
+    }
+}
+
 pub fn flarion_split_helper(
     ca: &StringChunked,
     pattern: &str,
@@ -13,10 +24,11 @@ pub fn flarion_split_helper(
 
     // When the regex pattern is an empty string, we split the string into characters
     if pattern.is_empty() {
-        if n >= 0 {
+        if n > 0 {
             ca.into_iter().fold(&mut builder, |builder, opt_s| {
                 match opt_s {
-                    Some(s) => builder.append_values_iter(splitn_chars(s, n as usize, false)),
+                    Some(s) => builder
+                        .append_values_iter(fill_empty_iter(splitn_chars(s, n as usize, false))),
                     None => builder.append_null(),
                 }
                 builder
@@ -24,7 +36,7 @@ pub fn flarion_split_helper(
         } else {
             ca.into_iter().fold(&mut builder, |builder, opt_s| {
                 match opt_s {
-                    Some(s) => builder.append_values_iter(split_chars(s)),
+                    Some(s) => builder.append_values_iter(fill_empty_iter(split_chars(s))),
                     None => builder.append_null(),
                 };
                 builder
@@ -34,7 +46,7 @@ pub fn flarion_split_helper(
         let re = RegexBuilder::new(pattern).size_limit(31457280).build()?;
 
         // When n is already a literal, we can check it ahead, and optimize for a negative number(no limit)
-        if n >= 0 {
+        if n > 0 {
             ca.into_iter().fold(&mut builder, |builder, opt_s| {
                 match opt_s {
                     Some(s) => builder.append_values_iter(re.splitn(s, n as usize)),
@@ -78,6 +90,7 @@ mod tests {
         let result = flarion_split_helper(&input, "", 2).unwrap().into_series();
 
         assert_eq!(result.len(), 3);
+        // When len is larger then limit, Spark returns the remainder as the last element
         assert_eq!(
             result.get(0).unwrap(),
             AnyValue::List(Series::new(PlSmallStr::EMPTY, &["h", "e"]))
@@ -141,7 +154,10 @@ mod tests {
     fn test_unicode_splitting() {
         let input = create_string_chunked("input", vec![Some("你好，世界")]);
 
-        let result = flarion_split_helper(&input, ",", -1).unwrap().into_series();
+        // This is not a regular comma!
+        let result = flarion_split_helper(&input, "，", -1)
+            .unwrap()
+            .into_series();
 
         assert_eq!(result.len(), 1);
         assert_eq!(
