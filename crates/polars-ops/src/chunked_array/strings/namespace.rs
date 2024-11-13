@@ -152,7 +152,7 @@ pub trait StringNameSpaceImpl: AsString {
                         match (opt_src, opt_pat) {
                             (Some(src), Some(pat)) => {
                                 let reg = reg_cache.try_get_or_insert_with(pat, |p| {
-                                    RegexBuilder::new(p).size_limit(31457280).build()
+                                    RegexBuilder::new(p).size_limit(30*1024*1024).build()
                                 })?;
                                 Ok(Some(reg.is_match(src)))
                             },
@@ -167,7 +167,7 @@ pub trait StringNameSpaceImpl: AsString {
                         pat,
                         infer_re_match(|src, pat| {
                             let reg = reg_cache.try_get_or_insert_with(pat?, |p| {
-                                RegexBuilder::new(p).size_limit(31457280).build()
+                                RegexBuilder::new(p).size_limit(30*1024*1024).build()
                             });
                             Some(reg.ok()?.is_match(src?))
                         }),
@@ -212,7 +212,7 @@ pub trait StringNameSpaceImpl: AsString {
             let matcher = |src: Option<&str>, pat: Option<&str>| -> PolarsResult<Option<u32>> {
                 if let (Some(src), Some(pat)) = (src, pat) {
                     let rx = rx_cache.try_get_or_insert_with(pat, |p| {
-                        RegexBuilder::new(p).size_limit(31457280).build()
+                        RegexBuilder::new(p).size_limit(30*1024*1024).build()
                     })?;
                     return Ok(rx.find(src).map(|m| m.start() as u32));
                 }
@@ -271,7 +271,7 @@ pub trait StringNameSpaceImpl: AsString {
     /// Check if strings contain a regex pattern.
     fn contains(&self, pat: &str, strict: bool) -> PolarsResult<BooleanChunked> {
         let ca = self.as_string();
-        let res_reg = RegexBuilder::new(pat).size_limit(31457280).build();
+        let res_reg = RegexBuilder::new(pat).size_limit(30*1024*1024).build();
         let opt_reg = if strict { Some(res_reg?) } else { res_reg.ok() };
         let out: BooleanChunked = if let Some(reg) = opt_reg {
             unary_elementwise_values(ca, |s| reg.is_match(s))
@@ -297,7 +297,7 @@ pub trait StringNameSpaceImpl: AsString {
     /// Return the index position of a regular expression substring in the target string.
     fn find(&self, pat: &str, strict: bool) -> PolarsResult<UInt32Chunked> {
         let ca = self.as_string();
-        match RegexBuilder::new(pat).size_limit(31457280).build() {
+        match RegexBuilder::new(pat).size_limit(30*1024*1024).build() {
             Ok(rx) => Ok(unary_elementwise(ca, |opt_s| {
                 opt_s.and_then(|s| rx.find(s)).map(|m| m.start() as u32)
             })),
@@ -310,7 +310,7 @@ pub trait StringNameSpaceImpl: AsString {
 
     /// Replace the leftmost regex-matched (sub)string with another string
     fn replace<'a>(&'a self, pat: &str, val: &str) -> PolarsResult<StringChunked> {
-        let reg = RegexBuilder::new(pat).size_limit(31457280).build()?;
+        let reg = RegexBuilder::new(pat).size_limit(30*1024*1024).build()?;
         let f = |s: &'a str| reg.replace(s, val);
         let ca = self.as_string();
         Ok(ca.apply_values(f))
@@ -360,7 +360,7 @@ pub trait StringNameSpaceImpl: AsString {
     /// Replace all regex-matched (sub)strings with another string
     fn replace_all(&self, pat: &str, val: &str, group_index: usize) -> PolarsResult<StringChunked> {
         let ca = self.as_string();
-        let reg = RegexBuilder::new(pat).size_limit(31457280).build()?;
+        let reg = RegexBuilder::new(pat).size_limit(30*1024*1024).build()?;
         Ok(ca.apply_values(|s| {
             let pairs = reg
                 .captures_iter(s)
@@ -427,7 +427,7 @@ pub trait StringNameSpaceImpl: AsString {
     /// Extract each successive non-overlapping regex match in an individual string as an array.
     fn extract_all(&self, pat: &str, group_index: usize) -> PolarsResult<ListChunked> {
         let ca = self.as_string();
-        let reg = RegexBuilder::new(pat).size_limit(31457280).build()?;
+        let reg = RegexBuilder::new(pat).size_limit(30*1024*1024).build()?;
 
         let mut builder =
             ListStringChunkedBuilder::new(ca.name().clone(), ca.len(), ca.get_values_size());
@@ -542,7 +542,7 @@ pub trait StringNameSpaceImpl: AsString {
             (_, None) | (None, _) => builder.append_null(),
             (Some(s), Some(pat)) => {
                 let reg = reg_cache.get_or_insert_with(pat, |p| {
-                    RegexBuilder::new(p).size_limit(31457280).build().unwrap()
+                    RegexBuilder::new(p).size_limit(30*1024*1024).build().unwrap()
                 });
                 builder.append_values_iter(reg.find_iter(s).map(|m| m.as_str()));
             },
@@ -562,10 +562,10 @@ pub trait StringNameSpaceImpl: AsString {
         let ca = self.as_string();
         let reg = if literal {
             RegexBuilder::new(escape(pat).as_str())
-                .size_limit(31457280)
+                .size_limit(30*1024*1024)
                 .build()?
         } else {
-            RegexBuilder::new(pat).size_limit(31457280).build()?
+            RegexBuilder::new(pat).size_limit(30*1024*1024).build()?
         };
 
         Ok(unary_elementwise(ca, |opt_s| {
@@ -594,11 +594,11 @@ pub trait StringNameSpaceImpl: AsString {
                     let reg = reg_cache.get_or_insert_with(pat, |p| {
                         if literal {
                             RegexBuilder::new(escape(p).as_str())
-                                .size_limit(31457280)
+                                .size_limit(30*1024*1024)
                                 .build()
                                 .unwrap()
                         } else {
-                            RegexBuilder::new(pat).size_limit(31457280).build().unwrap()
+                            RegexBuilder::new(pat).size_limit(30*1024*1024).build().unwrap()
                         }
                     });
                     Ok(Some(reg.find_iter(s).count() as u32))

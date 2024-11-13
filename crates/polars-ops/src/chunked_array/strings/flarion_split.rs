@@ -43,7 +43,7 @@ pub fn flarion_split_helper(
             });
         };
     } else {
-        let re = RegexBuilder::new(pattern).size_limit(31457280).build()?;
+        let re = RegexBuilder::new(pattern).size_limit(30*1024*1024).build()?;
 
         // When n is already a literal, we can check it ahead, and optimize for a negative number(no limit)
         if n > 0 {

@@ -111,7 +111,7 @@ fn expand_regex(
     exclude: &PlHashSet<PlSmallStr>,
 ) -> PolarsResult<()> {
     let re = regex::RegexBuilder::new(pattern)
-        .size_limit(31457280)
+        .size_limit(30*1024*1024)
         .build()
         .map_err(|e| polars_err!(ComputeError: "invalid regex {}", e))?;
     for name in schema.iter_names() {

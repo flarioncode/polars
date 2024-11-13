@@ -163,7 +163,7 @@ impl StringNameSpace {
         // and we need to compile it here to determine the output datatype
 
         use polars_utils::format_pl_smallstr;
-        let reg = regex::RegexBuilder::new(pat).size_limit(31457280).build()?;
+        let reg = regex::RegexBuilder::new(pat).size_limit(30*1024*1024).build()?;
         let names = reg
             .capture_names()
             .enumerate()
