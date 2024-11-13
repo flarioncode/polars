@@ -163,7 +163,9 @@ impl StringNameSpace {
         // and we need to compile it here to determine the output datatype
 
         use polars_utils::format_pl_smallstr;
-        let reg = regex::RegexBuilder::new(pat).size_limit(31457280).build()?;
+        let reg = regex::RegexBuilder::new(pat)
+            .size_limit(30 * 1024 * 1024)
+            .build()?;
         let names = reg
             .capture_names()
             .enumerate()
@@ -606,6 +608,7 @@ impl StringNameSpace {
     }
 }
 
+// Flarion functions
 impl StringNameSpace {
     /// Extract each successive non-overlapping match in an individual string as an array
     pub fn extract_all_with_group(self, pat: Expr, group_idx: usize) -> Expr {
@@ -635,6 +638,18 @@ impl StringNameSpace {
             &[pat, value],
             false,
             Some(Default::default()),
+        )
+    }
+
+    /// Split the string by a substring regex. The resulting dtype is `List<String>`.
+    #[cfg(all(feature = "regex", feature = "dtype-struct"))]
+    pub fn flarion_split(self, pattern: &str, n: i32) -> Expr {
+        self.0.map_private(
+            StringFunction::FlarionSplit {
+                pattern: PlSmallStr::from_str(pattern),
+                n,
+            }
+            .into(),
         )
     }
 }

@@ -133,6 +133,13 @@ pub enum StringFunction {
         ascii_case_insensitive: bool,
         overlapping: bool,
     },
+
+    // Flarion functions
+    #[cfg(all(feature = "regex", feature = "dtype-struct"))]
+    FlarionSplit {
+        pattern: PlSmallStr,
+        n: i32,
+    },
 }
 
 impl StringFunction {
@@ -200,6 +207,9 @@ impl StringFunction {
             ReplaceMany { .. } => mapper.with_same_dtype(),
             #[cfg(feature = "find_many")]
             ExtractMany { .. } => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
+
+            #[cfg(all(feature = "regex", feature = "dtype-struct"))]
+            FlarionSplit { .. } => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
         }
     }
 }
@@ -288,6 +298,10 @@ impl Display for StringFunction {
             ReplaceMany { .. } => "replace_many",
             #[cfg(feature = "find_many")]
             ExtractMany { .. } => "extract_many",
+
+            // Flarion functions
+            #[cfg(all(feature = "regex", feature = "dtype-struct"))]
+            FlarionSplit { .. } => "flarion_split",
         };
         write!(f, "str.{s}")
     }
@@ -406,6 +420,12 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
                 overlapping,
             } => {
                 map_as_slice!(extract_many, ascii_case_insensitive, overlapping)
+            },
+
+            // Flarion functions
+            #[cfg(all(feature = "regex", feature = "dtype-struct"))]
+            FlarionSplit { pattern, n } => {
+                map_as_slice!(strings::flarion_split, pattern.as_str(), n)
             },
         }
     }
@@ -665,6 +685,13 @@ pub(super) fn split(s: &[Series], inclusive: bool) -> PolarsResult<Series> {
     }
 }
 
+#[cfg(all(feature = "regex", feature = "dtype-struct"))]
+pub(super) fn flarion_split(s: &[Series], pattern: &str, n: i32) -> PolarsResult<Series> {
+    let ca = s[0].str()?;
+
+    ca.flarion_split(pattern, n).map(ListChunked::into_series)
+}
+
 #[cfg(feature = "dtype-date")]
 fn to_date(s: &Series, options: &StrptimeOptions) -> PolarsResult<Series> {
     let ca = s.str()?;
@@ -882,7 +909,9 @@ fn replace_n<'a>(
                 pat = escape(&pat)
             }
 
-            let reg = RegexBuilder::new(&pat).size_limit(31457280).build()?;
+            let reg = RegexBuilder::new(&pat)
+                .size_limit(30 * 1024 * 1024)
+                .build()?;
             let lit = pat.chars().all(|c| !c.is_ascii_punctuation());
 
             let f = |s: &'a str, val: &'a str| {
@@ -952,7 +981,9 @@ fn replace_all<'a>(
                 pat = escape(&pat)
             }
 
-            let reg = RegexBuilder::new(&pat).size_limit(31457280).build()?;
+            let reg = RegexBuilder::new(&pat)
+                .size_limit(30 * 1024 * 1024)
+                .build()?;
 
             let f = |s: &'a str, val: &'a str| reg.replace_all(s, val);
             Ok(iter_and_replace(ca, val, f))
