@@ -909,7 +909,9 @@ fn replace_n<'a>(
                 pat = escape(&pat)
             }
 
-            let reg = RegexBuilder::new(&pat).size_limit(30*1024*1024).build()?;
+            let reg = RegexBuilder::new(&pat)
+                .size_limit(30 * 1024 * 1024)
+                .build()?;
             let lit = pat.chars().all(|c| !c.is_ascii_punctuation());
 
             let f = |s: &'a str, val: &'a str| {
@@ -979,7 +981,9 @@ fn replace_all<'a>(
                 pat = escape(&pat)
             }
 
-            let reg = RegexBuilder::new(&pat).size_limit(30*1024*1024).build()?;
+            let reg = RegexBuilder::new(&pat)
+                .size_limit(30 * 1024 * 1024)
+                .build()?;
 
             let f = |s: &'a str, val: &'a str| reg.replace_all(s, val);
             Ok(iter_and_replace(ca, val, f))
