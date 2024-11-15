@@ -1951,6 +1951,30 @@ impl Expr {
             input: Arc::new(self),
         }
     }
+
+    // This is essentially the apply() function, but sets the appropriate flags to use with an aggregate buffer
+    // ALLOW_GROUP_AWARE - lets us call this apply function in a group_by context
+    // RETURNS_SCALAR - Since we return a single Binary buffer, we need this, otherwise it would wrap the results in a Series
+    // CHANGES_LENGTH - This function possibly changes the length of the Series(returns a length of 1), so we need this flag
+    pub fn flarion_aggregate<F>(self, function: F, output_type: GetOutput) -> Self
+    where
+        F: Fn(Series) -> PolarsResult<Option<Series>> + 'static + Send + Sync,
+    {
+        let f = move |s: &mut [Series]| function(std::mem::take(&mut s[0]));
+
+        Expr::AnonymousFunction {
+            input: vec![self],
+            function: SpecialEq::new(Arc::new(f)),
+            output_type,
+            options: FunctionOptions {
+                collect_groups: ApplyOptions::GroupWise,
+                flags: FunctionFlags::ALLOW_GROUP_AWARE
+                    | FunctionFlags::RETURNS_SCALAR
+                    | FunctionFlags::CHANGES_LENGTH,
+                ..Default::default()
+            },
+        }
+    }
 }
 
 /// Apply a function/closure over multiple columns once the logical plan get executed.
