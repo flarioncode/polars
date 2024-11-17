@@ -140,10 +140,91 @@ impl LambdaExpression {
                 AnyValue::List(series)
             },
             LambdaExpression::GreaterThan(left, right) => {
-                left.eval_array(args).gt(&right.eval_array(args)).into()
+                // CURRENTLY ONLY SUPPORTS NESTED ARRAYS THAT HAVE A SINGLE MEMBER. 
+                // WITH MULTIPLE MEMBERS WE CAN DECIDE THE LOGIC IF WE ACTUALLY ENCOUNTER THESE CASES.
+                let left_val = left.eval_array(args);
+                let right_val = right.eval_array(args);
+                
+                match (left_val, right_val) {
+                    (AnyValue::List(left_series), AnyValue::List(right_series)) => {
+                        // Both are arrays - compare first values
+                        if left_series.len() > 0 && right_series.len() > 0 {
+                            let left_first = left_series.get(0)
+                                .expect("could not get first value from left array in comparison");
+                            let right_first = right_series.get(0)
+                                .expect("could not get first value from right array in comparison");
+                            left_first.gt(&right_first).into()
+                        } else {
+                            AnyValue::Boolean(false)
+                        }
+                    },
+                    (AnyValue::List(left_series), right) => {
+                        // Left is array, right is scalar
+                        if left_series.len() > 0 {
+                            let left_first = left_series.get(0)
+                                .expect("could not get first value from array in left-array-scalar comparison");
+                            left_first.gt(&right).into()
+                        } else {
+                            AnyValue::Boolean(false)
+                        }
+                    },
+                    (left, AnyValue::List(right_series)) => {
+                        // Left is scalar, right is array
+                        if right_series.len() > 0 {
+                            let right_first = right_series.get(0)
+                                .expect("could not get first value from array in scalar-right-array comparison");
+                            left.gt(&right_first).into()
+                        } else {
+                            AnyValue::Boolean(false)
+                        }
+                    },
+                    // Regular scalar comparison
+                    (left, right) => left.gt(&right).into()
+                }
             },
+            
             LambdaExpression::LessThan(left, right) => {
-                left.eval_array(args).lt(&right.eval_array(args)).into()
+                // CURRENTLY ONLY SUPPORTS NESTED ARRAYS THAT HAVE A SINGLE MEMBER. 
+                // WITH MULTIPLE MEMBERS WE CAN DECIDE THE LOGIC IF WE ACTUALLY ENCOUNTER THESE CASES.
+                let left_val = left.eval_array(args);
+                let right_val = right.eval_array(args);
+                
+                match (left_val, right_val) {
+                    (AnyValue::List(left_series), AnyValue::List(right_series)) => {
+                        // Both are arrays - compare first values
+                        if left_series.len() > 0 && right_series.len() > 0 {
+                            let left_first = left_series.get(0)
+                                .expect("could not get first value from left array in comparison");
+                            let right_first = right_series.get(0)
+                                .expect("could not get first value from right array in comparison");
+                            left_first.lt(&right_first).into()
+                        } else {
+                            AnyValue::Boolean(false)
+                        }
+                    },
+                    (AnyValue::List(left_series), right) => {
+                        // Left is array, right is scalar
+                        if left_series.len() > 0 {
+                            let left_first = left_series.get(0)
+                                .expect("could not get first value from array in left-array-scalar comparison");
+                            left_first.lt(&right).into()
+                        } else {
+                            AnyValue::Boolean(false)
+                        }
+                    },
+                    (left, AnyValue::List(right_series)) => {
+                        // Left is scalar, right is array
+                        if right_series.len() > 0 {
+                            let right_first = right_series.get(0)
+                                .expect("could not get first value from array in scalar-right-array comparison");
+                            left.lt(&right_first).into()
+                        } else {
+                            AnyValue::Boolean(false)
+                        }
+                    },
+                    // Regular scalar comparison
+                    (left, right) => left.lt(&right).into()
+                }
             },
             LambdaExpression::IfThenElse(cond, truthy, falsy) => {
                 if unsafe {

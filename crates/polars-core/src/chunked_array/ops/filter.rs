@@ -91,7 +91,6 @@ impl ChunkedArray<ListType> {
         lambda: &LambdaExpression,
     ) -> PolarsResult<ChunkedArray<ListType>> {
         if let Some((threshold, is_greater)) = is_length_comparison(lambda) {
-            // Use optimized length-based filtering
             let mask = self.iter().map(|opt_val| match opt_val {
                 Some(arr) => {
                     let len = arr.len();
@@ -103,19 +102,26 @@ impl ChunkedArray<ListType> {
                 },
                 None => false,
             });
-
             let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
             return self.filter(&bool_mask);
         }
 
+        // Evaluate each array element using eval_array
         let mask = self.iter().map(|opt_val| match opt_val {
             Some(arr) => match lambda.eval_array(&[arr.as_ref()]) {
                 AnyValue::Boolean(b) => b,
-                _ => panic!("Lambda must return boolean values"),
+                // For list operations, we should get a List back containing booleans
+                AnyValue::List(series) => {
+                    // Convert the series to a boolean indicating if the condition is true for any/all elements
+                    match series.bool() {
+                        Ok(bool_arr) => bool_arr.any(),
+                        _ => panic!("Lambda expression did not return boolean values")
+                    }
+                },
+                _ => panic!("Lambda must return boolean values or list of boolean values"),
             },
             None => false,
         });
-
         let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
         self.filter(&bool_mask)
     }
