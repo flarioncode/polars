@@ -268,12 +268,12 @@ pub trait ListNameSpaceImpl: AsList {
                     let ca = s_ref.i8()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
                     // Wrap the ChunkedArray in a Series
-                    Ok(Series::new("".into(), filtered_ca))
+                    Ok(Series::new_from_chunked_array("".into(), filtered_ca))
                 },
                 DataType::Int16 => {
                     let ca = s_ref.i16()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(Series::new("".into(), filtered_ca))
+                    Ok(Series::new_from_chunked_array("".into(), filtered_ca))
                 },
                 DataType::Int32 => {
                     let ca = s_ref.i32()?;
