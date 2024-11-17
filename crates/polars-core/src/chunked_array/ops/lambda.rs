@@ -140,18 +140,20 @@ impl LambdaExpression {
                 AnyValue::List(series)
             },
             LambdaExpression::GreaterThan(left, right) => {
-                // CURRENTLY ONLY SUPPORTS NESTED ARRAYS THAT HAVE A SINGLE MEMBER. 
+                // CURRENTLY ONLY SUPPORTS NESTED ARRAYS THAT HAVE A SINGLE MEMBER.
                 // WITH MULTIPLE MEMBERS WE CAN DECIDE THE LOGIC IF WE ACTUALLY ENCOUNTER THESE CASES.
                 let left_val = left.eval_array(args);
                 let right_val = right.eval_array(args);
-                
+
                 match (left_val, right_val) {
                     (AnyValue::List(left_series), AnyValue::List(right_series)) => {
                         // Both are arrays - compare first values
                         if left_series.len() > 0 && right_series.len() > 0 {
-                            let left_first = left_series.get(0)
+                            let left_first = left_series
+                                .get(0)
                                 .expect("could not get first value from left array in comparison");
-                            let right_first = right_series.get(0)
+                            let right_first = right_series
+                                .get(0)
                                 .expect("could not get first value from right array in comparison");
                             left_first.gt(&right_first).into()
                         } else {
@@ -179,23 +181,25 @@ impl LambdaExpression {
                         }
                     },
                     // Regular scalar comparison
-                    (left, right) => left.gt(&right).into()
+                    (left, right) => left.gt(&right).into(),
                 }
             },
-            
+
             LambdaExpression::LessThan(left, right) => {
-                // CURRENTLY ONLY SUPPORTS NESTED ARRAYS THAT HAVE A SINGLE MEMBER. 
+                // CURRENTLY ONLY SUPPORTS NESTED ARRAYS THAT HAVE A SINGLE MEMBER.
                 // WITH MULTIPLE MEMBERS WE CAN DECIDE THE LOGIC IF WE ACTUALLY ENCOUNTER THESE CASES.
                 let left_val = left.eval_array(args);
                 let right_val = right.eval_array(args);
-                
+
                 match (left_val, right_val) {
                     (AnyValue::List(left_series), AnyValue::List(right_series)) => {
                         // Both are arrays - compare first values
                         if left_series.len() > 0 && right_series.len() > 0 {
-                            let left_first = left_series.get(0)
+                            let left_first = left_series
+                                .get(0)
                                 .expect("could not get first value from left array in comparison");
-                            let right_first = right_series.get(0)
+                            let right_first = right_series
+                                .get(0)
                                 .expect("could not get first value from right array in comparison");
                             left_first.lt(&right_first).into()
                         } else {
@@ -223,7 +227,7 @@ impl LambdaExpression {
                         }
                     },
                     // Regular scalar comparison
-                    (left, right) => left.lt(&right).into()
+                    (left, right) => left.lt(&right).into(),
                 }
             },
             LambdaExpression::IfThenElse(cond, truthy, falsy) => {

@@ -311,7 +311,7 @@ pub trait ListNameSpaceImpl: AsList {
                         ComputeError: "filter_with_func not implemented for type: {:?}",
                         s_ref.dtype()
                     );
-                }
+                },
             };
             filtered_inner
         })?;

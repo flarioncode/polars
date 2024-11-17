@@ -115,7 +115,7 @@ impl ChunkedArray<ListType> {
                     // Convert the series to a boolean indicating if the condition is true for any/all elements
                     match series.bool() {
                         Ok(bool_arr) => bool_arr.any(),
-                        _ => panic!("Lambda expression did not return boolean values")
+                        _ => panic!("Lambda expression did not return boolean values"),
                     }
                 },
                 _ => panic!("Lambda must return boolean values or list of boolean values"),
