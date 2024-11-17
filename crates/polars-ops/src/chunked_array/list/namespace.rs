@@ -259,52 +259,51 @@ pub trait ListNameSpaceImpl: AsList {
         lambda_expressions: Arc<LambdaExpression>,
     ) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
-
         // Apply the filter to each inner list while maintaining outer structure
         let filtered = ca.try_apply_amortized(|s| {
             // Convert AmortizedSeries to Series reference
             let s_ref = s.as_ref();
-
             let filtered_inner: PolarsResult<Series> = match s_ref.dtype() {
                 DataType::Int8 => {
                     let ca = s_ref.i8()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
+                    // Wrap the ChunkedArray in a Series
+                    Ok(Series::new("".into(), filtered_ca))
                 },
                 DataType::Int16 => {
                     let ca = s_ref.i16()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
+                    Ok(Series::new("".into(), filtered_ca))
                 },
                 DataType::Int32 => {
                     let ca = s_ref.i32()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
+                    Ok(Series::new("".into(), filtered_ca))
                 },
                 DataType::Int64 => {
                     let ca = s_ref.i64()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
+                    Ok(Series::new("".into(), filtered_ca))
                 },
                 DataType::Float32 => {
                     let ca = s_ref.f32()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
+                    Ok(Series::new("".into(), filtered_ca))
                 },
                 DataType::Float64 => {
                     let ca = s_ref.f64()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
+                    Ok(Series::new("".into(), filtered_ca))
                 },
                 DataType::String => {
                     let ca = s_ref.str()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
+                    Ok(Series::new("".into(), filtered_ca))
                 },
                 DataType::List(_) => {
                     let ca = s_ref.list()?;
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
+                    Ok(Series::new("".into(), filtered_ca))
                 },
                 _ => {
                     polars_bail!(
@@ -315,7 +314,6 @@ pub trait ListNameSpaceImpl: AsList {
             };
             filtered_inner
         })?;
-
         Ok(filtered)
     }
 
