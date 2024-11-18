@@ -254,14 +254,6 @@ pub trait ListNameSpaceImpl: AsList {
         }
     }
 
-    /*
-    fn lst_filter_by_func(&self, lambda_expressions: Arc<LambdaExpression>) -> PolarsResult<ListChunked> {
-        let ca = self.as_list();
-        let bool_mask = ca.filter_with_func(&lambda_expressions)?;
-        Ok(self.same_type(bool_mask))
-    }
-    */
-
     fn lst_filter_by_func(
         &self,
         lambda_expressions: Arc<LambdaExpression>,
@@ -270,11 +262,61 @@ pub trait ListNameSpaceImpl: AsList {
 
         // Apply the filter to each inner list while maintaining outer structure
         let filtered = ca.try_apply_amortized(|s| {
-            // Convert AmortSeries to Series reference for filtering
-            match s.as_ref().filter_with_func(&lambda_expressions) {
-                Ok(filtered_inner) => Ok(filtered_inner),
-                Err(_) => Ok(s.as_ref().clone()), // Keep original on error
-            }
+            // Convert AmortizedSeries to Series reference
+            let s_ref = s.as_ref();
+
+            let filtered_inner: PolarsResult<Series> = match s_ref.dtype() {
+                #[cfg(feature = "dtype-i8")]
+                DataType::Int8 => {
+                    let ca = s_ref.i8()?;
+                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
+
+                    Ok(filtered_ca.into_series())
+                },
+                #[cfg(feature = "dtype-i16")]
+                DataType::Int16 => {
+                    let ca = s_ref.i16()?;
+                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
+                    Ok(filtered_ca.into_series())
+                },
+                DataType::Int32 => {
+                    let ca = s_ref.i32()?;
+                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
+                    Ok(filtered_ca.into_series())
+                },
+                DataType::Int64 => {
+                    let ca = s_ref.i64()?;
+                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
+                    Ok(filtered_ca.into_series())
+                },
+                DataType::Float32 => {
+                    let ca = s_ref.f32()?;
+                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
+                    Ok(filtered_ca.into_series())
+                },
+                DataType::Float64 => {
+                    let ca = s_ref.f64()?;
+                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
+                    Ok(filtered_ca.into_series())
+                },
+                DataType::String => {
+                    let ca = s_ref.str()?;
+                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
+                    Ok(filtered_ca.into_series())
+                },
+                DataType::List(_) => {
+                    let ca = s_ref.list()?;
+                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
+                    Ok(filtered_ca.into_series())
+                },
+                _ => {
+                    polars_bail!(
+                        ComputeError: "filter_with_func not implemented for type: {:?}",
+                        s_ref.dtype()
+                    );
+                },
+            };
+            filtered_inner
         })?;
 
         Ok(filtered)
