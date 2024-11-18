@@ -44,6 +44,7 @@ pub(crate) use sort::*;
 pub(crate) use sortby::*;
 pub(crate) use ternary::*;
 pub use window::window_function_format_order_by;
+pub use flarion::NanNormalizer;
 pub(crate) use window::*;
 
 use crate::state::ExecutionState;

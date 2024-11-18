@@ -12,27 +12,27 @@ use polars_plan::dsl::Expr;
 use crate::expressions::{AggregationContext, PhysicalExpr};
 use crate::prelude::ExecutionState;
 
-trait NanNormalizer<T: Float> {
-    fn normalize_func(actual_float: T) -> T {
-        if actual_float.is_nan() {
+pub trait NanNormalizer: Float {
+    fn flarion_normalize(self) -> Self {
+        if self.is_nan() {
             Self::java_nan()
-        } else if actual_float == T::neg_zero() {
-            T::zero()
+        } else if self == Self::neg_zero() {
+            Self::zero()
         } else {
-            actual_float
+            self
         }
     }
 
-    fn java_nan() -> T;
+    fn java_nan() -> Self;
 }
 
-impl NanNormalizer<f32> for f32 {
+impl NanNormalizer for f32 {
     fn java_nan() -> f32 {
         f32::from_bits(0x7FC00000)
     }
 }
 
-impl NanNormalizer<f64> for f64 {
+impl NanNormalizer for f64 {
     fn java_nan() -> f64 {
         f64::from_bits(0x7FF8000000000000)
     }
@@ -43,12 +43,12 @@ fn normalize_series_with_dtype<const IS_AGG: bool>(input_series: &Series) -> Pol
         DataType::Float32 => input_series
             .f32()?
             .iter()
-            .map(|item: Option<f32>| item.map(f32::normalize_func))
+            .map(|item: Option<f32>| item.map(f32::flarion_normalize))
             .collect::<Series>(),
         DataType::Float64 => input_series
             .f64()?
             .iter()
-            .map(|item: Option<f64>| item.map(f64::normalize_func))
+            .map(|item: Option<f64>| item.map(f64::flarion_normalize))
             .collect::<Series>(),
         DataType::List(inner) if IS_AGG && inner.is_float() => {
             let normalized_list = input_series.list()?;
@@ -141,26 +141,26 @@ mod tests {
         let f32_nan3 = f32::from_bits(0x7FC00003);
 
         assert_eq!(
-            f32::normalize_func(f32_nan1).to_le_bytes(),
+            f32::flarion_normalize(f32_nan1).to_le_bytes(),
             f32::from_bits(0x7FC00000).to_le_bytes()
         );
         assert_eq!(
-            f32::normalize_func(f32_nan2).to_le_bytes(),
+            f32::flarion_normalize(f32_nan2).to_le_bytes(),
             f32::from_bits(0x7FC00000).to_le_bytes()
         );
         assert_eq!(
-            f32::normalize_func(f32_nan3).to_le_bytes(),
+            f32::flarion_normalize(f32_nan3).to_le_bytes(),
             f32::from_bits(0x7FC00000).to_le_bytes()
         );
 
         let f32_neg_zero1 = f32::neg_zero();
         let f32_neg_zero2 = -0.0;
         assert_eq!(
-            f32::normalize_func(f32_neg_zero1).to_le_bytes(),
+            f32::flarion_normalize(f32_neg_zero1).to_le_bytes(),
             0.0f32.to_le_bytes()
         );
         assert_eq!(
-            f32::normalize_func(f32_neg_zero2).to_le_bytes(),
+            f32::flarion_normalize(f32_neg_zero2).to_le_bytes(),
             0.0f32.to_le_bytes()
         );
     }
@@ -172,26 +172,26 @@ mod tests {
         let f64_nan3 = f64::from_bits(0x7FF8000000000002);
 
         assert_eq!(
-            f64::normalize_func(f64_nan1).to_le_bytes(),
+            f64::flarion_normalize(f64_nan1).to_le_bytes(),
             f64::from_bits(0x7FF8000000000000).to_le_bytes()
         );
         assert_eq!(
-            f64::normalize_func(f64_nan2).to_le_bytes(),
+            f64::flarion_normalize(f64_nan2).to_le_bytes(),
             f64::from_bits(0x7FF8000000000000).to_le_bytes()
         );
         assert_eq!(
-            f64::normalize_func(f64_nan3).to_le_bytes(),
+            f64::flarion_normalize(f64_nan3).to_le_bytes(),
             f64::from_bits(0x7FF8000000000000).to_le_bytes()
         );
 
         let f64_neg_zero1 = f64::neg_zero();
         let f64_neg_zero2 = -0.0;
         assert_eq!(
-            f64::normalize_func(f64_neg_zero1).to_le_bytes(),
+            f64::flarion_normalize(f64_neg_zero1).to_le_bytes(),
             0.0f64.to_le_bytes()
         );
         assert_eq!(
-            f64::normalize_func(f64_neg_zero2).to_le_bytes(),
+            f64::flarion_normalize(f64_neg_zero2).to_le_bytes(),
             0.0f64.to_le_bytes()
         );
     }

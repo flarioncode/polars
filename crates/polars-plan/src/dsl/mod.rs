@@ -1953,11 +1953,19 @@ impl Expr {
     }
 
     /// This is essentially the apply() function, but sets the appropriate flags to use with an aggregate buffer
-    pub fn flarion_aggregate<F>(self, function: F, output_type: GetOutput) -> Self
+    pub fn flarion_aggregate<F>(self, function: F, output_type: GetOutput, returns_list: bool) -> Self
     where
         F: Fn(Series) -> PolarsResult<Option<Series>> + 'static + Send + Sync,
     {
         let f = move |s: &mut [Series]| function(std::mem::take(&mut s[0]));
+
+        let mut flags = FunctionFlags::ALLOW_GROUP_AWARE // lets us call this apply function in a group_by context
+            | FunctionFlags::CHANGES_LENGTH; // This function possibly changes the length of the Series(returns a length of 1), so we need this flag
+        if !returns_list {
+            // If this function returns a single value(I.e., not a CollectSet/CollectList), we need to specify this
+            // Should always be specified in aggregate stage
+            flags |= FunctionFlags::RETURNS_SCALAR;
+        }
 
         Expr::AnonymousFunction {
             input: vec![self],
@@ -1965,9 +1973,7 @@ impl Expr {
             output_type,
             options: FunctionOptions {
                 collect_groups: ApplyOptions::GroupWise,
-                flags: FunctionFlags::ALLOW_GROUP_AWARE // lets us call this apply function in a group_by context
-                    | FunctionFlags::RETURNS_SCALAR // Since we return a single Binary buffer, we need this, otherwise it would wrap the results in a Series
-                    | FunctionFlags::CHANGES_LENGTH, // This function possibly changes the length of the Series(returns a length of 1), so we need this flag
+                flags,
                 ..Default::default()
             },
         }
