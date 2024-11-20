@@ -1953,7 +1953,12 @@ impl Expr {
     }
 
     /// This is essentially the apply() function, but sets the appropriate flags to use with an aggregate buffer
-    pub fn flarion_aggregate<F>(self, function: F, output_type: GetOutput, returns_list: bool) -> Self
+    pub fn flarion_aggregate<F>(
+        self,
+        function: F,
+        output_type: GetOutput,
+        returns_list: bool,
+    ) -> Self
     where
         F: Fn(Series) -> PolarsResult<Option<Series>> + 'static + Send + Sync,
     {
