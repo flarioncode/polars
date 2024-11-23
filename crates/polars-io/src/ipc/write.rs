@@ -133,9 +133,8 @@ impl<W: Write> BatchedWriter<W> {
     }
 
     /// Writes the footer of the IPC file.
-    pub fn finish(&mut self) -> PolarsResult<()> {
-        self.writer.finish()?;
-        Ok(())
+    pub fn finish(&mut self) -> PolarsResult<usize> {
+        self.writer.finish()
     }
 }
 
