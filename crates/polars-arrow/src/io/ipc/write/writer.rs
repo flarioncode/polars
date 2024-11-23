@@ -2,7 +2,7 @@ use std::io::Write;
 
 use arrow_format::ipc::planus::Builder;
 use polars_error::{polars_bail, PolarsResult};
-
+use polars_utils::index::Bounded;
 use super::super::{IpcField, ARROW_MAGIC_V2};
 use super::common::{DictionaryTracker, EncodedData, WriteOptions};
 use super::common_sync::{write_continuation, write_message};
@@ -40,6 +40,8 @@ pub struct FileWriter<W: Write> {
     pub(crate) dictionary_tracker: DictionaryTracker,
     /// Buffer/scratch that is reused between writes
     pub(crate) encoded_message: EncodedData,
+    /// Total bytes written
+    pub(crate) total_written: usize,
 }
 
 impl<W: Write> FileWriter<W> {
@@ -83,6 +85,7 @@ impl<W: Write> FileWriter<W> {
                 cannot_replace: true,
             },
             encoded_message: Default::default(),
+            total_written: 0,
         }
     }
 
@@ -109,20 +112,27 @@ impl<W: Write> FileWriter<W> {
         if self.state != State::None {
             polars_bail!(oos = "The IPC file can only be started once");
         }
+
         // write magic to header
         self.writer.write_all(&ARROW_MAGIC_V2[..])?;
+        self.total_written += 6;
+
         // create an 8-byte boundary after the header
         self.writer.write_all(&[0, 0])?;
-        // write the schema, set the written bytes to the schema
+        self.total_written += 2;
 
+        // write the schema, set the written bytes to the schema
         let encoded_message = EncodedData {
             ipc_message: schema_to_bytes(&self.schema, &self.ipc_fields),
             arrow_data: vec![],
         };
 
-        let (meta, data) = write_message(&mut self.writer, &encoded_message)?;
+        let (meta, data, written) = write_message(&mut self.writer, &encoded_message)?;
+        self.total_written += written;
+
         self.block_offsets += meta + data + 8; // 8 <=> arrow magic + 2 bytes for alignment
         self.state = State::Started;
+
         Ok(())
     }
 
@@ -143,6 +153,7 @@ impl<W: Write> FileWriter<W> {
         } else {
             self.ipc_fields.as_ref()
         };
+
         let encoded_dictionaries = encode_chunk_amortized(
             chunk,
             ipc_fields,
@@ -153,7 +164,8 @@ impl<W: Write> FileWriter<W> {
 
         // add all dictionaries
         for encoded_dictionary in encoded_dictionaries {
-            let (meta, data) = write_message(&mut self.writer, &encoded_dictionary)?;
+            let (meta, data, written) = write_message(&mut self.writer, &encoded_dictionary)?;
+            self.total_written += written;
 
             let block = arrow_format::ipc::Block {
                 offset: self.block_offsets as i64,
@@ -164,7 +176,9 @@ impl<W: Write> FileWriter<W> {
             self.block_offsets += meta + data;
         }
 
-        let (meta, data) = write_message(&mut self.writer, &self.encoded_message)?;
+        let (meta, data, written) = write_message(&mut self.writer, &self.encoded_message)?;
+        self.total_written += written;
+
         // add a record block for the footer
         let block = arrow_format::ipc::Block {
             offset: self.block_offsets as i64,
@@ -173,11 +187,12 @@ impl<W: Write> FileWriter<W> {
         };
         self.record_blocks.push(block);
         self.block_offsets += meta + data;
+
         Ok(())
     }
 
     /// Write footer and closing tag, then mark the writer as done
-    pub fn finish(&mut self) -> PolarsResult<()> {
+    pub fn finish(&mut self) -> PolarsResult<usize> {
         if self.state != State::Started {
             polars_bail!(
                 oos = "The IPC file must be started before it can be finished. Call `start` before `finish`"
@@ -185,7 +200,7 @@ impl<W: Write> FileWriter<W> {
         }
 
         // write EOS
-        write_continuation(&mut self.writer, 0)?;
+        self.total_written += write_continuation(&mut self.writer, 0)?;
 
         let schema = schema::serialize_schema(&self.schema, &self.ipc_fields);
 
@@ -199,12 +214,18 @@ impl<W: Write> FileWriter<W> {
         let mut builder = Builder::new();
         let footer_data = builder.finish(&root, None);
         self.writer.write_all(footer_data)?;
+        self.total_written += footer_data.len();
+
         self.writer
             .write_all(&(footer_data.len() as i32).to_le_bytes())?;
+        self.total_written += 4;
+
         self.writer.write_all(&ARROW_MAGIC_V2)?;
+        self.total_written += 6;
+
         self.writer.flush()?;
         self.state = State::Finished;
 
-        Ok(())
+        Ok(self.total_written)
     }
 }

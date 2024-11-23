@@ -9,7 +9,7 @@ use super::common::{pad_to_64, EncodedData};
 pub fn write_message<W: Write>(
     writer: &mut W,
     encoded: &EncodedData,
-) -> PolarsResult<(usize, usize)> {
+) -> PolarsResult<(usize, usize, usize)> {
     let arrow_data_len = encoded.arrow_data.len();
 
     let a = 8 - 1;
@@ -19,25 +19,29 @@ pub fn write_message<W: Write>(
     let aligned_size = (flatbuf_size + prefix_size + a) & !a;
     let padding_bytes = aligned_size - flatbuf_size - prefix_size;
 
-    write_continuation(writer, (aligned_size - prefix_size) as i32)?;
+    let mut message_size = write_continuation(writer, (aligned_size - prefix_size) as i32)?;
 
     // write the flatbuf
     if flatbuf_size > 0 {
         writer.write_all(buffer)?;
+        message_size += flatbuf_size;
     }
     // write padding
     // aligned to a 8 byte boundary, so maximum is [u8;8]
     const PADDING_MAX: [u8; 8] = [0u8; 8];
     writer.write_all(&PADDING_MAX[..padding_bytes])?;
+    message_size += padding_bytes;
 
     // write arrow data
     let body_len = if arrow_data_len > 0 {
-        write_body_buffers(writer, &encoded.arrow_data)?
+        let body_written = write_body_buffers(writer, &encoded.arrow_data)?;
+        message_size += body_written;
+        body_written
     } else {
         0
     };
 
-    Ok((aligned_size, body_len))
+    Ok((aligned_size, body_len, message_size))
 }
 
 fn write_body_buffers<W: Write>(mut writer: W, data: &[u8]) -> PolarsResult<usize> {
