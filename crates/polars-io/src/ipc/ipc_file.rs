@@ -100,28 +100,28 @@ fn check_mmap_err(err: PolarsError) -> PolarsResult<()> {
     Err(err)
 }
 
-pub struct IpcBatchedReader<R: MmapBytesReader> {
+pub struct BatchedReader<R: MmapBytesReader> {
     reader: read::FileReader<R>,
     reader_schema: ArrowSchema,
     include_file_path: Option<(PlSmallStr, Arc<str>)>,
 }
 
-impl<R: MmapBytesReader> IpcBatchedReader<R> {
+impl<R: MmapBytesReader> BatchedReader<R> {
     pub fn read_next_batch(&mut self) -> PolarsResult<Option<DataFrame>> {
         match self.reader.next_record_batch() {
-            Ok(Some(batch)) => DataFrame::try_from((batch, &self.reader_schema)).map(|mut df| {
-                if let Some((col, value)) = self.include_file_path.as_ref() {
-                    unsafe {
-                        df.with_column_unchecked(
-                            StringChunked::full(col.clone(), value, df.height()).into_series(),
-                        )
-                    };
-                }
+            Ok(Some(batch)) => {
+                DataFrame::try_from((batch, &self.reader_schema)).map(|mut df| {
+                    if let Some((col, value)) = self.include_file_path.as_ref() {
+                        unsafe {
+                            df.with_column_unchecked(StringChunked::full(col.clone(), &value, df.height()).into_series())
+                        };
+                    }
 
-                Some(df)
-            }),
+                    Some(df)
+                })
+            },
             Ok(None) => Ok(None),
-            Err(err) => Err(err),
+            Err(err) => Err(err)
         }
     }
 }
@@ -186,7 +186,7 @@ impl<R: MmapBytesReader> IpcReader<R> {
         self
     }
 
-    pub fn batched(mut self) -> PolarsResult<IpcBatchedReader<R>> {
+    pub fn batched(mut self) -> PolarsResult<BatchedReader<R>> {
         let reader_schema = if let Some(ref schema) = self.schema {
             schema.clone()
         } else {
@@ -222,7 +222,7 @@ impl<R: MmapBytesReader> IpcReader<R> {
             unimplemented!("hive partition columns not implemented for batched reader")
         };
 
-        Ok(IpcBatchedReader {
+        Ok(BatchedReader {
             reader: file_reader,
             reader_schema: reader_schema.clone(),
             include_file_path,
