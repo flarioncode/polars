@@ -763,11 +763,26 @@ impl LazyFrame {
     /// Profile a LazyFrame.
     ///
     /// This will run the query and return a tuple
+    /// containing the materialized DataFrame and a DataFrame that contains profiling information
+    /// of each node that is executed.
+    ///
+    /// The units of the timings are microseconds.
+    pub fn profile(self) -> PolarsResult<(DataFrame, DataFrame)> {
+        let (mut state, mut physical_plan, _) = self.prepare_collect(false)?;
+        state.time_nodes();
+        let out = physical_plan.execute(&mut state)?;
+        let timer_df = state.finish_timer()?;
+        Ok((out, timer_df))
+    }
+
+    /// Profile a LazyFrame.
+    ///
+    /// This will run the query and return a tuple
     /// containing the result of the materialized DataFrame and a result for the DataFrame that contains profiling information
     /// of each node that is executed.
     ///
     /// The units of the timings are microseconds.
-    pub fn profile(self) -> (PolarsResult<DataFrame>, PolarsResult<DataFrame>) {
+    pub fn try_profile(self) -> (PolarsResult<DataFrame>, PolarsResult<DataFrame>) {
         let prepare_collect_res = self.prepare_collect(false);
 
         if let Err(e) = prepare_collect_res {
