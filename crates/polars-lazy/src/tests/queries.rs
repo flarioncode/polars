@@ -1933,3 +1933,31 @@ fn test_sort_maintain_order_true() -> PolarsResult<()> {
     ]?));
     Ok(())
 }
+
+#[test]
+fn when_timers_in_profile_fail_should_not_fail_the_collect() -> PolarsResult<()> {
+    let df = df![
+        "A" => [None, Some(1)],
+    ]?
+    .lazy();
+
+    let polars_plan = df
+        //
+        .lazy()
+        .filter(col("A").is_not_null());
+
+    let (collect_result, time_result) = polars_plan.try_profile();
+
+    match (&collect_result, &time_result) {
+        // Should fail the time result
+        (_, Ok(_)) => Err(PolarsError::ComputeError(
+            "Expected the time result to fail".into(),
+        )),
+
+        // Should not fail the collect result
+        (Err(_), Err(_)) => collect_result.map(|_| ()),
+
+        // Should only fail the time result
+        (Ok(_), Err(_)) => Ok(()),
+    }
+}

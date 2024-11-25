@@ -775,6 +775,30 @@ impl LazyFrame {
         Ok((out, timer_df))
     }
 
+    /// Profile a LazyFrame.
+    ///
+    /// This will run the query and return a tuple
+    /// containing the result of the materialized DataFrame and a result for the DataFrame that contains profiling information
+    /// of each node that is executed.
+    ///
+    /// The units of the timings are microseconds.
+    pub fn try_profile(self) -> (PolarsResult<DataFrame>, PolarsResult<DataFrame>) {
+        let prepare_collect_res = self.prepare_collect(false);
+
+        if let Err(e) = prepare_collect_res {
+            return (Err(e.clone()), Err(e));
+        }
+
+        let (mut state, mut physical_plan, _) = prepare_collect_res.unwrap();
+        state.time_nodes();
+
+        let out = physical_plan.execute(&mut state);
+        let timer_df = state.finish_timer();
+
+        // Fix https://github.com/pola-rs/polars/issues/19983
+        (out, timer_df)
+    }
+
     /// Stream a query result into a parquet file. This is useful if the final result doesn't fit
     /// into memory. This methods will return an error if the query cannot be completely done in a
     /// streaming fashion.
