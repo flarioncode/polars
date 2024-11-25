@@ -814,6 +814,47 @@ pub(super) fn concat_hor(
     delimiter: &str,
     ignore_nulls: bool,
 ) -> PolarsResult<Series> {
+    // If delimiter is empty and ignore_nulls is false, we'll check for nulls in the data
+    if delimiter.is_empty() && !ignore_nulls {
+        // convert to string arrays for null checking
+        let str_series: Vec<_> = series
+            .iter()
+            .map(|s| match s.dtype() {
+                DataType::List(_) => s
+                    .cast(&DataType::List(Box::new(DataType::String))),
+                _ => s.cast(&DataType::String),
+            })
+            .collect::<PolarsResult<_>>()?;
+
+        // Check if any array has nulls, if so, return null array
+        let has_nulls = str_series.iter().any(|s| match s.dtype() {
+            DataType::List(_) => s
+                .list()
+                .unwrap()
+                .into_iter()
+                .any(|opt_series| {
+                    opt_series
+                        .map(|series| series.str().unwrap().null_count() > 0)
+                        .unwrap_or(true)
+                }),
+            _ => s.str().unwrap().null_count() > 0,
+        });
+
+        // If any array has nulls, return a full null array
+        if has_nulls {
+            return Ok(Series::full_null(
+                series[0].name().as_str().into(),
+                series[0].len(),
+                &DataType::String,
+            ));
+        }
+    }
+
+    // If we get here, either:
+    // 1. Delimiter is not empty, or
+    // 2. ignore_nulls is true, or
+    // 3. There are no nulls in the data
+    // Proceed with normal concatenation
     let str_series: Vec<_> = series
         .iter()
         .map(|s| match s.dtype() {
@@ -827,7 +868,6 @@ pub(super) fn concat_hor(
     let cas: Vec<_> = str_series.iter().map(|s| s.str().unwrap()).collect();
     Ok(polars_ops::chunked_array::hor_str_concat(&cas, delimiter, ignore_nulls)?.into_series())
 }
-
 impl From<StringFunction> for FunctionExpr {
     fn from(str: StringFunction) -> Self {
         FunctionExpr::StringExpr(str)

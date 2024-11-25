@@ -4,15 +4,18 @@ use super::*;
 /// Horizontally concat string columns in linear time
 pub fn concat_str<E: AsRef<[Expr]>>(s: E, separator: &str, ignore_nulls: bool) -> Expr {
     let input = s.as_ref().to_vec();
-    let separator = separator.into();
+    let should_ignore_nulls = if separator.is_empty() { false } else { ignore_nulls };
+    let separator: PlSmallStr = separator.into();
+
+    // For empty separator, we need to ensure nulls make the result null
+    let concat_fn = StringFunction::ConcatHorizontal {
+        delimiter: separator,
+        ignore_nulls: should_ignore_nulls,
+    };
 
     Expr::Function {
         input,
-        function: StringFunction::ConcatHorizontal {
-            delimiter: separator,
-            ignore_nulls,
-        }
-        .into(),
+        function:concat_fn.into(),
         options: FunctionOptions {
             collect_groups: ApplyOptions::ElementWise,
             flags: FunctionFlags::default()
