@@ -440,7 +440,7 @@ fn string_addition_to_linear_concat(
                     input: vec![left_e, right_e],
                     function: StringFunction::ConcatHorizontal {
                         delimiter: "".into(),
-                        ignore_nulls: false,
+                        ignore_nulls: true,
                     }
                     .into(),
                     options: FunctionOptions {

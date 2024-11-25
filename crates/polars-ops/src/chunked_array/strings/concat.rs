@@ -107,12 +107,6 @@ pub fn hor_str_concat(
                 ColumnIter::Broadcast(s) => *s,
             };
 
-            if has_null && !ignore_nulls {
-                // We know that the result must be null, but we can't just break out of the loop,
-                // because all cols iterator has to be moved correctly.
-                continue;
-            }
-
             if let Some(s) = val {
                 if found_not_null_value {
                     buf.push_str(delimiter);
@@ -121,9 +115,15 @@ pub fn hor_str_concat(
                 found_not_null_value = true;
             } else {
                 has_null = true;
+                if !ignore_nulls {
+                    // We know that the result must be null, but we can't just break out of the loop,
+                    // because all cols iterator has to be moved correctly.
+                    continue;
+                }
             }
         }
 
+        // process nulls
         if !ignore_nulls && has_null {
             builder.append_null();
         } else {

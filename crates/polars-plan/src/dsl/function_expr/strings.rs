@@ -827,7 +827,6 @@ pub(super) fn concat_hor(
     let cas: Vec<_> = str_series.iter().map(|s| s.str().unwrap()).collect();
     Ok(polars_ops::chunked_array::hor_str_concat(&cas, delimiter, ignore_nulls)?.into_series())
 }
-
 impl From<StringFunction> for FunctionExpr {
     fn from(str: StringFunction) -> Self {
         FunctionExpr::StringExpr(str)
