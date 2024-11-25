@@ -75,7 +75,7 @@ impl<W: Write> StreamWriter<W> {
         &mut self,
         columns: &RecordBatchT<Box<dyn Array>>,
         ipc_fields: Option<&[IpcField]>,
-    ) -> PolarsResult<()> {
+    ) -> PolarsResult<usize> {
         if self.finished {
             let io_err = std::io::Error::new(
                 std::io::ErrorKind::UnexpectedEof,
@@ -95,21 +95,21 @@ impl<W: Write> StreamWriter<W> {
             &self.write_options,
         )?;
 
+        let mut total_written_size = 0;
         for encoded_dictionary in encoded_dictionaries {
-            write_message(&mut self.writer, &encoded_dictionary)?;
+            write_message(&mut self.writer, &encoded_dictionary).inspect(|(_, _, message_size)| total_written_size += message_size)?;
         }
 
-        write_message(&mut self.writer, &encoded_message)?;
-        Ok(())
+        write_message(&mut self.writer, &encoded_message).map(|(_, _, message_size)| total_written_size + message_size)
     }
 
     /// Write continuation bytes, and mark the stream as done
-    pub fn finish(&mut self) -> PolarsResult<()> {
-        write_continuation(&mut self.writer, 0)?;
+    pub fn finish(&mut self) -> PolarsResult<usize> {
+        let bytes_written = write_continuation(&mut self.writer, 0)?;
 
         self.finished = true;
 
-        Ok(())
+        Ok(bytes_written)
     }
 
     /// Consumes itself, returning the inner writer.
