@@ -10,7 +10,10 @@ pub(super) fn optimize_functions(
         // is_null().any() -> null_count() > 0
         // is_not_null().any() ->  null_count() < len()
         // CORRECTNESS: we can ignore 'ignore_nulls' since is_null/is_not_null never produces NULLS
-        FunctionExpr::Boolean(BooleanFunction::Any { ignore_nulls: _ }) => {
+        FunctionExpr::Boolean(BooleanFunction::Any {
+            ignore_nulls: _,
+            force_nulls: _,
+        }) => {
             let input_node = expr_arena.get(input[0].node());
             match input_node {
                 AExpr::Function {
@@ -51,7 +54,10 @@ pub(super) fn optimize_functions(
         },
         // is_null().all() -> null_count() == len()
         // is_not_null().all() -> null_count() == 0
-        FunctionExpr::Boolean(BooleanFunction::All { ignore_nulls: _ }) => {
+        FunctionExpr::Boolean(BooleanFunction::All {
+            ignore_nulls: _,
+            force_nulls: _,
+        }) => {
             let input_node = expr_arena.get(input[0].node());
             match input_node {
                 AExpr::Function {
@@ -124,15 +130,17 @@ pub(super) fn optimize_functions(
         function @ FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
             delimiter: sep,
             ignore_nulls,
+            force_nulls,
         }) if sep.is_empty() => {
             if input
                 .iter()
-                .any(|e| is_string_concat(expr_arena.get(e.node()), *ignore_nulls))
+                .any(|e| is_string_concat(expr_arena.get(e.node()), *ignore_nulls, *force_nulls))
             {
                 let mut new_inputs = Vec::with_capacity(input.len() * 2);
 
                 for e in input {
-                    match get_string_concat_input(e.node(), expr_arena, *ignore_nulls) {
+                    match get_string_concat_input(e.node(), expr_arena, *ignore_nulls, *force_nulls)
+                    {
                         Some(inp) => new_inputs.extend_from_slice(inp),
                         None => new_inputs.push(e.clone()),
                     }
@@ -336,13 +344,17 @@ pub(super) fn optimize_functions(
 }
 
 #[cfg(all(feature = "strings", feature = "concat_str"))]
-fn is_string_concat(ae: &AExpr, ignore_nulls: bool) -> bool {
+fn is_string_concat(ae: &AExpr, ignore_nulls: bool, force_nulls: bool) -> bool {
     matches!(ae, AExpr::Function {
                 function:FunctionExpr::StringExpr(
-                    StringFunction::ConcatHorizontal{delimiter: sep, ignore_nulls: func_inore_nulls},
+                    StringFunction::ConcatHorizontal{
+                        delimiter: sep, 
+                        ignore_nulls: func_inore_nulls, 
+                        force_nulls: func_force_nulls
+                    },
                 ),
                 ..
-            } if sep.is_empty() && *func_inore_nulls == ignore_nulls)
+            } if sep.is_empty() && (*func_inore_nulls == ignore_nulls || *func_force_nulls == force_nulls))
 }
 
 #[cfg(all(feature = "strings", feature = "concat_str"))]
@@ -350,6 +362,7 @@ fn get_string_concat_input(
     node: Node,
     expr_arena: &Arena<AExpr>,
     ignore_nulls: bool,
+    force_nulls: bool,
 ) -> Option<&[ExprIR]> {
     match expr_arena.get(node) {
         AExpr::Function {
@@ -358,9 +371,14 @@ fn get_string_concat_input(
                 FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
                     delimiter: sep,
                     ignore_nulls: func_ignore_nulls,
+                    force_nulls: func_force_nulls,
                 }),
             ..
-        } if sep.is_empty() && *func_ignore_nulls == ignore_nulls => Some(input),
+        } if sep.is_empty()
+            && (*func_ignore_nulls == ignore_nulls || *func_force_nulls == force_nulls) =>
+        {
+            Some(input)
+        },
         _ => None,
     }
 }

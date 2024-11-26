@@ -13,9 +13,11 @@ use crate::{map, map_as_slice};
 pub enum BooleanFunction {
     Any {
         ignore_nulls: bool,
+        force_nulls: bool,
     },
     All {
         ignore_nulls: bool,
+        force_nulls: bool,
     },
     IsNull,
     IsNotNull,
@@ -98,8 +100,14 @@ impl From<BooleanFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
     fn from(func: BooleanFunction) -> Self {
         use BooleanFunction::*;
         match func {
-            Any { ignore_nulls } => map!(any, ignore_nulls),
-            All { ignore_nulls } => map!(all, ignore_nulls),
+            Any {
+                ignore_nulls,
+                force_nulls,
+            } => map!(any, ignore_nulls, force_nulls),
+            All {
+                ignore_nulls,
+                force_nulls,
+            } => map!(all, ignore_nulls, force_nulls),
             IsNull => map!(is_null),
             IsNotNull => map!(is_not_null),
             IsFinite => map!(is_finite),
@@ -131,18 +139,18 @@ impl From<BooleanFunction> for FunctionExpr {
     }
 }
 
-fn any(s: &Series, ignore_nulls: bool) -> PolarsResult<Series> {
+fn any(s: &Series, ignore_nulls: bool, force_nulls: bool) -> PolarsResult<Series> {
     let ca = s.bool()?;
-    if ignore_nulls {
+    if ignore_nulls || force_nulls {
         Ok(Series::new(s.name().clone(), [ca.any()]))
     } else {
         Ok(Series::new(s.name().clone(), [ca.any_kleene()]))
     }
 }
 
-fn all(s: &Series, ignore_nulls: bool) -> PolarsResult<Series> {
+fn all(s: &Series, ignore_nulls: bool, force_nulls: bool) -> PolarsResult<Series> {
     let ca = s.bool()?;
-    if ignore_nulls {
+    if ignore_nulls || force_nulls {
         Ok(Series::new(s.name().clone(), [ca.all()]))
     } else {
         Ok(Series::new(s.name().clone(), [ca.all_kleene()]))

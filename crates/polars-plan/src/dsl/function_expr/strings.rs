@@ -29,6 +29,7 @@ pub enum StringFunction {
     ConcatHorizontal {
         delimiter: PlSmallStr,
         ignore_nulls: bool,
+        force_nulls: bool,
     },
     #[cfg(feature = "concat_str")]
     ConcatVertical {
@@ -362,7 +363,8 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             ConcatHorizontal {
                 delimiter,
                 ignore_nulls,
-            } => map_as_slice!(strings::concat_hor, &delimiter, ignore_nulls),
+                force_nulls,
+            } => map_as_slice!(strings::concat_hor, &delimiter, ignore_nulls, force_nulls),
             #[cfg(feature = "regex")]
             Replace {
                 n,
@@ -813,6 +815,7 @@ pub(super) fn concat_hor(
     series: &[Series],
     delimiter: &str,
     ignore_nulls: bool,
+    force_nulls: bool,
 ) -> PolarsResult<Series> {
     let str_series: Vec<_> = series
         .iter()
@@ -825,7 +828,10 @@ pub(super) fn concat_hor(
         .collect::<PolarsResult<_>>()?;
 
     let cas: Vec<_> = str_series.iter().map(|s| s.str().unwrap()).collect();
-    Ok(polars_ops::chunked_array::hor_str_concat(&cas, delimiter, ignore_nulls)?.into_series())
+    Ok(
+        polars_ops::chunked_array::hor_str_concat(&cas, delimiter, ignore_nulls, force_nulls)?
+            .into_series(),
+    )
 }
 impl From<StringFunction> for FunctionExpr {
     fn from(str: StringFunction) -> Self {

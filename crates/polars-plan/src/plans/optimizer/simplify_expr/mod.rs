@@ -359,6 +359,7 @@ fn string_addition_to_linear_concat(
                             ref fun_l @ FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
                                 delimiter: sep_l,
                                 ignore_nulls: ignore_nulls_l,
+                                force_nulls: force_nulls_l,
                             }),
                         options,
                     },
@@ -368,6 +369,7 @@ fn string_addition_to_linear_concat(
                             FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
                                 delimiter: sep_r,
                                 ignore_nulls: ignore_nulls_r,
+                                force_nulls: force_nulls_r,
                             }),
                         ..
                     },
@@ -393,6 +395,7 @@ fn string_addition_to_linear_concat(
                             ref fun @ FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
                                 delimiter: sep,
                                 ignore_nulls,
+                                force_nulls,
                             }),
                         options,
                     },
@@ -419,6 +422,7 @@ fn string_addition_to_linear_concat(
                             ref fun @ FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
                                 delimiter: sep,
                                 ignore_nulls,
+                                force_nulls,
                             }),
                         options,
                     },
@@ -440,7 +444,8 @@ fn string_addition_to_linear_concat(
                     input: vec![left_e, right_e],
                     function: StringFunction::ConcatHorizontal {
                         delimiter: "".into(),
-                        ignore_nulls: true,
+                        ignore_nulls: false,
+                        force_nulls: true,
                     }
                     .into(),
                     options: FunctionOptions {

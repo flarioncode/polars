@@ -59,6 +59,7 @@ pub fn hor_str_concat(
     cas: &[&StringChunked],
     delimiter: &str,
     ignore_nulls: bool,
+    force_nulls: bool,
 ) -> PolarsResult<StringChunked> {
     if cas.is_empty() {
         return Ok(StringChunked::full_null(PlSmallStr::EMPTY, 0));
@@ -107,6 +108,12 @@ pub fn hor_str_concat(
                 ColumnIter::Broadcast(s) => *s,
             };
 
+            if has_null && (!ignore_nulls || force_nulls) {
+                // We know that the result must be null, but we can't just break out of the loop,
+                // because all cols iterator has to be moved correctly.
+                continue;
+            }
+
             if let Some(s) = val {
                 if found_not_null_value {
                     buf.push_str(delimiter);
@@ -115,16 +122,10 @@ pub fn hor_str_concat(
                 found_not_null_value = true;
             } else {
                 has_null = true;
-                if !ignore_nulls {
-                    // We know that the result must be null, but we can't just break out of the loop,
-                    // because all cols iterator has to be moved correctly.
-                    continue;
-                }
             }
         }
 
-        // process nulls
-        if !ignore_nulls && has_null {
+        if (!ignore_nulls || force_nulls) && has_null {
             builder.append_null();
         } else {
             builder.append_value(&buf)

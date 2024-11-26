@@ -2,7 +2,12 @@ use super::*;
 
 #[cfg(all(feature = "concat_str", feature = "strings"))]
 /// Horizontally concat string columns in linear time
-pub fn concat_str<E: AsRef<[Expr]>>(s: E, separator: &str, ignore_nulls: bool) -> Expr {
+pub fn concat_str<E: AsRef<[Expr]>>(
+    s: E,
+    separator: &str,
+    ignore_nulls: bool,
+    force_nulls: bool,
+) -> Expr {
     let input = s.as_ref().to_vec();
 
     Expr::Function {
@@ -10,6 +15,7 @@ pub fn concat_str<E: AsRef<[Expr]>>(s: E, separator: &str, ignore_nulls: bool) -
         function: StringFunction::ConcatHorizontal {
             ignore_nulls,
             delimiter: separator.into(),
+            force_nulls,
         }
         .into(),
         options: FunctionOptions {
@@ -48,7 +54,7 @@ pub fn format_str<E: AsRef<[Expr]>>(format: &str, args: E) -> PolarsResult<Expr>
         }
     }
 
-    Ok(concat_str(exprs, "", false))
+    Ok(concat_str(exprs, "", false, true))
 }
 
 /// Concat binary blobs
