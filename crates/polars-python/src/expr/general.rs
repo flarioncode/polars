@@ -864,11 +864,11 @@ impl PyExpr {
             .into()
     }
 
-    fn any(&self, ignore_nulls: bool, force_nulls: bool) -> Self {
-        self.inner.clone().any(ignore_nulls, force_nulls).into()
+    fn any(&self, ignore_nulls: bool) -> Self {
+        self.inner.clone().any(ignore_nulls).into()
     }
-    fn all(&self, ignore_nulls: bool, force_nulls: bool) -> Self {
-        self.inner.clone().all(ignore_nulls, force_nulls).into()
+    fn all(&self, ignore_nulls: bool) -> Self {
+        self.inner.clone().all(ignore_nulls).into()
     }
 
     fn log(&self, base: f64) -> Self {

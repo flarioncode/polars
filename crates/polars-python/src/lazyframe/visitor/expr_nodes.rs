@@ -1027,14 +1027,12 @@ pub(crate) fn into_py(py: Python<'_>, expr: &AExpr) -> PyResult<PyObject> {
                         .into_py(py),
                 },
                 FunctionExpr::Boolean(boolfun) => match boolfun {
-                    BooleanFunction::Any {
-                        ignore_nulls,
-                        force_nulls,
-                    } => (PyBooleanFunction::Any, *ignore_nulls, *force_nulls).into_py(py),
-                    BooleanFunction::All {
-                        ignore_nulls,
-                        force_nulls,
-                    } => (PyBooleanFunction::All, *ignore_nulls, *force_nulls).into_py(py),
+                    BooleanFunction::Any { ignore_nulls } => {
+                        (PyBooleanFunction::Any, *ignore_nulls).into_py(py)
+                    },
+                    BooleanFunction::All { ignore_nulls } => {
+                        (PyBooleanFunction::All, *ignore_nulls).into_py(py)
+                    },
                     BooleanFunction::IsNull => (PyBooleanFunction::IsNull,).into_py(py),
                     BooleanFunction::IsNotNull => (PyBooleanFunction::IsNotNull,).into_py(py),
                     BooleanFunction::IsFinite => (PyBooleanFunction::IsFinite,).into_py(py),

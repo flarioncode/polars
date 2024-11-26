@@ -1765,18 +1765,12 @@ impl Expr {
     /// is null.
     ///
     /// [Kleene logic]: https://en.wikipedia.org/wiki/Three-valued_logic
-    pub fn any(self, ignore_nulls: bool, force_nulls: bool) -> Self {
-        self.apply_private(
-            BooleanFunction::Any {
-                ignore_nulls,
-                force_nulls,
-            }
-            .into(),
-        )
-        .with_function_options(|mut opt| {
-            opt.flags |= FunctionFlags::RETURNS_SCALAR;
-            opt
-        })
+    pub fn any(self, ignore_nulls: bool) -> Self {
+        self.apply_private(BooleanFunction::Any { ignore_nulls }.into())
+            .with_function_options(|mut opt| {
+                opt.flags |= FunctionFlags::RETURNS_SCALAR;
+                opt
+            })
     }
 
     /// Returns whether all values in the column are `true`.
@@ -1786,18 +1780,12 @@ impl Expr {
     /// is null.
     ///
     /// [Kleene logic]: https://en.wikipedia.org/wiki/Three-valued_logic
-    pub fn all(self, ignore_nulls: bool, force_nulls: bool) -> Self {
-        self.apply_private(
-            BooleanFunction::All {
-                ignore_nulls,
-                force_nulls,
-            }
-            .into(),
-        )
-        .with_function_options(|mut opt| {
-            opt.flags |= FunctionFlags::RETURNS_SCALAR;
-            opt
-        })
+    pub fn all(self, ignore_nulls: bool) -> Self {
+        self.apply_private(BooleanFunction::All { ignore_nulls }.into())
+            .with_function_options(|mut opt| {
+                opt.flags |= FunctionFlags::RETURNS_SCALAR;
+                opt
+            })
     }
 
     /// Shrink numeric columns to the minimal required datatype

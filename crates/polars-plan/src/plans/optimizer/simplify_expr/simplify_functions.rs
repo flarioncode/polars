@@ -10,10 +10,7 @@ pub(super) fn optimize_functions(
         // is_null().any() -> null_count() > 0
         // is_not_null().any() ->  null_count() < len()
         // CORRECTNESS: we can ignore 'ignore_nulls' since is_null/is_not_null never produces NULLS
-        FunctionExpr::Boolean(BooleanFunction::Any {
-            ignore_nulls: _,
-            force_nulls: _,
-        }) => {
+        FunctionExpr::Boolean(BooleanFunction::Any { ignore_nulls: _ }) => {
             let input_node = expr_arena.get(input[0].node());
             match input_node {
                 AExpr::Function {
@@ -54,10 +51,7 @@ pub(super) fn optimize_functions(
         },
         // is_null().all() -> null_count() == len()
         // is_not_null().all() -> null_count() == 0
-        FunctionExpr::Boolean(BooleanFunction::All {
-            ignore_nulls: _,
-            force_nulls: _,
-        }) => {
+        FunctionExpr::Boolean(BooleanFunction::All { ignore_nulls: _ }) => {
             let input_node = expr_arena.get(input[0].node());
             match input_node {
                 AExpr::Function {
