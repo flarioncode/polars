@@ -72,6 +72,28 @@ impl SerPrimitive for f64 {
 ///////////////////// FLARION CODE - BEGIN
 ////////////////////////////////////////////////////////////////////////////////////
 
+/// Generic remainder cast using bit operations for any integer downcast
+#[inline(always)]
+fn primitive_as_remainder<T: NativeType + AsPrimitive<O>, O: NativeType>(
+    from: &PrimitiveArray<T>, 
+    mask: T,
+    max_val: O,
+    offset: O,
+    to_type: ArrowDataType,
+) -> PrimitiveArray<O> {
+    let values = from
+        .values()
+        .iter()
+        .map(|&x| {
+            // Compute remainder with bit mask
+            let rem = (x & mask).as_();
+            // Adjust if result > max allowed value
+            if rem > max_val { rem - offset } else { rem }
+        });
+
+    PrimitiveArray::<O>::from_trusted_len_iter(values).to(to_type)
+}
+
 // i64 -> i32 (mask with 0xFFFFFFFF for 32 bits)
 #[inline(always)]
 pub fn i64_as_i32_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i32> {
