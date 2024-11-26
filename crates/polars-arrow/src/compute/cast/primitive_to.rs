@@ -114,10 +114,23 @@ where
     O: NativeType + PartialOrd + AsPrimitive<i32>,
     i32: AsPrimitive<O>,
 {
-    if value >= I32_MAX_F64 {
-        (-1_i32).as_()
-    } else if value <= I32_MIN_F64 {
+    if value.is_nan() {
+        // Spark converts NaN to 0
         0_i32.as_()
+    } else if value.is_infinite() {
+        if value.is_sign_positive() {
+            // Positive infinity -> INT_MAX
+            i32::MAX.as_()
+        } else {
+            // Negative infinity -> INT_MIN
+            i32::MIN.as_()
+        }
+    } else if value >= I32_MAX_F64 {
+        // Values larger than MAX -> INT_MAX
+        i32::MAX.as_()
+    } else if value <= I32_MIN_F64 {
+        // Values smaller than MIN -> INT_MIN
+        i32::MIN.as_()
     } else {
         let as_i32 = value as i32;
         let rem = (as_i32 & mask).as_();
@@ -129,26 +142,47 @@ where
     }
 }
 
-/// Fast float to i64 casting with saturation at bounds
-#[inline(always)]
-fn float_to_i64_saturating(value: f64) -> i64 {
-    if value >= I64_MAX_F64 {
-        i64::MAX
-    } else if value <= I64_MIN_F64 {
-        i64::MIN
-    } else {
-        value as i64
-    }
-}
-
 #[inline(always)]
 fn float_to_i32_saturating(value: f64) -> i32 {
-    if value >= I32_MAX_F64 {
+    if value.is_nan() {
+        // Spark converts NaN to 0
+        0
+    } else if value.is_infinite() {
+        if value.is_sign_positive() {
+            // Positive infinity -> INT_MAX
+            i32::MAX
+        } else {
+            // Negative infinity -> INT_MIN
+            i32::MIN
+        }
+    } else if value >= I32_MAX_F64 {
         i32::MAX
     } else if value <= I32_MIN_F64 {
         i32::MIN
     } else {
         value as i32
+    }
+}
+
+#[inline(always)]
+fn float_to_i64_saturating(value: f64) -> i64 {
+    if value.is_nan() {
+        // Spark converts NaN to 0
+        0
+    } else if value.is_infinite() {
+        if value.is_sign_positive() {
+            // Positive infinity -> LONG_MAX
+            i64::MAX
+        } else {
+            // Negative infinity -> LONG_MIN
+            i64::MIN
+        }
+    } else if value >= I64_MAX_F64 {
+        i64::MAX
+    } else if value <= I64_MIN_F64 {
+        i64::MIN
+    } else {
+        value as i64
     }
 }
 
@@ -160,9 +194,10 @@ pub fn f64_as_i8_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i8> {
     let offset = (i8::MAX as i16).abs() + 1; // offset is 128, stored as i16
     let offset = offset as i32; // Ensure offset is i32 for function parameter
 
-    let values = from.values().iter().map(|&x| {
-        float_to_int_remainder(x, 0xFF, i8::MAX, offset)
-    });
+    let values = from
+        .values()
+        .iter()
+        .map(|&x| float_to_int_remainder(x, 0xFF, i8::MAX, offset));
 
     let arr = PrimitiveArray::<i8>::from_vec(values.collect());
     if let Some(validity) = validity {
@@ -178,11 +213,12 @@ pub fn f64_as_i16_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i16> {
     let validity = from.validity().cloned();
 
     let offset = (i16::MAX as i32).abs() + 1; // offset is 32,768
-    // offset is already i32
+                                              // offset is already i32
 
-    let values = from.values().iter().map(|&x| {
-        float_to_int_remainder(x, 0xFFFF, i16::MAX, offset)
-    });
+    let values = from
+        .values()
+        .iter()
+        .map(|&x| float_to_int_remainder(x, 0xFFFF, i16::MAX, offset));
 
     let arr = PrimitiveArray::<i16>::from_vec(values.collect());
     if let Some(validity) = validity {
