@@ -282,18 +282,20 @@ impl<W: Write + Seek> IpcStreamBatchedWriter<W> {
         Ok(())
     }
 
-    // You really shouldn't call anything after this ngl
-    pub fn finish(mut self) -> PolarsResult<usize> {
+    /// WARNING: calling this if you opened the File without read permissions will hang! 
+    pub fn finish(mut self, use_stream_position: bool) -> PolarsResult<usize> {
         self.writer
             .finish()
             .map(|continuation_size| self.total_written_bytes += continuation_size)?;
 
-        if let Ok(pos) = self.writer.into_inner().stream_position() {
-            Ok(pos as usize)
-        } else {
-            eprintln!("Could not get stream position, defaulting to estimated size");
-            Ok(self.total_written_bytes)
+        if use_stream_position {
+            if let Ok(pos) = self.writer.into_inner().stream_position() {
+                return Ok(pos as usize);
+            } else {
+                eprintln!("Could not get stream position, defaulting to estimated size");
+            }
         }
+        Ok(self.total_written_bytes)
     }
 }
 
