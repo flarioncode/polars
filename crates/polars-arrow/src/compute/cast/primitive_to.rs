@@ -110,15 +110,10 @@ where
 /// Fast float to i8/i16/i32 casting with remainder for values in i32 range
 /// and saturating to 0/-1 for larger values
 #[inline(always)]
-fn f64_to_int_remainder<O>(
-    value: f64,
-    mask: i32,
-    max_val: O,
-    offset: O,
-) -> O 
-where 
+fn f64_to_int_remainder<O>(value: f64, mask: i32, max_val: O, offset: O) -> O
+where
     O: NativeType + PartialOrd + Sub<Output = O>,
-    i32: AsPrimitive<O>
+    i32: AsPrimitive<O>,
 {
     if value >= I32_MAX_F64 {
         (-1_i32).as_()
@@ -128,7 +123,11 @@ where
         // Safe to cast to i32 here since we're in range
         let as_i32 = value as i32;
         let rem = (as_i32 & mask).as_();
-        if rem > max_val { rem - offset } else { rem }
+        if rem > max_val {
+            rem - offset
+        } else {
+            rem
+        }
     }
 }
 
@@ -153,7 +152,12 @@ pub fn f64_as_i8_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i8> {
         })
     } else {
         from.values().iter().map(|&x| {
-            Some(float_to_int_remainder(x, 0xFF, i8::MAX, (-(i8::MIN as i32)) as i8))
+            Some(float_to_int_remainder(
+                x,
+                0xFF,
+                i8::MAX,
+                (-(i8::MIN as i32)) as i8,
+            ))
         })
     };
 
@@ -168,7 +172,12 @@ pub fn f64_as_i16_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i16> {
         })
     } else {
         from.values().iter().map(|&x| {
-            Some(float_to_int_remainder(x, 0xFFFF, i16::MAX, (-(i16::MIN as i32)) as i16))
+            Some(float_to_int_remainder(
+                x,
+                0xFFFF,
+                i16::MAX,
+                (-(i16::MIN as i32)) as i16,
+            ))
         })
     };
 
@@ -178,13 +187,12 @@ pub fn f64_as_i16_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i16> {
 #[inline(always)]
 pub fn f64_as_i32_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i32> {
     let values = if from.validity().is_some() {
-        from.iter().map(|opt_x| {
-            opt_x.map(|&x| float_to_int_remainder(x, 0xFFFFFFFF, i32::MAX, -i32::MIN))
-        })
+        from.iter()
+            .map(|opt_x| opt_x.map(|&x| float_to_int_remainder(x, 0xFFFFFFFF, i32::MAX, -i32::MIN)))
     } else {
-        from.values().iter().map(|&x| {
-            Some(float_to_int_remainder(x, 0xFFFFFFFF, i32::MAX, -i32::MIN))
-        })
+        from.values()
+            .iter()
+            .map(|&x| Some(float_to_int_remainder(x, 0xFFFFFFFF, i32::MAX, -i32::MIN)))
     };
 
     PrimitiveArray::<i32>::from_trusted_len_iter(values).to(ArrowDataType::Int32)
@@ -193,13 +201,12 @@ pub fn f64_as_i32_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i32> {
 #[inline(always)]
 pub fn f64_as_i64_saturating(from: &PrimitiveArray<f64>) -> PrimitiveArray<i64> {
     let values = if from.validity().is_some() {
-        from.iter().map(|opt_x| {
-            opt_x.map(|&x| float_to_i64_saturating(x))
-        })
+        from.iter()
+            .map(|opt_x| opt_x.map(|&x| float_to_i64_saturating(x)))
     } else {
-        from.values().iter().map(|&x| {
-            Some(float_to_i64_saturating(x))
-        })
+        from.values()
+            .iter()
+            .map(|&x| Some(float_to_i64_saturating(x)))
     };
 
     PrimitiveArray::<i64>::from_trusted_len_iter(values).to(ArrowDataType::Int64)
