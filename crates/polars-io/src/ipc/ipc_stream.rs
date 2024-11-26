@@ -33,7 +33,7 @@
 //! let df_read = IpcStreamReader::new(buf).finish().unwrap();
 //! assert!(df.equals(&df_read));
 //! ```
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 use std::path::PathBuf;
 
 use arrow::io::ipc::read::{StreamMetadata, StreamState};
@@ -255,7 +255,7 @@ pub struct IpcStreamBatchedWriter<W: Write> {
     total_written_bytes: usize,
 }
 
-impl<W: Write> IpcStreamBatchedWriter<W> {
+impl<W: Write + Seek> IpcStreamBatchedWriter<W> {
     pub fn write_batch(&mut self, df: &mut DataFrame) -> PolarsResult<()> {
         if df.is_empty() {
             return Ok(());
@@ -282,10 +282,18 @@ impl<W: Write> IpcStreamBatchedWriter<W> {
         Ok(())
     }
 
+    // You really shouldn't call anything after this ngl
     pub fn finish(mut self) -> PolarsResult<usize> {
         self.writer
             .finish()
-            .map(|continuation_size| self.total_written_bytes + continuation_size)
+            .map(|continuation_size| self.total_written_bytes += continuation_size)?;
+
+        if let Ok(pos) = self.writer.into_inner().stream_position() {
+            Ok(pos as usize)
+        } else {
+            eprintln!("Could not get stream position, defaulting to estimated size");
+            Ok(self.total_written_bytes)
+        }
     }
 }
 
