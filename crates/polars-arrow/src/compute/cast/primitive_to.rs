@@ -86,16 +86,17 @@ where
     T: NativeType + BitAnd<Output = T> + AsPrimitive<O>,
     O: NativeType + PartialOrd + Sub<Output = O>,
 {
-    let values = from
-        .values()
-        .iter()
-        .map(|&x| {
-            // For each value, wrap in Some() to handle nullability
-            Some({
-                let rem = (x & mask).as_();
-                if rem > max_val { rem - offset } else { rem }
-            })
-        });
+    let values = from.values().iter().map(|&x| {
+        // For each value, wrap in Some() to handle nullability
+        Some({
+            let rem = (x & mask).as_();
+            if rem > max_val {
+                rem - offset
+            } else {
+                rem
+            }
+        })
+    });
 
     PrimitiveArray::<O>::from_trusted_len_iter(values).to(to_type)
 }
@@ -108,11 +109,11 @@ pub fn i64_as_i32_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i32> {
         0xFFFFFFFF,
         i32::MAX,
         (-(i32::MIN as i64)) as i32,
-        ArrowDataType::Int32
+        ArrowDataType::Int32,
     )
 }
 
-// i64 -> i16 (mask with 0xFFFF for 16 bits) 
+// i64 -> i16 (mask with 0xFFFF for 16 bits)
 #[inline(always)]
 pub fn i64_as_i16_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i16> {
     primitive_as_remainder(
@@ -120,7 +121,7 @@ pub fn i64_as_i16_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i16> {
         0xFFFF,
         i16::MAX,
         (-(i16::MIN as i64)) as i16,
-        ArrowDataType::Int16
+        ArrowDataType::Int16,
     )
 }
 
@@ -132,7 +133,7 @@ pub fn i64_as_i8_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i8> {
         0xFF,
         i8::MAX,
         (-(i8::MIN as i64)) as i8,
-        ArrowDataType::Int8
+        ArrowDataType::Int8,
     )
 }
 
@@ -144,7 +145,7 @@ pub fn i32_as_i16_remainder(from: &PrimitiveArray<i32>) -> PrimitiveArray<i16> {
         0xFFFF,
         i16::MAX,
         (-(i16::MIN as i32)) as i16,
-        ArrowDataType::Int16
+        ArrowDataType::Int16,
     )
 }
 
@@ -156,7 +157,7 @@ pub fn i32_as_i8_remainder(from: &PrimitiveArray<i32>) -> PrimitiveArray<i8> {
         0xFF,
         i8::MAX,
         (-(i8::MIN as i32)) as i8,
-        ArrowDataType::Int8
+        ArrowDataType::Int8,
     )
 }
 
