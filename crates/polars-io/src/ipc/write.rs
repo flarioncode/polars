@@ -62,7 +62,7 @@ impl<W: Write> IpcWriter<W> {
         self
     }
 
-    pub fn batched(self, schema: &Schema) -> PolarsResult<BatchedWriter<W>> {
+    pub fn batched(self, schema: &Schema) -> PolarsResult<IpcBatchedWriter<W>> {
         let schema = schema_to_arrow_checked(schema, self.compat_level, "ipc")?;
         let mut writer = write::FileWriter::new(
             self.writer,
@@ -74,7 +74,7 @@ impl<W: Write> IpcWriter<W> {
         );
         writer.start()?;
 
-        Ok(BatchedWriter {
+        Ok(IpcBatchedWriter {
             writer,
             compat_level: self.compat_level,
         })
@@ -114,12 +114,12 @@ where
     }
 }
 
-pub struct BatchedWriter<W: Write> {
+pub struct IpcBatchedWriter<W: Write> {
     writer: write::FileWriter<W>,
     compat_level: CompatLevel,
 }
 
-impl<W: Write> BatchedWriter<W> {
+impl<W: Write> IpcBatchedWriter<W> {
     /// Write a batch to the parquet writer.
     ///
     /// # Panics
