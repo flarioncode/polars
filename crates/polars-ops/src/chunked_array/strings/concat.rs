@@ -155,11 +155,11 @@ mod test {
         let a = StringChunked::new("a".into(), &["foo", "bar"]);
         let b = StringChunked::new("b".into(), &["spam", "ham"]);
 
-        let out = hor_str_concat(&[&a, &b], "_", true).unwrap();
+        let out = hor_str_concat(&[&a, &b], "_", true, false).unwrap();
         assert_eq!(Vec::from(&out), &[Some("foo_spam"), Some("bar_ham")]);
 
         let c = StringChunked::new("b".into(), &["literal"]);
-        let out = hor_str_concat(&[&a, &b, &c], "_", true).unwrap();
+        let out = hor_str_concat(&[&a, &b, &c], "_", true, false).unwrap();
         assert_eq!(
             Vec::from(&out),
             &[Some("foo_spam_literal"), Some("bar_ham_literal")]
