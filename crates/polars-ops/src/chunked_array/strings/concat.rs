@@ -59,6 +59,7 @@ pub fn hor_str_concat(
     cas: &[&StringChunked],
     delimiter: &str,
     ignore_nulls: bool,
+    force_nulls: bool,
 ) -> PolarsResult<StringChunked> {
     if cas.is_empty() {
         return Ok(StringChunked::full_null(PlSmallStr::EMPTY, 0));
@@ -107,7 +108,7 @@ pub fn hor_str_concat(
                 ColumnIter::Broadcast(s) => *s,
             };
 
-            if has_null && !ignore_nulls {
+            if has_null && (!ignore_nulls || force_nulls) {
                 // We know that the result must be null, but we can't just break out of the loop,
                 // because all cols iterator has to be moved correctly.
                 continue;
@@ -124,7 +125,7 @@ pub fn hor_str_concat(
             }
         }
 
-        if !ignore_nulls && has_null {
+        if (!ignore_nulls || force_nulls) && has_null {
             builder.append_null();
         } else {
             builder.append_value(&buf)
@@ -154,11 +155,11 @@ mod test {
         let a = StringChunked::new("a".into(), &["foo", "bar"]);
         let b = StringChunked::new("b".into(), &["spam", "ham"]);
 
-        let out = hor_str_concat(&[&a, &b], "_", true).unwrap();
+        let out = hor_str_concat(&[&a, &b], "_", true, false).unwrap();
         assert_eq!(Vec::from(&out), &[Some("foo_spam"), Some("bar_ham")]);
 
         let c = StringChunked::new("b".into(), &["literal"]);
-        let out = hor_str_concat(&[&a, &b, &c], "_", true).unwrap();
+        let out = hor_str_concat(&[&a, &b, &c], "_", true, false).unwrap();
         assert_eq!(
             Vec::from(&out),
             &[Some("foo_spam_literal"), Some("bar_ham_literal")]

@@ -200,9 +200,14 @@ pub fn concat_list(s: Vec<PyExpr>) -> PyResult<PyExpr> {
 }
 
 #[pyfunction]
-pub fn concat_str(s: Vec<PyExpr>, separator: &str, ignore_nulls: bool) -> PyExpr {
+pub fn concat_str(
+    s: Vec<PyExpr>,
+    separator: &str,
+    ignore_nulls: bool,
+    force_nulls: bool,
+) -> PyExpr {
     let s = s.into_iter().map(|e| e.inner).collect::<Vec<_>>();
-    dsl::concat_str(s, separator, ignore_nulls).into()
+    dsl::concat_str(s, separator, ignore_nulls, force_nulls).into()
 }
 
 #[pyfunction]

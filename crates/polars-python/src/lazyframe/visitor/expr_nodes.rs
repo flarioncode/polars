@@ -762,10 +762,12 @@ pub(crate) fn into_py(py: Python<'_>, expr: &AExpr) -> PyResult<PyObject> {
                     StringFunction::ConcatHorizontal {
                         delimiter,
                         ignore_nulls,
+                        force_nulls,
                     } => (
                         PyStringFunction::ConcatHorizontal.into_py(py),
                         delimiter.as_str(),
                         ignore_nulls,
+                        force_nulls,
                     )
                         .to_object(py),
                     StringFunction::ConcatVertical {

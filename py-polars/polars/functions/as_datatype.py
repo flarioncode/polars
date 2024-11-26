@@ -620,6 +620,7 @@ def concat_str(
     *more_exprs: IntoExpr,
     separator: str = "",
     ignore_nulls: bool = False,
+    force_nulls: bool = True,
 ) -> Expr:
     """
     Horizontally concatenate columns into a single string column.
@@ -674,7 +675,7 @@ def concat_str(
     └─────┴──────┴──────┴───────────────┘
     """
     exprs = parse_into_list_of_expressions(exprs, *more_exprs)
-    return wrap_expr(plr.concat_str(exprs, separator, ignore_nulls))
+    return wrap_expr(plr.concat_str(exprs, separator, ignore_nulls, force_nulls))
 
 
 def format(f_string: str, *args: Expr | str) -> Expr:
