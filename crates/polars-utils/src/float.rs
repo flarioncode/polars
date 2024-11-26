@@ -1,3 +1,4 @@
+
 /// # Safety
 /// unsafe code downstream relies on the correct is_float call
 pub unsafe trait IsFloat: private::Sealed {
