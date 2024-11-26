@@ -93,7 +93,6 @@ where
     O: NativeType + PartialOrd + Sub<Output = O>,
 {
     let values = from.values().iter().map(|&x| {
-        // For each value, wrap in Some() to handle nullability
         Some({
             let rem = (x & mask).as_();
             if rem > max_val {
@@ -110,23 +109,22 @@ where
 /// Fast float to i8/i16/i32 casting with remainder for values in i32 range
 /// and saturating to 0/-1 for larger values
 #[inline(always)]
-fn float_to_int_remainder<O>(value: f64, mask: i32, max_val: O, offset: O) -> O
+fn float_to_int_remainder<O>(value: f64, mask: i32, max_val: O, offset: i32) -> O
 where
-    O: NativeType + PartialOrd + Sub<Output = O>,
-    i32: AsPrimitive<O>,
+    O: NativeType + PartialOrd + From<i32> + AsPrimitive<i32>,
 {
     if value >= I32_MAX_F64 {
-        (-1_i32).as_()
+        (-1_i32).into()
     } else if value <= I32_MIN_F64 {
-        0_i32.as_()
+        0_i32.into()
     } else {
-        // Safe to cast to i32 here since we're in range
         let as_i32 = value as i32;
-        let rem = (as_i32 & mask).as_();
-        if rem > max_val {
-            rem - offset
+        let rem = as_i32 & mask;
+        let max_val_i32: i32 = max_val.as_();
+        if rem > max_val_i32 {
+            (rem - offset).into()
         } else {
-            rem
+            rem.into()
         }
     }
 }
@@ -146,10 +144,11 @@ fn float_to_i64_saturating(value: f64) -> i64 {
 #[inline(always)]
 pub fn f64_as_i8_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i8> {
     let validity = from.validity().cloned();
+    let offset = (-i8::MIN) as i32; // offset = 128
     let values = from
         .values()
         .iter()
-        .map(|&x| float_to_int_remainder(x, 0xFF, i8::MAX, i8::MAX.abs() + 1));
+        .map(|&x| float_to_int_remainder(x, 0xFF, i8::MAX, offset));
 
     let arr = PrimitiveArray::<i8>::from_vec(values.collect());
     if let Some(validity) = validity {
@@ -163,10 +162,11 @@ pub fn f64_as_i8_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i8> {
 #[inline(always)]
 pub fn f64_as_i16_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i16> {
     let validity = from.validity().cloned();
+    let offset = (-i16::MIN) as i32; // offset = 32,768
     let values = from
         .values()
         .iter()
-        .map(|&x| float_to_int_remainder(x, 0xFFFF, i16::MAX, i16::MAX.abs() + 1));
+        .map(|&x| float_to_int_remainder(x, 0xFFFF, i16::MAX, offset));
 
     let arr = PrimitiveArray::<i16>::from_vec(values.collect());
     if let Some(validity) = validity {
@@ -180,10 +180,11 @@ pub fn f64_as_i16_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i16> {
 #[inline(always)]
 pub fn f64_as_i32_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i32> {
     let validity = from.validity().cloned();
+    let offset = (-i32::MIN) as i32; // offset = 2,147,483,648
     let values = from
         .values()
         .iter()
-        .map(|&x| float_to_int_remainder(x, 0x7FFFFFFF, i32::MAX, i32::MAX));
+        .map(|&x| float_to_int_remainder(x, 0x7FFFFFFF, i32::MAX, offset));
 
     let arr = PrimitiveArray::<i32>::from_vec(values.collect());
     if let Some(validity) = validity {
