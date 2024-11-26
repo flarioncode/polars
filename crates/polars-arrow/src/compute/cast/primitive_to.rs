@@ -193,17 +193,6 @@ pub fn f64_as_i16_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i16> {
     .to(ArrowDataType::Int16)
 }
 
-
-    let arr = PrimitiveArray::<i32>::from_vec(values.collect());
-    if let Some(validity) = validity {
-        arr.with_validity(Some(validity))
-    } else {
-        arr
-    }
-    .to(ArrowDataType::Int32)
-}
-*/
-
 #[inline(always)]
 pub fn f64_as_i32_saturating(from: &PrimitiveArray<f64>) -> PrimitiveArray<i32> {
     let validity = from.validity().cloned();
