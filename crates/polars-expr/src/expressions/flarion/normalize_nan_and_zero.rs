@@ -7,15 +7,14 @@ use polars_core::frame::DataFrame;
 use polars_core::prelude::{GroupsProxy, IntoSeries, Schema, Series};
 use polars_core::POOL;
 use polars_plan::dsl::Expr;
+
 use crate::expressions::{AggregationContext, PhysicalExpr};
 use crate::prelude::ExecutionState;
 
 fn normalize_series_with_dtype<const IS_AGG: bool>(input_series: &Series) -> PolarsResult<Series> {
     Ok(match input_series.dtype() {
-        DataType::Float32 => input_series
-            .f32()?.to_canonical().into_series(),
-        DataType::Float64 => input_series
-            .f64()?.to_canonical().into_series(),
+        DataType::Float32 => input_series.f32()?.to_canonical().into_series(),
+        DataType::Float64 => input_series.f64()?.to_canonical().into_series(),
         DataType::List(inner) if IS_AGG && inner.is_float() => {
             let normalized_list = input_series.list()?;
             Series::from(ListChunked::from_iter(

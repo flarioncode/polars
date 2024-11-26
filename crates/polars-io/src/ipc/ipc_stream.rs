@@ -82,7 +82,10 @@ impl<R: Read> IpcStreamBatchedReader<R> {
     pub fn read_next_batch(&mut self) -> PolarsResult<Option<DataFrame>> {
         match self.reader.next_record_batch()? {
             None => Ok(None),
-            Some(record_batch) => Ok(Some(DataFrame::try_from((record_batch, &self.reader_schema)).inspect_err(|err| eprintln!("Error after reading record_batch: {err}"))?)),
+            Some(record_batch) => Ok(Some(
+                DataFrame::try_from((record_batch, &self.reader_schema))
+                    .inspect_err(|err| eprintln!("Error after reading record_batch: {err}"))?,
+            )),
         }
     }
 
@@ -154,7 +157,10 @@ impl<R: Read> IpcStreamReader<R> {
 
         let ipc_reader = read::StreamReader::new(self.reader, metadata.clone(), self.projection);
 
-        Ok(IpcStreamBatchedReader { reader: ipc_reader, reader_schema: schema })
+        Ok(IpcStreamBatchedReader {
+            reader: ipc_reader,
+            reader_schema: schema,
+        })
     }
 }
 
@@ -282,7 +288,7 @@ impl<W: Write + Seek> IpcStreamBatchedWriter<W> {
         Ok(())
     }
 
-    /// WARNING: calling this if you opened the File without read permissions will hang! 
+    /// WARNING: calling this if you opened the File without read permissions will hang!
     pub fn finish(mut self, use_stream_position: bool) -> PolarsResult<usize> {
         self.writer
             .finish()
