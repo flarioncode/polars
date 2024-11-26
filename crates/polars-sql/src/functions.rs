@@ -1013,7 +1013,7 @@ impl SQLFunctionVisitor<'_> {
                 if args.is_empty() {
                     polars_bail!(SQLSyntax: "CONCAT expects at least 1 argument (found 0)");
                 } else {
-                    self.visit_variadic(|exprs: &[Expr]| concat_str(exprs, "", true))
+                    self.visit_variadic(|exprs: &[Expr]| concat_str(exprs, "", true, true))
                 }
             },
             ConcatWS => {
@@ -1023,7 +1023,7 @@ impl SQLFunctionVisitor<'_> {
                 } else {
                     self.try_visit_variadic(|exprs: &[Expr]| {
                         match &exprs[0] {
-                            Expr::Literal(LiteralValue::String(s)) => Ok(concat_str(&exprs[1..], s, true)),
+                            Expr::Literal(LiteralValue::String(s)) => Ok(concat_str(&exprs[1..], s, true, true)),
                             _ => polars_bail!(SQLSyntax: "CONCAT_WS 'separator' must be a literal string (found {:?})", exprs[0]),
                         }
                     })
