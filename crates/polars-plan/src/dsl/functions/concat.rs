@@ -9,12 +9,13 @@ pub fn concat_str<E: AsRef<[Expr]>>(
     force_nulls: bool,
 ) -> Expr {
     let input = s.as_ref().to_vec();
+    let separator = separator.into();
 
     Expr::Function {
         input,
         function: StringFunction::ConcatHorizontal {
             ignore_nulls,
-            delimiter: separator.into(),
+            delimiter: separator,
             force_nulls,
         }
         .into(),
