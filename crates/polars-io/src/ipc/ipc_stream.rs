@@ -33,7 +33,7 @@
 //! let df_read = IpcStreamReader::new(buf).finish().unwrap();
 //! assert!(df.equals(&df_read));
 //! ```
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 use std::path::PathBuf;
 
 use arrow::io::ipc::read::{StreamMetadata, StreamState};
@@ -74,16 +74,23 @@ pub struct IpcStreamReader<R> {
 }
 
 pub struct IpcStreamBatchedReader<R: Read> {
-    ipc_reader: read::StreamReader<R>,
-    schema: ArrowSchema,
+    reader: read::StreamReader<R>,
+    reader_schema: ArrowSchema,
 }
 
 impl<R: Read> IpcStreamBatchedReader<R> {
-    pub fn next_batch(&mut self) -> PolarsResult<Option<DataFrame>> {
-        match self.ipc_reader.next_record_batch()? {
+    pub fn read_next_batch(&mut self) -> PolarsResult<Option<DataFrame>> {
+        match self.reader.next_record_batch()? {
             None => Ok(None),
-            Some(record_batch) => Ok(Some(DataFrame::try_from((record_batch, &self.schema))?)),
+            Some(record_batch) => Ok(Some(
+                DataFrame::try_from((record_batch, &self.reader_schema))
+                    .inspect_err(|err| eprintln!("Error after reading record_batch: {err}"))?,
+            )),
         }
+    }
+
+    pub fn schema(&self) -> Schema {
+        Schema::from_arrow_schema(&self.reader_schema)
     }
 }
 
@@ -150,7 +157,10 @@ impl<R: Read> IpcStreamReader<R> {
 
         let ipc_reader = read::StreamReader::new(self.reader, metadata.clone(), self.projection);
 
-        Ok(IpcStreamBatchedReader { ipc_reader, schema })
+        Ok(IpcStreamBatchedReader {
+            reader: ipc_reader,
+            reader_schema: schema,
+        })
     }
 }
 
@@ -251,7 +261,7 @@ pub struct IpcStreamBatchedWriter<W: Write> {
     total_written_bytes: usize,
 }
 
-impl<W: Write> IpcStreamBatchedWriter<W> {
+impl<W: Write + Seek> IpcStreamBatchedWriter<W> {
     pub fn write_batch(&mut self, df: &mut DataFrame) -> PolarsResult<()> {
         if df.is_empty() {
             return Ok(());
@@ -278,10 +288,20 @@ impl<W: Write> IpcStreamBatchedWriter<W> {
         Ok(())
     }
 
-    pub fn finish(mut self) -> PolarsResult<usize> {
+    /// WARNING: calling this if you opened the File without read permissions will hang!
+    pub fn finish(mut self, use_stream_position: bool) -> PolarsResult<usize> {
         self.writer
             .finish()
-            .map(|continuation_size| self.total_written_bytes + continuation_size)
+            .map(|continuation_size| self.total_written_bytes += continuation_size)?;
+
+        if use_stream_position {
+            if let Ok(pos) = self.writer.into_inner().stream_position() {
+                return Ok(pos as usize);
+            } else {
+                eprintln!("Could not get stream position, defaulting to estimated size");
+            }
+        }
+        Ok(self.total_written_bytes)
     }
 }
 
