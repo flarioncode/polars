@@ -37,7 +37,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use arrow::io::ipc::read::{StreamMetadata, StreamState};
-use arrow::io::ipc::write::{WriteOptions};
+use arrow::io::ipc::write::WriteOptions;
 use arrow::io::ipc::{read, write};
 use polars_core::prelude::*;
 
@@ -82,7 +82,7 @@ impl<R: Read> IpcStreamBatchedReader<R> {
     pub fn next_batch(&mut self) -> PolarsResult<Option<DataFrame>> {
         match self.ipc_reader.next_record_batch()? {
             None => Ok(None),
-            Some(record_batch) => Ok(Some(DataFrame::try_from((record_batch, &self.schema))?))
+            Some(record_batch) => Ok(Some(DataFrame::try_from((record_batch, &self.schema))?)),
         }
     }
 }
@@ -148,13 +148,9 @@ impl<R: Read> IpcStreamReader<R> {
             metadata.schema.clone()
         };
 
-        let ipc_reader =
-            read::StreamReader::new(self.reader, metadata.clone(), self.projection);
+        let ipc_reader = read::StreamReader::new(self.reader, metadata.clone(), self.projection);
 
-        Ok(IpcStreamBatchedReader {
-            ipc_reader,
-            schema,
-        })
+        Ok(IpcStreamBatchedReader { ipc_reader, schema })
     }
 }
 
@@ -250,14 +246,29 @@ pub struct IpcStreamWriter<W> {
 
 pub struct IpcStreamBatchedWriter<W: Write> {
     writer: write::StreamWriter<W>,
-    schema: ArrowSchema,
+    schema: Option<ArrowSchema>,
     compat_level: CompatLevel,
     total_written_bytes: usize,
 }
 
 impl<W: Write> IpcStreamBatchedWriter<W> {
     pub fn write_batch(&mut self, df: &mut DataFrame) -> PolarsResult<()> {
-        assert_eq!(df.schema().to_arrow(self.compat_level), self.schema);
+        if df.is_empty() {
+            return Ok(());
+        } // Avoid schema errors
+
+        match self.schema.as_ref() {
+            None => {
+                let arrow_schema = df.schema().to_arrow(self.compat_level);
+                self.writer.start(&arrow_schema, None)?;
+                self.schema = Some(arrow_schema);
+            },
+            Some(schema) => {
+                if df.schema().to_arrow(self.compat_level) != *schema {
+                    polars_bail!(InvalidOperation: "Schema of new batch is not equal to the writer's schema");
+                }
+            },
+        }
         let iter = df.iter_chunks(self.compat_level, true);
 
         for batch in iter {
@@ -268,7 +279,9 @@ impl<W: Write> IpcStreamBatchedWriter<W> {
     }
 
     pub fn finish(mut self) -> PolarsResult<usize> {
-        self.writer.finish().map(|continuation_size| self.total_written_bytes + continuation_size)
+        self.writer
+            .finish()
+            .map(|continuation_size| self.total_written_bytes + continuation_size)
     }
 }
 
@@ -288,22 +301,19 @@ impl<W: Write> IpcStreamWriter<W> {
         self
     }
 
-    pub fn batched(self, schema: &Schema) -> PolarsResult<IpcStreamBatchedWriter<W>> {
-        let mut ipc_stream_writer = write::StreamWriter::new(
+    pub fn batched(self) -> PolarsResult<IpcStreamBatchedWriter<W>> {
+        let ipc_stream_writer = write::StreamWriter::new(
             self.writer,
             WriteOptions {
                 compression: self.compression.map(|c| c.into()),
             },
         );
 
-        let arrow_schema = schema.to_arrow(self.compat_level);
-        ipc_stream_writer.start(&arrow_schema, None)?;
-
         Ok(IpcStreamBatchedWriter {
             writer: ipc_stream_writer,
-            schema: arrow_schema,
+            schema: None,
             compat_level: self.compat_level,
-            total_written_bytes: 0
+            total_written_bytes: 0,
         })
     }
 }

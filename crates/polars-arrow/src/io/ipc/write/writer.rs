@@ -2,7 +2,7 @@ use std::io::Write;
 
 use arrow_format::ipc::planus::Builder;
 use polars_error::{polars_bail, PolarsResult};
-use polars_utils::index::Bounded;
+
 use super::super::{IpcField, ARROW_MAGIC_V2};
 use super::common::{DictionaryTracker, EncodedData, WriteOptions};
 use super::common_sync::{write_continuation, write_message};

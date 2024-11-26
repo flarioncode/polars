@@ -97,10 +97,12 @@ impl<W: Write> StreamWriter<W> {
 
         let mut total_written_size = 0;
         for encoded_dictionary in encoded_dictionaries {
-            write_message(&mut self.writer, &encoded_dictionary).inspect(|(_, _, message_size)| total_written_size += message_size)?;
+            write_message(&mut self.writer, &encoded_dictionary)
+                .inspect(|(_, _, message_size)| total_written_size += message_size)?;
         }
 
-        write_message(&mut self.writer, &encoded_message).map(|(_, _, message_size)| total_written_size + message_size)
+        write_message(&mut self.writer, &encoded_message)
+            .map(|(_, _, message_size)| total_written_size + message_size)
     }
 
     /// Write continuation bytes, and mark the stream as done
