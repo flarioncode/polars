@@ -124,6 +124,10 @@ impl<R: MmapBytesReader> IpcBatchedReader<R> {
             Err(err) => Err(err),
         }
     }
+
+    pub fn schema(&self) -> Schema {
+        Schema::from_arrow_schema(&self.reader_schema)
+    }
 }
 
 impl<R: MmapBytesReader> IpcReader<R> {

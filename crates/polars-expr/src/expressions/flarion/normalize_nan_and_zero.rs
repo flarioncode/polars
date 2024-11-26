@@ -3,53 +3,18 @@ use std::sync::Arc;
 use arrow::legacy::error::PolarsResult;
 use polars_core::datatypes::{DataType, Field, ListChunked};
 use polars_core::error::PolarsError;
-use polars_core::export::num::Float;
 use polars_core::frame::DataFrame;
-use polars_core::prelude::{GroupsProxy, Schema, Series};
+use polars_core::prelude::{GroupsProxy, IntoSeries, Schema, Series};
 use polars_core::POOL;
 use polars_plan::dsl::Expr;
 
 use crate::expressions::{AggregationContext, PhysicalExpr};
 use crate::prelude::ExecutionState;
 
-pub trait NanNormalizer: Float {
-    fn flarion_normalize(self) -> Self {
-        if self.is_nan() {
-            Self::java_nan()
-        } else if self == Self::neg_zero() {
-            Self::zero()
-        } else {
-            self
-        }
-    }
-
-    fn java_nan() -> Self;
-}
-
-impl NanNormalizer for f32 {
-    fn java_nan() -> f32 {
-        f32::from_bits(0x7FC00000)
-    }
-}
-
-impl NanNormalizer for f64 {
-    fn java_nan() -> f64 {
-        f64::from_bits(0x7FF8000000000000)
-    }
-}
-
 fn normalize_series_with_dtype<const IS_AGG: bool>(input_series: &Series) -> PolarsResult<Series> {
     Ok(match input_series.dtype() {
-        DataType::Float32 => input_series
-            .f32()?
-            .iter()
-            .map(|item: Option<f32>| item.map(f32::flarion_normalize))
-            .collect::<Series>(),
-        DataType::Float64 => input_series
-            .f64()?
-            .iter()
-            .map(|item: Option<f64>| item.map(f64::flarion_normalize))
-            .collect::<Series>(),
+        DataType::Float32 => input_series.f32()?.to_canonical().into_series(),
+        DataType::Float64 => input_series.f64()?.to_canonical().into_series(),
         DataType::List(inner) if IS_AGG && inner.is_float() => {
             let normalized_list = input_series.list()?;
             Series::from(ListChunked::from_iter(
@@ -133,68 +98,6 @@ mod tests {
     use polars_utils::pl_str::PlSmallStr;
 
     use super::*;
-
-    #[test]
-    fn test_normalizer_f32() {
-        let f32_nan1 = f32::from_bits(0x7FC00001);
-        let f32_nan2 = f32::from_bits(0x7FC00002);
-        let f32_nan3 = f32::from_bits(0x7FC00003);
-
-        assert_eq!(
-            f32::flarion_normalize(f32_nan1).to_le_bytes(),
-            f32::from_bits(0x7FC00000).to_le_bytes()
-        );
-        assert_eq!(
-            f32::flarion_normalize(f32_nan2).to_le_bytes(),
-            f32::from_bits(0x7FC00000).to_le_bytes()
-        );
-        assert_eq!(
-            f32::flarion_normalize(f32_nan3).to_le_bytes(),
-            f32::from_bits(0x7FC00000).to_le_bytes()
-        );
-
-        let f32_neg_zero1 = f32::neg_zero();
-        let f32_neg_zero2 = -0.0;
-        assert_eq!(
-            f32::flarion_normalize(f32_neg_zero1).to_le_bytes(),
-            0.0f32.to_le_bytes()
-        );
-        assert_eq!(
-            f32::flarion_normalize(f32_neg_zero2).to_le_bytes(),
-            0.0f32.to_le_bytes()
-        );
-    }
-
-    #[test]
-    fn test_normalizer_f64() {
-        let f64_nan1 = f64::from_bits(0x7FF8000000000000);
-        let f64_nan2 = f64::from_bits(0x7FF8000000000001);
-        let f64_nan3 = f64::from_bits(0x7FF8000000000002);
-
-        assert_eq!(
-            f64::flarion_normalize(f64_nan1).to_le_bytes(),
-            f64::from_bits(0x7FF8000000000000).to_le_bytes()
-        );
-        assert_eq!(
-            f64::flarion_normalize(f64_nan2).to_le_bytes(),
-            f64::from_bits(0x7FF8000000000000).to_le_bytes()
-        );
-        assert_eq!(
-            f64::flarion_normalize(f64_nan3).to_le_bytes(),
-            f64::from_bits(0x7FF8000000000000).to_le_bytes()
-        );
-
-        let f64_neg_zero1 = f64::neg_zero();
-        let f64_neg_zero2 = -0.0;
-        assert_eq!(
-            f64::flarion_normalize(f64_neg_zero1).to_le_bytes(),
-            0.0f64.to_le_bytes()
-        );
-        assert_eq!(
-            f64::flarion_normalize(f64_neg_zero2).to_le_bytes(),
-            0.0f64.to_le_bytes()
-        );
-    }
 
     #[test]
     fn test_normalize_series() {

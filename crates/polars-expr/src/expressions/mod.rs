@@ -31,7 +31,6 @@ pub(crate) use cast::*;
 pub(crate) use column::*;
 pub(crate) use count::*;
 pub(crate) use filter::*;
-pub use flarion::NanNormalizer;
 pub(crate) use flarion::*;
 pub(crate) use gather::*;
 pub(crate) use literal::*;
