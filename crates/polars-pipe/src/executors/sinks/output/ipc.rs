@@ -75,7 +75,7 @@ impl IpcCloudSink {
     }
 }
 
-impl<W: std::io::Write> SinkWriter for polars_io::ipc::BatchedWriter<W> {
+impl<W: std::io::Write> SinkWriter for polars_io::ipc::IpcBatchedWriter<W> {
     fn _write_batch(&mut self, df: &DataFrame) -> PolarsResult<()> {
         self.write_batch(df)
     }

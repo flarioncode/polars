@@ -73,6 +73,20 @@ pub struct IpcStreamReader<R> {
     metadata: Option<StreamMetadata>,
 }
 
+pub struct IpcStreamBatchedReader<R: Read> {
+    ipc_reader: read::StreamReader<R>,
+    schema: ArrowSchema,
+}
+
+impl<R: Read> IpcStreamBatchedReader<R> {
+    pub fn next_batch(&mut self) -> PolarsResult<Option<DataFrame>> {
+        match self.ipc_reader.next_record_batch()? {
+            None => Ok(None),
+            Some(record_batch) => Ok(Some(DataFrame::try_from((record_batch, &self.schema))?)),
+        }
+    }
+}
+
 impl<R: Read> IpcStreamReader<R> {
     /// Get schema of the Ipc Stream File
     pub fn schema(&mut self) -> PolarsResult<Schema> {
@@ -117,6 +131,26 @@ impl<R: Read> IpcStreamReader<R> {
             },
             Some(md) => Ok(md.clone()),
         }
+    }
+
+    pub fn batched(mut self) -> PolarsResult<IpcStreamBatchedReader<R>> {
+        let metadata = self.metadata()?;
+        let schema = &metadata.schema;
+
+        if let Some(columns) = self.columns {
+            let prj = columns_to_projection(&columns, schema)?;
+            self.projection = Some(prj);
+        }
+
+        let schema = if let Some(projection) = &self.projection {
+            apply_projection(&metadata.schema, projection)
+        } else {
+            metadata.schema.clone()
+        };
+
+        let ipc_reader = read::StreamReader::new(self.reader, metadata.clone(), self.projection);
+
+        Ok(IpcStreamBatchedReader { ipc_reader, schema })
     }
 }
 
@@ -210,11 +244,52 @@ pub struct IpcStreamWriter<W> {
     compat_level: CompatLevel,
 }
 
+pub struct IpcStreamBatchedWriter<W: Write> {
+    writer: write::StreamWriter<W>,
+    schema: Option<ArrowSchema>,
+    compat_level: CompatLevel,
+    total_written_bytes: usize,
+}
+
+impl<W: Write> IpcStreamBatchedWriter<W> {
+    pub fn write_batch(&mut self, df: &mut DataFrame) -> PolarsResult<()> {
+        if df.is_empty() {
+            return Ok(());
+        } // Avoid schema errors
+
+        match self.schema.as_ref() {
+            None => {
+                let arrow_schema = df.schema().to_arrow(self.compat_level);
+                self.writer.start(&arrow_schema, None)?;
+                self.schema = Some(arrow_schema);
+            },
+            Some(schema) => {
+                if df.schema().to_arrow(self.compat_level) != *schema {
+                    polars_bail!(InvalidOperation: "Schema of new batch is not equal to the writer's schema");
+                }
+            },
+        }
+        let iter = df.iter_chunks(self.compat_level, true);
+
+        for batch in iter {
+            self.total_written_bytes += self.writer.write(&batch, None)?
+        }
+
+        Ok(())
+    }
+
+    pub fn finish(mut self) -> PolarsResult<usize> {
+        self.writer
+            .finish()
+            .map(|continuation_size| self.total_written_bytes + continuation_size)
+    }
+}
+
 use arrow::record_batch::RecordBatch;
 
 use crate::RowIndex;
 
-impl<W> IpcStreamWriter<W> {
+impl<W: Write> IpcStreamWriter<W> {
     /// Set the compression used. Defaults to None.
     pub fn with_compression(mut self, compression: Option<IpcCompression>) -> Self {
         self.compression = compression;
@@ -224,6 +299,22 @@ impl<W> IpcStreamWriter<W> {
     pub fn with_compat_level(mut self, compat_level: CompatLevel) -> Self {
         self.compat_level = compat_level;
         self
+    }
+
+    pub fn batched(self) -> PolarsResult<IpcStreamBatchedWriter<W>> {
+        let ipc_stream_writer = write::StreamWriter::new(
+            self.writer,
+            WriteOptions {
+                compression: self.compression.map(|c| c.into()),
+            },
+        );
+
+        Ok(IpcStreamBatchedWriter {
+            writer: ipc_stream_writer,
+            schema: None,
+            compat_level: self.compat_level,
+            total_written_bytes: 0,
+        })
     }
 }
 
@@ -252,7 +343,7 @@ where
         let iter = df.iter_chunks(self.compat_level, true);
 
         for batch in iter {
-            ipc_stream_writer.write(&batch, None)?
+            ipc_stream_writer.write(&batch, None)?;
         }
         ipc_stream_writer.finish()?;
         Ok(())

@@ -100,6 +100,32 @@ fn check_mmap_err(err: PolarsError) -> PolarsResult<()> {
     Err(err)
 }
 
+pub struct IpcBatchedReader<R: MmapBytesReader> {
+    reader: read::FileReader<R>,
+    reader_schema: ArrowSchema,
+    include_file_path: Option<(PlSmallStr, Arc<str>)>,
+}
+
+impl<R: MmapBytesReader> IpcBatchedReader<R> {
+    pub fn read_next_batch(&mut self) -> PolarsResult<Option<DataFrame>> {
+        match self.reader.next_record_batch() {
+            Ok(Some(batch)) => DataFrame::try_from((batch, &self.reader_schema)).map(|mut df| {
+                if let Some((col, value)) = self.include_file_path.as_ref() {
+                    unsafe {
+                        df.with_column_unchecked(
+                            StringChunked::full(col.clone(), value, df.height()).into_series(),
+                        )
+                    };
+                }
+
+                Some(df)
+            }),
+            Ok(None) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+}
+
 impl<R: MmapBytesReader> IpcReader<R> {
     fn get_metadata(&mut self) -> PolarsResult<&read::FileMetadata> {
         if self.metadata.is_none() {
@@ -158,6 +184,49 @@ impl<R: MmapBytesReader> IpcReader<R> {
     pub fn memory_mapped(mut self, path_buf: Option<PathBuf>) -> Self {
         self.memory_map = path_buf;
         self
+    }
+
+    pub fn batched(mut self) -> PolarsResult<IpcBatchedReader<R>> {
+        let reader_schema = if let Some(ref schema) = self.schema {
+            schema.clone()
+        } else {
+            self.get_metadata()?.schema.clone()
+        };
+        let reader_schema = reader_schema.as_ref();
+
+        let hive_partition_columns = self.hive_partition_columns.take();
+        let include_file_path = self.include_file_path.take();
+
+        // In case only hive columns are projected, the df would be empty, but we need the row count
+        // of the file in order to project the correct number of rows for the hive columns.
+        let file_reader = (|| {
+            if self.memory_map.is_some() {
+                unimplemented!("memory map not implemented for batched reader")
+            }
+
+            let schema = self.get_metadata()?.schema.clone();
+
+            if let Some(columns) = &self.columns {
+                let prj = columns_to_projection(columns, schema.as_ref())?;
+                self.projection = Some(prj);
+            }
+
+            let metadata = self.get_metadata()?.clone();
+
+            let ipc_reader =
+                read::FileReader::new(self.reader, metadata, self.projection, self.n_rows);
+            PolarsResult::Ok(ipc_reader)
+        })()?;
+
+        if hive_partition_columns.is_some() {
+            unimplemented!("hive partition columns not implemented for batched reader")
+        };
+
+        Ok(IpcBatchedReader {
+            reader: file_reader,
+            reader_schema: reader_schema.clone(),
+            include_file_path,
+        })
     }
 
     // todo! hoist to lazy crate
