@@ -112,16 +112,17 @@ where
 fn float_to_int_remainder<O>(value: f64, mask: i32, max_val: O, offset: i32) -> O
 where
     O: NativeType + PartialOrd,
+    i32: AsPrimitive<O>,
 {
     if value >= I32_MAX_F64 {
-        (-1_i32) as O
+        (-1_i32).as_()
     } else if value <= I32_MIN_F64 {
-        0_i32 as O
+        0_i32.as_()
     } else {
         let as_i32 = value as i32;
-        let rem = (as_i32 & mask) as O;
+        let rem = (as_i32 & mask).as_();
         if rem > max_val {
-            (rem as i32 - offset) as O
+            (rem.as_() - offset).as_()
         } else {
             rem
         }
