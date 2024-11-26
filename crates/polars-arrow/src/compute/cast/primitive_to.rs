@@ -68,6 +68,86 @@ impl SerPrimitive for f64 {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////
+///////////////////// FLARION CODE - BEGIN
+////////////////////////////////////////////////////////////////////////////////////
+
+// i64 -> i32 (mask with 0xFFFFFFFF for 32 bits)
+#[inline(always)]
+pub fn i64_as_i32_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i32> {
+    primitive_as_remainder(
+        from,
+        0xFFFFFFFF,
+        i32::MAX,
+        (-(i32::MIN as i64)) as i32,
+        ArrowDataType::Int32
+    )
+}
+
+// i64 -> i16 (mask with 0xFFFF for 16 bits) 
+#[inline(always)]
+pub fn i64_as_i16_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i16> {
+    primitive_as_remainder(
+        from,
+        0xFFFF,
+        i16::MAX,
+        (-(i16::MIN as i64)) as i16,
+        ArrowDataType::Int16
+    )
+}
+
+// i64 -> i8 (mask with 0xFF for 8 bits)
+#[inline(always)]
+pub fn i64_as_i8_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i8> {
+    primitive_as_remainder(
+        from,
+        0xFF,
+        i8::MAX,
+        (-(i8::MIN as i64)) as i8,
+        ArrowDataType::Int8
+    )
+}
+
+// i32 -> i16 (mask with 0xFFFF for 16 bits)
+#[inline(always)]
+pub fn i32_as_i16_remainder(from: &PrimitiveArray<i32>) -> PrimitiveArray<i16> {
+    primitive_as_remainder(
+        from,
+        0xFFFF,
+        i16::MAX,
+        (-(i16::MIN as i32)) as i16,
+        ArrowDataType::Int16
+    )
+}
+
+// i32 -> i8 (mask with 0xFF for 8 bits)
+#[inline(always)]
+pub fn i32_as_i8_remainder(from: &PrimitiveArray<i32>) -> PrimitiveArray<i8> {
+    primitive_as_remainder(
+        from,
+        0xFF,
+        i8::MAX,
+        (-(i8::MIN as i32)) as i8,
+        ArrowDataType::Int8
+    )
+}
+
+// i16 -> i8 (mask with 0xFF for 8 bits)
+#[inline(always)]
+pub fn i16_as_i8_remainder(from: &PrimitiveArray<i16>) -> PrimitiveArray<i8> {
+    primitive_as_remainder(
+        from,
+        0xFF,
+        i8::MAX,
+        (-(i8::MIN as i16)) as i8,
+        ArrowDataType::Int8
+    )
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+///////////////////// FLARION CODE - END
+////////////////////////////////////////////////////////////////////////////////////
+
 fn primitive_to_values_and_offsets<T: NativeType + SerPrimitive, O: Offset>(
     from: &PrimitiveArray<T>,
 ) -> (Vec<u8>, Offsets<O>) {

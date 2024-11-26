@@ -640,7 +640,7 @@ pub fn cast(
         (Int64, UInt16) => primitive_to_primitive_dyn::<i64, u16>(array, to_type, options),
         (Int64, UInt32) => primitive_to_primitive_dyn::<i64, u32>(array, to_type, options),
         (Int64, UInt64) => primitive_to_primitive_dyn::<i64, u64>(array, to_type, options),
-        (Int64, Int8) => primitive_to_primitive_dyn::<i64, i8>(array, to_type, options),
+        (Int64, Int8) => Ok(Box::new(i64_as_i8_remainder(array.as_any().downcast_ref().unwrap()))),
         (Int64, Int16) => primitive_to_primitive_dyn::<i64, i16>(array, to_type, options),
         (Int64, Int32) => primitive_to_primitive_dyn::<i64, i32>(array, to_type, options),
         (Int64, Float32) => primitive_to_primitive_dyn::<i64, f32>(array, to_type, options),
