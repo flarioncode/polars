@@ -14,7 +14,6 @@ from polars.datatypes import Date, Struct, Time
 with contextlib.suppress(ImportError):  # Module not available when building docs
     import polars.polars as plr
 
-
 if TYPE_CHECKING:
     from typing import Literal
 
@@ -23,17 +22,17 @@ if TYPE_CHECKING:
 
 
 def datetime_(
-    year: int | IntoExpr,
-    month: int | IntoExpr,
-    day: int | IntoExpr,
-    hour: int | IntoExpr | None = None,
-    minute: int | IntoExpr | None = None,
-    second: int | IntoExpr | None = None,
-    microsecond: int | IntoExpr | None = None,
-    *,
-    time_unit: TimeUnit = "us",
-    time_zone: str | None = None,
-    ambiguous: Ambiguous | Expr = "raise",
+        year: int | IntoExpr,
+        month: int | IntoExpr,
+        day: int | IntoExpr,
+        hour: int | IntoExpr | None = None,
+        minute: int | IntoExpr | None = None,
+        second: int | IntoExpr | None = None,
+        microsecond: int | IntoExpr | None = None,
+        *,
+        time_unit: TimeUnit = "us",
+        time_zone: str | None = None,
+        ambiguous: Ambiguous | Expr = "raise",
 ) -> Expr:
     """
     Create a Polars literal expression of type Datetime.
@@ -161,9 +160,9 @@ def datetime_(
 
 
 def date_(
-    year: Expr | str | int,
-    month: Expr | str | int,
-    day: Expr | str | int,
+        year: Expr | str | int,
+        month: Expr | str | int,
+        day: Expr | str | int,
 ) -> Expr:
     """
     Create a Polars literal expression of type Date.
@@ -226,10 +225,10 @@ def date_(
 
 
 def time_(
-    hour: Expr | str | int | None = None,
-    minute: Expr | str | int | None = None,
-    second: Expr | str | int | None = None,
-    microsecond: Expr | str | int | None = None,
+        hour: Expr | str | int | None = None,
+        minute: Expr | str | int | None = None,
+        second: Expr | str | int | None = None,
+        microsecond: Expr | str | int | None = None,
 ) -> Expr:
     """
     Create a Polars literal expression of type Time.
@@ -280,16 +279,16 @@ def time_(
 
 
 def duration(
-    *,
-    weeks: Expr | str | int | None = None,
-    days: Expr | str | int | None = None,
-    hours: Expr | str | int | None = None,
-    minutes: Expr | str | int | None = None,
-    seconds: Expr | str | int | None = None,
-    milliseconds: Expr | str | int | None = None,
-    microseconds: Expr | str | int | None = None,
-    nanoseconds: Expr | str | int | None = None,
-    time_unit: TimeUnit | None = None,
+        *,
+        weeks: Expr | str | int | None = None,
+        days: Expr | str | int | None = None,
+        hours: Expr | str | int | None = None,
+        minutes: Expr | str | int | None = None,
+        seconds: Expr | str | int | None = None,
+        milliseconds: Expr | str | int | None = None,
+        microseconds: Expr | str | int | None = None,
+        nanoseconds: Expr | str | int | None = None,
+        time_unit: TimeUnit | None = None,
 ) -> Expr:
     """
     Create polars `Duration` from distinct time components.
@@ -503,36 +502,36 @@ def concat_list(exprs: IntoExpr | Iterable[IntoExpr], *more_exprs: IntoExpr) -> 
 
 @overload
 def struct(
-    *exprs: IntoExpr | Iterable[IntoExpr],
-    schema: SchemaDict | None = ...,
-    eager: Literal[False] = ...,
-    **named_exprs: IntoExpr,
+        *exprs: IntoExpr | Iterable[IntoExpr],
+        schema: SchemaDict | None = ...,
+        eager: Literal[False] = ...,
+        **named_exprs: IntoExpr,
 ) -> Expr: ...
 
 
 @overload
 def struct(
-    *exprs: IntoExpr | Iterable[IntoExpr],
-    schema: SchemaDict | None = ...,
-    eager: Literal[True],
-    **named_exprs: IntoExpr,
+        *exprs: IntoExpr | Iterable[IntoExpr],
+        schema: SchemaDict | None = ...,
+        eager: Literal[True],
+        **named_exprs: IntoExpr,
 ) -> Series: ...
 
 
 @overload
 def struct(
-    *exprs: IntoExpr | Iterable[IntoExpr],
-    schema: SchemaDict | None = ...,
-    eager: bool,
-    **named_exprs: IntoExpr,
+        *exprs: IntoExpr | Iterable[IntoExpr],
+        schema: SchemaDict | None = ...,
+        eager: bool,
+        **named_exprs: IntoExpr,
 ) -> Expr | Series: ...
 
 
 def struct(
-    *exprs: IntoExpr | Iterable[IntoExpr],
-    schema: SchemaDict | None = None,
-    eager: bool = False,
-    **named_exprs: IntoExpr,
+        *exprs: IntoExpr | Iterable[IntoExpr],
+        schema: SchemaDict | None = None,
+        eager: bool = False,
+        **named_exprs: IntoExpr,
 ) -> Expr | Series:
     """
     Collect columns into a struct column.
@@ -616,10 +615,11 @@ def struct(
 
 
 def concat_str(
-    exprs: IntoExpr | Iterable[IntoExpr],
-    *more_exprs: IntoExpr,
-    separator: str = "",
-    ignore_nulls: bool = False,
+        exprs: IntoExpr | Iterable[IntoExpr],
+        *more_exprs: IntoExpr,
+        separator: str = "",
+        ignore_nulls: bool = False,
+        force_nulls: bool = True,
 ) -> Expr:
     """
     Horizontally concatenate columns into a single string column.
@@ -674,7 +674,7 @@ def concat_str(
     └─────┴──────┴──────┴───────────────┘
     """
     exprs = parse_into_list_of_expressions(exprs, *more_exprs)
-    return wrap_expr(plr.concat_str(exprs, separator, ignore_nulls))
+    return wrap_expr(plr.concat_str(exprs, separator, ignore_nulls, force_nulls))
 
 
 def format(f_string: str, *args: Expr | str) -> Expr:
