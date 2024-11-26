@@ -1,4 +1,5 @@
 use std::hash::Hash;
+use std::ops::{BitAnd, Sub};
 
 use num_traits::{AsPrimitive, Float, ToPrimitive};
 use polars_error::PolarsResult;
@@ -75,24 +76,25 @@ impl SerPrimitive for f64 {
 /// Generic remainder cast using bit operations for any integer downcast
 #[inline(always)]
 fn primitive_as_remainder<T, O>(
-    from: &PrimitiveArray<T>, 
+    from: &PrimitiveArray<T>,
     mask: T,
     max_val: O,
     offset: O,
     to_type: ArrowDataType,
-) -> PrimitiveArray<O> 
-where 
+) -> PrimitiveArray<O>
+where
     T: NativeType + BitAnd<Output = T> + AsPrimitive<O>,
-    O: NativeType,
+    O: NativeType + PartialOrd + Sub<Output = O>,
 {
     let values = from
         .values()
         .iter()
         .map(|&x| {
-            // Compute remainder with bit mask
-            let rem = (x & mask).as_();
-            // Adjust if result > max allowed value
-            if rem > max_val { rem - offset } else { rem }
+            // For each value, wrap in Some() to handle nullability
+            Some({
+                let rem = (x & mask).as_();
+                if rem > max_val { rem - offset } else { rem }
+            })
         });
 
     PrimitiveArray::<O>::from_trusted_len_iter(values).to(to_type)
@@ -158,6 +160,9 @@ pub fn i32_as_i8_remainder(from: &PrimitiveArray<i32>) -> PrimitiveArray<i8> {
     )
 }
 
+/*
+ * Right now we do not care about this use case
+ *
 // i16 -> i8 (mask with 0xFF for 8 bits)
 #[inline(always)]
 pub fn i16_as_i8_remainder(from: &PrimitiveArray<i16>) -> PrimitiveArray<i8> {
@@ -169,6 +174,7 @@ pub fn i16_as_i8_remainder(from: &PrimitiveArray<i16>) -> PrimitiveArray<i8> {
         ArrowDataType::Int8
     )
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////////
 ///////////////////// FLARION CODE - END
