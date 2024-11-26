@@ -74,13 +74,17 @@ impl SerPrimitive for f64 {
 
 /// Generic remainder cast using bit operations for any integer downcast
 #[inline(always)]
-fn primitive_as_remainder<T: NativeType + AsPrimitive<O>, O: NativeType>(
+fn primitive_as_remainder<T, O>(
     from: &PrimitiveArray<T>, 
     mask: T,
     max_val: O,
     offset: O,
     to_type: ArrowDataType,
-) -> PrimitiveArray<O> {
+) -> PrimitiveArray<O> 
+where 
+    T: NativeType + BitAnd<Output = T> + AsPrimitive<O>,
+    O: NativeType,
+{
     let values = from
         .values()
         .iter()
