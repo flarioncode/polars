@@ -683,7 +683,7 @@ pub fn cast(
         (Float64, Int16) => Ok(Box::new(f64_as_i16_remainder(
             array.as_any().downcast_ref().unwrap(),
         ))),
-        (Float64, Int32) => Ok(Box::new(f64_as_i32_remainder(
+        (Float64, Int32) => Ok(Box::new(f64_as_i32_saturating(
             array.as_any().downcast_ref().unwrap(),
         ))),
         (Float64, Int64) => Ok(Box::new(f64_as_i64_saturating(
