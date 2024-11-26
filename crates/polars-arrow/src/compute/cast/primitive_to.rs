@@ -110,7 +110,7 @@ where
 /// Fast float to i8/i16/i32 casting with remainder for values in i32 range
 /// and saturating to 0/-1 for larger values
 #[inline(always)]
-fn f64_to_int_remainder<O>(value: f64, mask: i32, max_val: O, offset: O) -> O
+fn float_to_int_remainder<O>(value: f64, mask: i32, max_val: O, offset: O) -> O
 where
     O: NativeType + PartialOrd + Sub<Output = O>,
     i32: AsPrimitive<O>,
@@ -133,7 +133,7 @@ where
 
 /// Fast float to i64 casting with saturation at bounds
 #[inline(always)]
-fn f64_to_i64_saturating(value: f64) -> i64 {
+fn float_to_i64_saturating(value: f64) -> i64 {
     if value >= I64_MAX_F64 {
         i64::MAX
     } else if value <= I64_MIN_F64 {
@@ -143,83 +143,69 @@ fn f64_to_i64_saturating(value: f64) -> i64 {
     }
 }
 
-// Optimized implementations for each target type
 #[inline(always)]
 pub fn f64_as_i8_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i8> {
+    let validity = from.validity().cloned();
     let values = from
         .values()
         .iter()
-        .zip(from.validity().into_iter().flatten())
-        .map(|(&value, valid)| {
-            if valid {
-                Some(f64_to_int_remainder(
-                    value,
-                    0xFF,
-                    i8::MAX,
-                    (-(i8::MIN as i32)) as i8,
-                ))
-            } else {
-                None
-            }
-        });
+        .map(|&x| float_to_int_remainder(x, 0xFF, i8::MAX, i8::MAX.abs() + 1));
 
-    PrimitiveArray::<i8>::from_trusted_len_iter(values).to(ArrowDataType::Int8)
+    let arr = PrimitiveArray::<i8>::from_vec(values.collect());
+    if let Some(validity) = validity {
+        arr.with_validity(Some(validity))
+    } else {
+        arr
+    }
+    .to(ArrowDataType::Int8)
 }
 
 #[inline(always)]
 pub fn f64_as_i16_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i16> {
+    let validity = from.validity().cloned();
     let values = from
         .values()
         .iter()
-        .zip(from.validity().into_iter().flatten())
-        .map(|(&value, valid)| {
-            if valid {
-                Some(f64_to_int_remainder(
-                    value,
-                    0xFFFF,
-                    i16::MAX,
-                    (-(i16::MIN as i32)) as i16,
-                ))
-            } else {
-                None
-            }
-        });
+        .map(|&x| float_to_int_remainder(x, 0xFFFF, i16::MAX, i16::MAX.abs() + 1));
 
-    PrimitiveArray::<i16>::from_trusted_len_iter(values).to(ArrowDataType::Int16)
+    let arr = PrimitiveArray::<i16>::from_vec(values.collect());
+    if let Some(validity) = validity {
+        arr.with_validity(Some(validity))
+    } else {
+        arr
+    }
+    .to(ArrowDataType::Int16)
 }
 
 #[inline(always)]
 pub fn f64_as_i32_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i32> {
+    let validity = from.validity().cloned();
     let values = from
         .values()
         .iter()
-        .zip(from.validity().into_iter().flatten())
-        .map(|(&value, valid)| {
-            if valid {
-                Some(f64_to_int_remainder(value, 0xFFFFFFFF, i32::MAX, -i32::MIN))
-            } else {
-                None
-            }
-        });
+        .map(|&x| float_to_int_remainder(x, 0x7FFFFFFF, i32::MAX, i32::MAX));
 
-    PrimitiveArray::<i32>::from_trusted_len_iter(values).to(ArrowDataType::Int32)
+    let arr = PrimitiveArray::<i32>::from_vec(values.collect());
+    if let Some(validity) = validity {
+        arr.with_validity(Some(validity))
+    } else {
+        arr
+    }
+    .to(ArrowDataType::Int32)
 }
 
 #[inline(always)]
 pub fn f64_as_i64_saturating(from: &PrimitiveArray<f64>) -> PrimitiveArray<i64> {
-    let values = from
-        .values()
-        .iter()
-        .zip(from.validity().into_iter().flatten())
-        .map(|(&value, valid)| {
-            if valid {
-                Some(f64_to_i64_saturating(value))
-            } else {
-                None
-            }
-        });
+    let validity = from.validity().cloned();
+    let values = from.values().iter().map(|&x| float_to_i64_saturating(x));
 
-    PrimitiveArray::<i64>::from_trusted_len_iter(values).to(ArrowDataType::Int64)
+    let arr = PrimitiveArray::<i64>::from_vec(values.collect());
+    if let Some(validity) = validity {
+        arr.with_validity(Some(validity))
+    } else {
+        arr
+    }
+    .to(ArrowDataType::Int64)
 }
 
 // i64 -> i32 (mask with 0xFFFFFFFF for 32 bits)
