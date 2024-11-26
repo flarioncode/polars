@@ -359,6 +359,7 @@ fn string_addition_to_linear_concat(
                             ref fun_l @ FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
                                 delimiter: sep_l,
                                 ignore_nulls: ignore_nulls_l,
+                                force_nulls: force_nulls_l,
                             }),
                         options,
                     },
@@ -368,11 +369,15 @@ fn string_addition_to_linear_concat(
                             FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
                                 delimiter: sep_r,
                                 ignore_nulls: ignore_nulls_r,
+                                force_nulls: force_nulls_r,
                             }),
                         ..
                     },
                 ) => {
-                    if sep_l.is_empty() && sep_r.is_empty() && *ignore_nulls_l == *ignore_nulls_r {
+                    if sep_l.is_empty()
+                        && sep_r.is_empty()
+                        && (*ignore_nulls_l == *ignore_nulls_r || *force_nulls_l == *force_nulls_r)
+                    {
                         let mut input = Vec::with_capacity(input_left.len() + input_right.len());
                         input.extend_from_slice(input_left);
                         input.extend_from_slice(input_right);
@@ -393,12 +398,13 @@ fn string_addition_to_linear_concat(
                             ref fun @ FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
                                 delimiter: sep,
                                 ignore_nulls,
+                                force_nulls,
                             }),
                         options,
                     },
                     _,
                 ) => {
-                    if sep.is_empty() && !ignore_nulls {
+                    if sep.is_empty() && (!ignore_nulls || *force_nulls) {
                         let mut input = input.clone();
                         input.push(right_e);
                         Some(AExpr::Function {
@@ -419,11 +425,12 @@ fn string_addition_to_linear_concat(
                             ref fun @ FunctionExpr::StringExpr(StringFunction::ConcatHorizontal {
                                 delimiter: sep,
                                 ignore_nulls,
+                                force_nulls,
                             }),
                         options,
                     },
                 ) => {
-                    if sep.is_empty() && !ignore_nulls {
+                    if sep.is_empty() && (!ignore_nulls || *force_nulls) {
                         let mut input = Vec::with_capacity(1 + input_right.len());
                         input.push(left_e);
                         input.extend_from_slice(input_right);
@@ -441,6 +448,7 @@ fn string_addition_to_linear_concat(
                     function: StringFunction::ConcatHorizontal {
                         delimiter: "".into(),
                         ignore_nulls: false,
+                        force_nulls: true,
                     }
                     .into(),
                     options: FunctionOptions {
