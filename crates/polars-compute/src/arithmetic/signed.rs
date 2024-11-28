@@ -227,7 +227,22 @@ macro_rules! impl_signed_arith_kernel {
 
                 let mask = rhs.tot_ne_kernel_broadcast(&0);
                 let valid = combine_validities_and(rhs.validity(), Some(&mask));
-                let ret = prim_unary_values(rhs, |x| lhs.wrapping_floor_div_mod(x).1);
+
+                let ret;
+                 #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    ret = prim_unary_values(rhs, |x| if x != 0 {
+                        lhs % x
+                    } else {
+                        0
+                    });
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    ret = prim_unary_values(rhs, |x| lhs.wrapping_floor_div_mod(x).1);
+                }
+
                 ret.with_validity(valid)
             }
 
