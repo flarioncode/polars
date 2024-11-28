@@ -68,20 +68,8 @@ macro_rules! impl_signed_arith_kernel {
                     other.take_validity().as_ref(), // compute combination twice.
                     Some(&mask),
                 );
-
-                let ret;
-                #[cfg(feature = "consistent_arithmetic")]
-                {
-                    // Fixes: https://github.com/pola-rs/polars/issues/20038
-                    ret = prim_binary_values(lhs, other, |lhs, rhs| lhs % rhs);
-                }
-                #[cfg(not(feature = "consistent_arithmetic"))]
-                {
-                    ret = prim_binary_values(lhs, other, |lhs, rhs| {
-                        lhs.wrapping_floor_div_mod(rhs).1
-                    });
-                }
-
+                let ret =
+                    prim_binary_values(lhs, other, |lhs, rhs| lhs.wrapping_floor_div_mod(rhs).1);
                 ret.with_validity(valid)
             }
 
@@ -188,59 +176,43 @@ macro_rules! impl_signed_arith_kernel {
             }
 
             fn prim_wrapping_mod_scalar(lhs: PArr<$T>, rhs: $T) -> PArr<$T> {
-                #[cfg(feature = "consistent_arithmetic")]
-                {
-                    // Fixes: https://github.com/pola-rs/polars/issues/20038
-                    prim_unary_values(lhs, |x| x % rhs)
-                }
-                #[cfg(not(feature = "consistent_arithmetic"))]
-                {
-                    if rhs == 0 {
-                        PArr::full_null(lhs.len(), lhs.dtype().clone())
-                    } else if rhs == -1 || rhs == 1 {
-                        lhs.fill_with(0)
-                    } else {
-                        let scalar_u = rhs.unsigned_abs();
-                        let red = <$StrRed>::new(scalar_u);
-                        prim_unary_values(lhs, |x| {
-                            // Remainder fits in signed type after reduction.
-                            // Largest possible modulo -I::MIN, with
-                            // -I::MIN-1 == I::MAX as largest remainder.
-                            let mut rem_u = x.unsigned_abs() % red;
+                if rhs == 0 {
+                    PArr::full_null(lhs.len(), lhs.dtype().clone())
+                } else if rhs == -1 || rhs == 1 {
+                    lhs.fill_with(0)
+                } else {
+                    let scalar_u = rhs.unsigned_abs();
+                    let red = <$StrRed>::new(scalar_u);
+                    prim_unary_values(lhs, |x| {
+                        // Remainder fits in signed type after reduction.
+                        // Largest possible modulo -I::MIN, with
+                        // -I::MIN-1 == I::MAX as largest remainder.
+                        let mut rem_u = x.unsigned_abs() % red;
 
-                            // Mixed signs: swap direction of remainder.
-                            if rem_u != 0 && (rhs < 0) != (x < 0) {
-                                rem_u = scalar_u - rem_u;
-                            }
+                        // Mixed signs: swap direction of remainder.
+                        if rem_u != 0 && (rhs < 0) != (x < 0) {
+                            rem_u = scalar_u - rem_u;
+                        }
 
-                            // Remainder should have sign of RHS.
-                            if rhs < 0 {
-                                -(rem_u as $T)
-                            } else {
-                                rem_u as $T
-                            }
-                        })
-                    }
+                        // Remainder should have sign of RHS.
+                        if rhs < 0 {
+                            -(rem_u as $T)
+                        } else {
+                            rem_u as $T
+                        }
+                    })
                 }
             }
 
             fn prim_wrapping_mod_scalar_lhs(lhs: $T, rhs: PArr<$T>) -> PArr<$T> {
-                #[cfg(feature = "consistent_arithmetic")]
-                {
-                    // Fixes: https://github.com/pola-rs/polars/issues/20038
-                    prim_unary_values(rhs, |x| lhs % x)
+                if lhs == 0 {
+                    return rhs.fill_with(0);
                 }
-                #[cfg(not(feature = "consistent_arithmetic"))]
-                {
-                    if lhs == 0 {
-                        return rhs.fill_with(0);
-                    }
 
-                    let mask = rhs.tot_ne_kernel_broadcast(&0);
-                    let valid = combine_validities_and(rhs.validity(), Some(&mask));
-                    let ret = prim_unary_values(rhs, |x| lhs.wrapping_floor_div_mod(x).1);
-                    ret.with_validity(valid)
-                }
+                let mask = rhs.tot_ne_kernel_broadcast(&0);
+                let valid = combine_validities_and(rhs.validity(), Some(&mask));
+                let ret = prim_unary_values(rhs, |x| lhs.wrapping_floor_div_mod(x).1);
+                ret.with_validity(valid)
             }
 
             fn prim_true_div(lhs: PArr<$T>, other: PArr<$T>) -> PArr<Self::TrueDivT> {
