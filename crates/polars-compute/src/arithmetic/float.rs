@@ -107,7 +107,7 @@ macro_rules! impl_float_arith_kernel {
             fn prim_true_div_scalar(lhs: PArr<$T>, rhs: $T) -> PArr<Self::TrueDivT> {
                 #[cfg(feature = "consistent_division")]
                 {
-                    // FIX
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
                     prim_unary_values(lhs, |x| x / rhs)
                 }
                 #[cfg(not(feature = "consistent_division"))]
