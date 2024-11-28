@@ -77,7 +77,9 @@ macro_rules! impl_signed_arith_kernel {
                 }
                 #[cfg(not(feature = "consistent_arithmetic"))]
                 {
-                    ret = prim_binary_values(lhs, other, |lhs, rhs| lhs.wrapping_floor_div_mod(rhs).1);
+                    ret = prim_binary_values(lhs, other, |lhs, rhs| {
+                        lhs.wrapping_floor_div_mod(rhs).1
+                    });
                 }
 
                 ret.with_validity(valid)
@@ -220,7 +222,6 @@ macro_rules! impl_signed_arith_kernel {
                         })
                     }
                 }
-
             }
 
             fn prim_wrapping_mod_scalar_lhs(lhs: $T, rhs: PArr<$T>) -> PArr<$T> {
