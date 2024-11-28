@@ -68,8 +68,24 @@ macro_rules! impl_signed_arith_kernel {
                     other.take_validity().as_ref(), // compute combination twice.
                     Some(&mask),
                 );
-                let ret =
-                    prim_binary_values(lhs, other, |lhs, rhs| lhs.wrapping_floor_div_mod(rhs).1);
+
+                let ret;
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    ret = prim_binary_values(lhs, other, |lhs, rhs| if rhs != 0 {
+                        lhs % rhs
+                    } else {
+                        0
+                    });
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    ret = prim_binary_values(lhs, other, |lhs, rhs| {
+                        lhs.wrapping_floor_div_mod(rhs).1
+                    });
+                }
+
                 ret.with_validity(valid)
             }
 
