@@ -53,7 +53,18 @@ macro_rules! impl_unsigned_arith_kernel {
                     other.take_validity().as_ref(), // compute combination twice.
                     Some(&mask),
                 );
-                let ret = prim_binary_values(lhs, other, |a, b| if b != 0 { a % b } else { 0 });
+
+                let res;
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    ret = prim_binary_values(lhs, other, |a, b| a % b);
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    ret = prim_binary_values(lhs, other, |a, b| if b != 0 { a % b } else { 0 });
+                }
+
                 ret.with_validity(valid)
             }
 
@@ -114,25 +125,41 @@ macro_rules! impl_unsigned_arith_kernel {
             }
 
             fn prim_wrapping_mod_scalar(lhs: PArr<$T>, rhs: $T) -> PArr<$T> {
-                if rhs == 0 {
-                    PArr::full_null(lhs.len(), lhs.dtype().clone())
-                } else if rhs == 1 {
-                    lhs.fill_with(0)
-                } else {
-                    let red = <$StrRed>::new(rhs);
-                    prim_unary_values(lhs, |x| x % red)
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    prim_unary_values(lhs, |x| x % rhs)
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    if rhs == 0 {
+                        PArr::full_null(lhs.len(), lhs.dtype().clone())
+                    } else if rhs == 1 {
+                        lhs.fill_with(0)
+                    } else {
+                        let red = <$StrRed>::new(rhs);
+                        prim_unary_values(lhs, |x| x % red)
+                    }
                 }
             }
 
             fn prim_wrapping_mod_scalar_lhs(lhs: $T, rhs: PArr<$T>) -> PArr<$T> {
-                if lhs == 0 {
-                    return rhs.fill_with(0);
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    prim_unary_values(rhs, |x| lhs % x)
                 }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    if lhs == 0 {
+                        return rhs.fill_with(0);
+                    }
 
-                let mask = rhs.tot_ne_kernel_broadcast(&0);
-                let valid = combine_validities_and(rhs.validity(), Some(&mask));
-                let ret = prim_unary_values(rhs, |x| if x != 0 { lhs % x } else { 0 });
-                ret.with_validity(valid)
+                    let mask = rhs.tot_ne_kernel_broadcast(&0);
+                    let valid = combine_validities_and(rhs.validity(), Some(&mask));
+                    let ret = prim_unary_values(rhs, |x| if x != 0 { lhs % x } else { 0 });
+                    ret.with_validity(valid)
+                }
             }
 
             fn prim_true_div(lhs: PArr<$T>, other: PArr<$T>) -> PArr<Self::TrueDivT> {
@@ -140,8 +167,17 @@ macro_rules! impl_unsigned_arith_kernel {
             }
 
             fn prim_true_div_scalar(lhs: PArr<$T>, rhs: $T) -> PArr<Self::TrueDivT> {
-                let inv = 1.0 / rhs as f64;
-                prim_unary_values(lhs, |x| x as f64 * inv)
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    let rhs = rhs as f64;
+                    prim_unary_values(lhs, |x| x as f64 / rhs)
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    let inv = 1.0 / rhs as f64;
+                    prim_unary_values(lhs, |x| x as f64 * inv)
+                }
             }
 
             fn prim_true_div_scalar_lhs(lhs: $T, rhs: PArr<$T>) -> PArr<Self::TrueDivT> {
