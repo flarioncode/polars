@@ -54,7 +54,7 @@ macro_rules! impl_unsigned_arith_kernel {
                     Some(&mask),
                 );
 
-                let res;
+                let ret;
                 #[cfg(feature = "consistent_arithmetic")]
                 {
                     // Fixes: https://github.com/pola-rs/polars/issues/20038
