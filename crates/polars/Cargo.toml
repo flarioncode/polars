@@ -47,6 +47,7 @@ version_check = { workspace = true }
 getrandom = { version = "0.2", features = ["js"] }
 
 [features]
+consistent_division = ["polars-core/consistent_division"]
 sql = ["polars-sql"]
 rows = ["polars-core/rows"]
 simd = ["polars-core/simd", "polars-io/simd", "polars-ops?/simd"]
