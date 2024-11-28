@@ -73,11 +73,11 @@ macro_rules! impl_signed_arith_kernel {
                 #[cfg(feature = "consistent_arithmetic")]
                 {
                     // Fixes: https://github.com/pola-rs/polars/issues/20038
-                    ret = prim_binary_values(lhs, other, |lhs, rhs| if rhs != 0 {
-                        lhs % rhs
-                    } else {
-                        0
-                    });
+                    ret = prim_binary_values(
+                        lhs,
+                        other,
+                        |lhs, rhs| if rhs != 0 { lhs % rhs } else { 0 },
+                    );
                 }
                 #[cfg(not(feature = "consistent_arithmetic"))]
                 {
@@ -241,14 +241,10 @@ macro_rules! impl_signed_arith_kernel {
                 let valid = combine_validities_and(rhs.validity(), Some(&mask));
 
                 let ret;
-                 #[cfg(feature = "consistent_arithmetic")]
+                #[cfg(feature = "consistent_arithmetic")]
                 {
                     // Fixes: https://github.com/pola-rs/polars/issues/20038
-                    ret = prim_unary_values(rhs, |x| if x != 0 {
-                        lhs % x
-                    } else {
-                        0
-                    });
+                    ret = prim_unary_values(rhs, |x| if x != 0 { lhs % x } else { 0 });
                 }
                 #[cfg(not(feature = "consistent_arithmetic"))]
                 {
