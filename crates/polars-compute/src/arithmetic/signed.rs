@@ -210,11 +210,23 @@ macro_rules! impl_signed_arith_kernel {
                             rem_u = scalar_u - rem_u;
                         }
 
-                        // Remainder should have sign of RHS.
-                        if rhs < 0 {
-                            -(rem_u as $T)
-                        } else {
-                            rem_u as $T
+                        #[cfg(feature = "consistent_arithmetic")]
+                        {
+                            // Module should have sign of LHS.
+                            if x < 0 {
+                                -(rem_u as $T)
+                            } else {
+                                rem_u as $T
+                            }
+                        }
+                        #[cfg(not(feature = "consistent_arithmetic"))]
+                        {
+                            // Remainder should have sign of RHS.
+                            if rhs < 0 {
+                                -(rem_u as $T)
+                            } else {
+                                rem_u as $T
+                            }
                         }
                     })
                 }
