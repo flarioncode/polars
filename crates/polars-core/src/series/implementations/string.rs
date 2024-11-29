@@ -151,7 +151,11 @@ impl SeriesTrait for SeriesWrap<StringChunked> {
         ChunkTransform::transform(&self.0, lambda)
     }
 
-    fn sort_with_func(&self, _options: SortOptions, _lambda: &LambdaExpression) -> PolarsResult<Series> {
+    fn sort_with_func(
+        &self,
+        _options: SortOptions,
+        _lambda: &LambdaExpression,
+    ) -> PolarsResult<Series> {
         Ok(ChunkSort::sort_with_func(&self.0, _options, _lambda).into_series())
     }
 
