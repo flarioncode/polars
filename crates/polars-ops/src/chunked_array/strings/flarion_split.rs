@@ -200,7 +200,7 @@ mod tests {
             result.get(0).unwrap(),
             AnyValue::List(Series::new(
                 PlSmallStr::EMPTY,
-                &["", "\r", "", "\r", "", "\n", "", "", ""]
+                &["", "\r", "\r", "\n", "", "", ""]
             ))
         );
     }
