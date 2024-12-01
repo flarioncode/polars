@@ -51,7 +51,7 @@ pub fn flarion_split_helper(
             pattern
         };
 
-        let re = RegexBuilder::new(&pattern)
+        let re = RegexBuilder::new(pattern)
             .size_limit(30 * 1024 * 1024)
             .build()?;
 
