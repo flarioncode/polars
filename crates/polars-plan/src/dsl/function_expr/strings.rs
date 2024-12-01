@@ -73,7 +73,6 @@ pub enum StringFunction {
         // how many matches to replace
         n: i64,
         literal: bool,
-        group_index: usize,
     },
     #[cfg(feature = "string_reverse")]
     Reverse,
@@ -366,11 +365,7 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
                 force_nulls,
             } => map_as_slice!(strings::concat_hor, &delimiter, ignore_nulls, force_nulls),
             #[cfg(feature = "regex")]
-            Replace {
-                n,
-                literal,
-                group_index,
-            } => map_as_slice!(strings::replace, literal, n, group_index),
+            Replace { n, literal } => map_as_slice!(strings::replace, literal, n),
             #[cfg(feature = "string_reverse")]
             Reverse => map!(strings::reverse),
             Uppercase => map!(uppercase),
@@ -877,7 +872,6 @@ fn replace_n<'a>(
     val: &'a StringChunked,
     literal: bool,
     n: usize,
-    group_index: usize,
 ) -> PolarsResult<StringChunked> {
     match (pat.len(), val.len()) {
         (1, 1) => {
@@ -923,24 +917,7 @@ fn replace_n<'a>(
                 if lit && (s.len() <= 32) {
                     Cow::Owned(s.replacen(&pat, val, 1))
                 } else {
-                    let pairs = reg
-                        .captures_iter(s)
-                        .take(n)
-                        .flat_map(|capt| capt.get(group_index).map(|m| (m.start(), m.end())))
-                        .collect::<Vec<_>>();
-                    if pairs.is_empty() {
-                        return Cow::Borrowed(s);
-                    }
-
-                    let mut buf = String::new();
-                    let mut agg_start = 0;
-                    for (start, end) in pairs {
-                        buf.push_str(unsafe { s.get_unchecked(agg_start..start) });
-                        buf.push_str(val);
-                        agg_start = end;
-                    }
-                    buf.push_str(unsafe { s.get_unchecked(agg_start..s.len()) });
-                    Cow::Owned(buf)
+                    reg.replace(s, val)
                 }
             };
             Ok(iter_and_replace(ca, val, f))
@@ -957,7 +934,6 @@ fn replace_all<'a>(
     pat: &'a StringChunked,
     val: &'a StringChunked,
     literal: bool,
-    group_index: usize,
 ) -> PolarsResult<StringChunked> {
     match (pat.len(), val.len()) {
         (1, 1) => {
@@ -969,7 +945,7 @@ fn replace_all<'a>(
 
             match literal {
                 true => ca.replace_literal_all(pat, val),
-                false => ca.replace_all(pat, val, group_index),
+                false => ca.replace_all(pat, val),
             }
         },
         (1, len_val) => {
@@ -1000,12 +976,7 @@ fn replace_all<'a>(
 }
 
 #[cfg(feature = "regex")]
-pub(super) fn replace(
-    s: &[Series],
-    literal: bool,
-    n: i64,
-    group_index: usize,
-) -> PolarsResult<Series> {
+pub(super) fn replace(s: &[Series], literal: bool, n: i64) -> PolarsResult<Series> {
     let column = &s[0];
     let pat = &s[1];
     let val = &s[2];
@@ -1016,9 +987,9 @@ pub(super) fn replace(
     let val = val.str()?;
 
     if all {
-        replace_all(column, pat, val, literal, group_index)
+        replace_all(column, pat, val, literal)
     } else {
-        replace_n(column, pat, val, literal, n as usize, group_index)
+        replace_n(column, pat, val, literal, n as usize)
     }
     .map(|ca| ca.into_series())
 }

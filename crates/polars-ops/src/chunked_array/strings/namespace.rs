@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use arrow::array::ValueSize;
 use arrow::legacy::kernels::string::*;
 #[cfg(feature = "string_encoding")]
@@ -360,30 +358,12 @@ pub trait StringNameSpaceImpl: AsString {
     }
 
     /// Replace all regex-matched (sub)strings with another string
-    fn replace_all(&self, pat: &str, val: &str, group_index: usize) -> PolarsResult<StringChunked> {
+    fn replace_all(&self, pat: &str, val: &str) -> PolarsResult<StringChunked> {
         let ca = self.as_string();
         let reg = RegexBuilder::new(pat)
             .size_limit(30 * 1024 * 1024)
             .build()?;
-        Ok(ca.apply_values(|s| {
-            let pairs = reg
-                .captures_iter(s)
-                .flat_map(|capt| capt.get(group_index).map(|m| (m.start(), m.end())))
-                .collect::<Vec<_>>();
-            if pairs.is_empty() {
-                return Cow::Borrowed(s);
-            }
-
-            let mut buf = String::new();
-            let mut agg_start = 0;
-            for (start, end) in pairs {
-                buf.push_str(unsafe { s.get_unchecked(agg_start..start) });
-                buf.push_str(val);
-                agg_start = end;
-            }
-            buf.push_str(unsafe { s.get_unchecked(agg_start..s.len()) });
-            Cow::Owned(buf)
-        }))
+        Ok(ca.apply_values(|s| reg.replace_all(s, val)))
     }
 
     /// Replace all matching literal (sub)strings with another string
