@@ -192,13 +192,16 @@ mod tests {
     #[test]
     fn test_dot_pattern_splitting() {
         let input = create_string_chunked("input", vec![Some("a\rb\rc\nd\te")]);
-        
+
         let result = flarion_split_helper(&input, ".", -1).unwrap().into_series();
-        
+
         assert_eq!(result.len(), 1);
         assert_eq!(
             result.get(0).unwrap(),
-            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["", "\r", "", "\r", "", "\n", "", "", ""]))
+            AnyValue::List(Series::new(
+                PlSmallStr::EMPTY,
+                &["", "\r", "", "\r", "", "\n", "", "", ""]
+            ))
         );
     }
 }
