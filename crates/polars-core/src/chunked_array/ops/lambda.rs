@@ -32,6 +32,7 @@ pub enum LambdaExpression {
     Substring(Box<Self>, Box<Self>, Box<Self>),
     Instr(Box<Self>, Box<Self>),
     Add(Box<Self>, Box<Self>),
+    IsNull(Box<Self>),
 }
 
 impl Eq for LambdaExpression {}
@@ -81,6 +82,7 @@ impl Hash for LambdaExpression {
                 first.hash(state);
                 second.hash(state);
             },
+            LambdaExpression::IsNull(v) => v.hash(state),
         }
     }
 }
@@ -283,6 +285,13 @@ impl LambdaExpression {
                 let right = right.eval_array(args);
                 left.add(&right.cast(&left.dtype()))
             },
+            LambdaExpression::IsNull(expr) => {
+                if expr.eval_array(args).is_null() {
+                    AnyValue::Boolean(true)
+                } else {
+                    AnyValue::Boolean(false)
+                }
+            },
         }
     }
 
@@ -358,6 +367,13 @@ impl LambdaExpression {
                 let right = right.eval_numeric::<T>(args);
                 left.add(&right.cast(&left.dtype()))
             },
+            LambdaExpression::IsNull(expr) => {
+                if expr.eval_numeric::<T>(args).is_null() {
+                    AnyValue::Boolean(true)
+                } else {
+                    AnyValue::Boolean(false)
+                }
+            },
         }
     }
 
@@ -432,6 +448,13 @@ impl LambdaExpression {
                 let left = left.eval_bool(args);
                 let right = right.eval_bool(args);
                 left.add(&right.cast(&left.dtype()))
+            },
+            LambdaExpression::IsNull(expr) => {
+                if expr.eval_bool(args).is_null() {
+                    AnyValue::Boolean(true)
+                } else {
+                    AnyValue::Boolean(false)
+                }
             },
         }
     }
@@ -511,6 +534,13 @@ impl LambdaExpression {
                 let right = right.eval_slice(args);
                 left.add(&right.cast(&left.dtype()))
             },
+            LambdaExpression::IsNull(expr) => {
+                if expr.eval_slice(args).is_null() {
+                    AnyValue::Boolean(true)
+                } else {
+                    AnyValue::Boolean(false)
+                }
+            },
         }
     }
 
@@ -588,6 +618,13 @@ impl LambdaExpression {
                 let right = right.eval_any(args);
                 left.add(&right.cast(&left.dtype()))
             },
+            LambdaExpression::IsNull(expr) => {
+                if expr.eval_any(args).is_null() {
+                    AnyValue::Boolean(true)
+                } else {
+                    AnyValue::Boolean(false)
+                }
+            },
         }
     }
 
@@ -622,6 +659,7 @@ impl LambdaExpression {
             LambdaExpression::Substring(s, _, _) => s.return_type(), // substring is used for string and byte arrays
             LambdaExpression::Instr(_, _) => Some(DataType::Int32),
             LambdaExpression::Add(left, _) => left.return_type(),
+            LambdaExpression::IsNull(_) => Some(DataType::Boolean),
         }
     }
 }
