@@ -291,7 +291,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(false)
                 }
-            }
+            },
         }
     }
 
@@ -373,7 +373,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(false)
                 }
-            }
+            },
         }
     }
 
@@ -455,7 +455,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(false)
                 }
-            }
+            },
         }
     }
 
@@ -540,7 +540,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(false)
                 }
-            }
+            },
         }
     }
 
@@ -624,7 +624,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(false)
                 }
-            }
+            },
         }
     }
 
