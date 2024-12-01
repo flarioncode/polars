@@ -1,6 +1,0 @@
-[lints]
-# Allow explicit lifetimes that could be elided
-needless_lifetimes = "allow"
-
-# Allow a newline between doc comments and the item they document
-doc_comment_spacing = "allow"
