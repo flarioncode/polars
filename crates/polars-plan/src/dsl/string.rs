@@ -400,11 +400,7 @@ impl StringNameSpace {
     /// Replace values that match a regex `pat` with a `value`.
     pub fn replace(self, pat: Expr, value: Expr, literal: bool) -> Expr {
         self.0.map_many_private(
-            FunctionExpr::StringExpr(StringFunction::Replace {
-                n: 1,
-                literal,
-                group_index: 0,
-            }),
+            FunctionExpr::StringExpr(StringFunction::Replace { n: 1, literal }),
             &[pat, value],
             false,
             Some(Default::default()),
@@ -415,11 +411,7 @@ impl StringNameSpace {
     /// Replace values that match a regex `pat` with a `value`.
     pub fn replace_n(self, pat: Expr, value: Expr, literal: bool, n: i64) -> Expr {
         self.0.map_many_private(
-            FunctionExpr::StringExpr(StringFunction::Replace {
-                n,
-                literal,
-                group_index: 0,
-            }),
+            FunctionExpr::StringExpr(StringFunction::Replace { n, literal }),
             &[pat, value],
             false,
             Some(Default::default()),
@@ -430,11 +422,7 @@ impl StringNameSpace {
     /// Replace all values that match a regex `pat` with a `value`.
     pub fn replace_all(self, pat: Expr, value: Expr, literal: bool) -> Expr {
         self.0.map_many_private(
-            FunctionExpr::StringExpr(StringFunction::Replace {
-                n: -1,
-                literal,
-                group_index: 0,
-            }),
+            FunctionExpr::StringExpr(StringFunction::Replace { n: -1, literal }),
             &[pat, value],
             false,
             Some(Default::default()),
@@ -617,27 +605,6 @@ impl StringNameSpace {
             &[pat],
             false,
             None,
-        )
-    }
-
-    #[cfg(feature = "regex")]
-    /// Replace all values that match a regex `pat` with a `value`.
-    pub fn replace_all_with_group(
-        self,
-        pat: Expr,
-        value: Expr,
-        literal: bool,
-        group_index: usize,
-    ) -> Expr {
-        self.0.map_many_private(
-            FunctionExpr::StringExpr(StringFunction::Replace {
-                n: -1,
-                literal,
-                group_index,
-            }),
-            &[pat, value],
-            false,
-            Some(Default::default()),
         )
     }
 
