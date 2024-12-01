@@ -43,7 +43,15 @@ pub fn flarion_split_helper(
             });
         };
     } else {
-        let re = RegexBuilder::new(pattern)
+        // Special handling for "." pattern to match Spark behavior
+        let pattern = if pattern == "." {
+            // Match any character except \r and \n
+            "[^\\r\\n]"
+        } else {
+            pattern
+        };
+
+        let re = RegexBuilder::new(&pattern)
             .size_limit(30 * 1024 * 1024)
             .build()?;
 
@@ -178,6 +186,19 @@ mod tests {
         assert_eq!(
             result.get(0).unwrap(),
             AnyValue::List(Series::new(PlSmallStr::EMPTY, &[""]))
+        );
+    }
+
+    #[test]
+    fn test_dot_pattern_splitting() {
+        let input = create_string_chunked("input", vec![Some("a\rb\rc\nd\te")]);
+        
+        let result = flarion_split_helper(&input, ".", -1).unwrap().into_series();
+        
+        assert_eq!(result.len(), 1);
+        assert_eq!(
+            result.get(0).unwrap(),
+            AnyValue::List(Series::new(PlSmallStr::EMPTY, &["", "\r", "", "\r", "", "\n", "", "", ""]))
         );
     }
 }
