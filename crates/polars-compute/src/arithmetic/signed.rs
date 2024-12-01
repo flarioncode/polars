@@ -68,8 +68,24 @@ macro_rules! impl_signed_arith_kernel {
                     other.take_validity().as_ref(), // compute combination twice.
                     Some(&mask),
                 );
-                let ret =
-                    prim_binary_values(lhs, other, |lhs, rhs| lhs.wrapping_floor_div_mod(rhs).1);
+
+                let ret;
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    ret = prim_binary_values(
+                        lhs,
+                        other,
+                        |lhs, rhs| if rhs != 0 { lhs % rhs } else { 0 },
+                    );
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    ret = prim_binary_values(lhs, other, |lhs, rhs| {
+                        lhs.wrapping_floor_div_mod(rhs).1
+                    });
+                }
+
                 ret.with_validity(valid)
             }
 
@@ -194,11 +210,23 @@ macro_rules! impl_signed_arith_kernel {
                             rem_u = scalar_u - rem_u;
                         }
 
-                        // Remainder should have sign of RHS.
-                        if rhs < 0 {
-                            -(rem_u as $T)
-                        } else {
-                            rem_u as $T
+                        #[cfg(feature = "consistent_arithmetic")]
+                        {
+                            // Module should have sign of LHS.
+                            if x < 0 {
+                                -(rem_u as $T)
+                            } else {
+                                rem_u as $T
+                            }
+                        }
+                        #[cfg(not(feature = "consistent_arithmetic"))]
+                        {
+                            // Remainder should have sign of RHS.
+                            if rhs < 0 {
+                                -(rem_u as $T)
+                            } else {
+                                rem_u as $T
+                            }
                         }
                     })
                 }
@@ -211,7 +239,18 @@ macro_rules! impl_signed_arith_kernel {
 
                 let mask = rhs.tot_ne_kernel_broadcast(&0);
                 let valid = combine_validities_and(rhs.validity(), Some(&mask));
-                let ret = prim_unary_values(rhs, |x| lhs.wrapping_floor_div_mod(x).1);
+
+                let ret;
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    ret = prim_unary_values(rhs, |x| if x != 0 { lhs % x } else { 0 });
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    ret = prim_unary_values(rhs, |x| lhs.wrapping_floor_div_mod(x).1);
+                }
+
                 ret.with_validity(valid)
             }
 
@@ -220,8 +259,17 @@ macro_rules! impl_signed_arith_kernel {
             }
 
             fn prim_true_div_scalar(lhs: PArr<$T>, rhs: $T) -> PArr<Self::TrueDivT> {
-                let inv = 1.0 / rhs as f64;
-                prim_unary_values(lhs, |x| x as f64 * inv)
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    let rhs = rhs as f64;
+                    prim_unary_values(lhs, |x| x as f64 / rhs)
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    let inv = 1.0 / rhs as f64;
+                    prim_unary_values(lhs, |x| x as f64 * inv)
+                }
             }
 
             fn prim_true_div_scalar_lhs(lhs: $T, rhs: PArr<$T>) -> PArr<Self::TrueDivT> {

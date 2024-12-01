@@ -37,7 +37,15 @@ macro_rules! impl_float_arith_kernel {
             }
 
             fn prim_wrapping_mod(lhs: PArr<$T>, rhs: PArr<$T>) -> PArr<$T> {
-                prim_binary_values(lhs, rhs, |l, r| l - r * (l / r).floor())
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    prim_binary_values(lhs, rhs, |l, r| l % r)
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    prim_binary_values(lhs, rhs, |l, r| l - r * (l / r).floor())
+                }
             }
 
             fn prim_wrapping_add_scalar(lhs: PArr<$T>, rhs: $T) -> PArr<$T> {
@@ -92,12 +100,28 @@ macro_rules! impl_float_arith_kernel {
             }
 
             fn prim_wrapping_mod_scalar(lhs: PArr<$T>, rhs: $T) -> PArr<$T> {
-                let inv = 1.0 / rhs;
-                prim_unary_values(lhs, |x| x - rhs * (x * inv).floor())
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    prim_unary_values(lhs, |x| x % rhs)
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    let inv = 1.0 / rhs;
+                    prim_unary_values(lhs, |x| x - rhs * (x * inv).floor())
+                }
             }
 
             fn prim_wrapping_mod_scalar_lhs(lhs: $T, rhs: PArr<$T>) -> PArr<$T> {
-                prim_unary_values(rhs, |x| lhs - x * (lhs / x).floor())
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    prim_unary_values(rhs, |x| lhs % x)
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    prim_unary_values(rhs, |x| lhs - x * (lhs / x).floor())
+                }
             }
 
             fn prim_true_div(lhs: PArr<$T>, rhs: PArr<$T>) -> PArr<Self::TrueDivT> {
@@ -105,12 +129,12 @@ macro_rules! impl_float_arith_kernel {
             }
 
             fn prim_true_div_scalar(lhs: PArr<$T>, rhs: $T) -> PArr<Self::TrueDivT> {
-                #[cfg(feature = "consistent_division")]
+                #[cfg(feature = "consistent_arithmetic")]
                 {
                     // Fixes: https://github.com/pola-rs/polars/issues/20038
                     prim_unary_values(lhs, |x| x / rhs)
                 }
-                #[cfg(not(feature = "consistent_division"))]
+                #[cfg(not(feature = "consistent_arithmetic"))]
                 {
                     Self::prim_wrapping_mul_scalar(lhs, 1.0 / rhs)
                 }

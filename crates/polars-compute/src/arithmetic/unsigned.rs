@@ -140,8 +140,17 @@ macro_rules! impl_unsigned_arith_kernel {
             }
 
             fn prim_true_div_scalar(lhs: PArr<$T>, rhs: $T) -> PArr<Self::TrueDivT> {
-                let inv = 1.0 / rhs as f64;
-                prim_unary_values(lhs, |x| x as f64 * inv)
+                #[cfg(feature = "consistent_arithmetic")]
+                {
+                    // Fixes: https://github.com/pola-rs/polars/issues/20038
+                    let rhs = rhs as f64;
+                    prim_unary_values(lhs, |x| x as f64 / rhs)
+                }
+                #[cfg(not(feature = "consistent_arithmetic"))]
+                {
+                    let inv = 1.0 / rhs as f64;
+                    prim_unary_values(lhs, |x| x as f64 * inv)
+                }
             }
 
             fn prim_true_div_scalar_lhs(lhs: $T, rhs: PArr<$T>) -> PArr<Self::TrueDivT> {
