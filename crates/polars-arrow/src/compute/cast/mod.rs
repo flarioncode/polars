@@ -7,6 +7,7 @@ mod decimal_to;
 mod dictionary_to;
 mod primitive_to;
 mod utf8_to;
+mod spark_impl;
 
 pub use binary_to::*;
 #[cfg(feature = "dtype-decimal")]
@@ -19,6 +20,7 @@ pub use dictionary_to::*;
 use polars_error::{polars_bail, polars_ensure, polars_err, PolarsResult};
 use polars_utils::IdxSize;
 pub use primitive_to::*;
+pub use spark_impl::*;
 pub use utf8_to::*;
 
 use crate::array::*;

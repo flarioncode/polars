@@ -8,6 +8,7 @@ use super::CastOptionsImpl;
 use crate::array::*;
 use crate::bitmap::Bitmap;
 use crate::compute::arity::unary;
+use crate::compute::cast::spark_impl::SparkAsPrimitive;
 use crate::datatypes::{ArrowDataType, IntervalUnit, TimeUnit};
 use crate::offset::{Offset, Offsets};
 use crate::temporal_conversions::*;
@@ -146,7 +147,7 @@ pub(super) fn primitive_to_primitive_dyn<I, O>(
     options: CastOptionsImpl,
 ) -> PolarsResult<Box<dyn Array>>
 where
-    I: NativeType + num_traits::NumCast + num_traits::AsPrimitive<O>,
+    I: NativeType + num_traits::NumCast + SparkAsPrimitive<O>,
     O: NativeType + num_traits::NumCast,
 {
     let from = from.as_any().downcast_ref::<PrimitiveArray<I>>().unwrap();
@@ -224,7 +225,7 @@ where
     f64: AsPrimitive<T>,
 {
     // 1.2 => 12
-    let multiplier: T = (10_f64).powi(to_scale as i32).as_();
+    let multiplier: T = AsPrimitive::as_((10_f64).powi(to_scale as i32));
 
     let min_for_precision = 9_i128
         .saturating_pow(1 + to_precision as u32)
@@ -266,10 +267,10 @@ pub fn primitive_as_primitive<I, O>(
     to_type: &ArrowDataType,
 ) -> PrimitiveArray<O>
 where
-    I: NativeType + num_traits::AsPrimitive<O>,
+    I: NativeType + SparkAsPrimitive<O>,
     O: NativeType,
 {
-    unary(from, num_traits::AsPrimitive::<O>::as_, to_type.clone())
+    unary(from, SparkAsPrimitive::<O>::as_, to_type.clone())
 }
 
 /// Cast [`PrimitiveArray`] to a [`PrimitiveArray`] of the same physical type.
