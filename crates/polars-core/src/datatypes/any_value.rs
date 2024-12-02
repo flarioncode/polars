@@ -1210,11 +1210,7 @@ impl PartialOrd for AnyValue<'_> {
             },
 
             (_, _) => {
-                unimplemented!(
-                    "ordering between {:?} and {:?} is not supported",
-                    self,
-                    other
-                )
+                unimplemented!("ordering for mixed dtypes is not supported")
             },
         }
     }
