@@ -45,29 +45,30 @@ impl_ser_primitive!(u16);
 impl_ser_primitive!(u32);
 impl_ser_primitive!(u64);
 
-impl SerPrimitive for f32 {
-    fn write(f: &mut Vec<u8>, val: Self) -> usize
-    where
-        Self: Sized,
-    {
-        let mut buffer = ryu::Buffer::new();
-        let value = buffer.format(val);
-        f.extend_from_slice(value.as_bytes());
-        value.len()
-    }
-}
-
-impl SerPrimitive for f64 {
-    fn write(f: &mut Vec<u8>, val: Self) -> usize
-    where
-        Self: Sized,
-    {
-        let mut buffer = ryu::Buffer::new();
-        let value = buffer.format(val);
-        f.extend_from_slice(value.as_bytes());
-        value.len()
-    }
-}
+// FLARION OVERRIDE IN `spark_impl` file
+// impl SerPrimitive for f32 {
+//     fn write(f: &mut Vec<u8>, val: Self) -> usize
+//     where
+//         Self: Sized,
+//     {
+//         let mut buffer = ryu::Buffer::new();
+//         let value = buffer.format(val);
+//         f.extend_from_slice(value.as_bytes());
+//         value.len()
+//     }
+// }
+//
+// impl SerPrimitive for f64 {
+//     fn write(f: &mut Vec<u8>, val: Self) -> usize
+//     where
+//         Self: Sized,
+//     {
+//         let mut buffer = ryu::Buffer::new();
+//         let value = buffer.format(val);
+//         f.extend_from_slice(value.as_bytes());
+//         value.len()
+//     }
+// }
 
 fn primitive_to_values_and_offsets<T: NativeType + SerPrimitive, O: Offset>(
     from: &PrimitiveArray<T>,
