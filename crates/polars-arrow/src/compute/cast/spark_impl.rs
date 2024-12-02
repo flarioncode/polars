@@ -109,63 +109,61 @@ const UPPER_SCIENTIFIC_BOUND_F64: f64 = 10000000.0;
 
 macro_rules! cast_float_to_string {
     ($type:ty, $lower_bound: expr, $upper_bound: expr) => {
-
-    impl SerPrimitive for $type {
-        fn write(f: &mut Vec<u8>, val: Self) -> usize
-        where
-            Self: Sized,
-        {
-            if val == <$type>::INFINITY {
-                f.extend_from_slice(b"Infinity");
-                return 8;
-            }
-
-            if val == <$type>::NEG_INFINITY {
-                f.extend_from_slice(b"-Infinity");
-                return 9;
-            }
-
-            if (val.abs() < $upper_bound && val.abs() >= $lower_bound) || val.abs() == 0.0 {
-                let trailing_zero = if val.fract() == 0.0 { ".0" } else { "" };
-
-                let value = format!("{val}{trailing_zero}");
-                f.extend_from_slice(value.as_bytes());
-                return value.len();
-            }
-
-            if val.abs() >= $upper_bound || val.abs() < $lower_bound {
-                let formatted = format!("{val:E}");
-
-                if formatted.contains(".") {
-                    f.extend_from_slice(formatted.as_bytes());
-
-                    formatted.len()
-                } else {
-                    // `formatted` is already in scientific notation and can be split up by E
-                    // in order to add the missing trailing 0 which gets removed for numbers with a fraction of 0.0
-                    let prepare_number: Vec<&str> = formatted.split("E").collect();
-
-                    let coefficient = prepare_number[0];
-
-                    let exponent = prepare_number[1];
-
-                    let str = format!("{coefficient}.0E{exponent}");
-                    f.extend_from_slice(str.as_bytes());
-
-                    str.len()
+        impl SerPrimitive for $type {
+            fn write(f: &mut Vec<u8>, val: Self) -> usize
+            where
+                Self: Sized,
+            {
+                if val == <$type>::INFINITY {
+                    f.extend_from_slice(b"Infinity");
+                    return 8;
                 }
-            } else {
-                // Fallback
-                let mut buffer = ryu::Buffer::new();
-                let value = buffer.format(val);
-                f.extend_from_slice(value.as_bytes());
-                value.len()
+
+                if val == <$type>::NEG_INFINITY {
+                    f.extend_from_slice(b"-Infinity");
+                    return 9;
+                }
+
+                if (val.abs() < $upper_bound && val.abs() >= $lower_bound) || val.abs() == 0.0 {
+                    let trailing_zero = if val.fract() == 0.0 { ".0" } else { "" };
+
+                    let value = format!("{val}{trailing_zero}");
+                    f.extend_from_slice(value.as_bytes());
+                    return value.len();
+                }
+
+                if val.abs() >= $upper_bound || val.abs() < $lower_bound {
+                    let formatted = format!("{val:E}");
+
+                    if formatted.contains(".") {
+                        f.extend_from_slice(formatted.as_bytes());
+
+                        formatted.len()
+                    } else {
+                        // `formatted` is already in scientific notation and can be split up by E
+                        // in order to add the missing trailing 0 which gets removed for numbers with a fraction of 0.0
+                        let prepare_number: Vec<&str> = formatted.split("E").collect();
+
+                        let coefficient = prepare_number[0];
+
+                        let exponent = prepare_number[1];
+
+                        let str = format!("{coefficient}.0E{exponent}");
+                        f.extend_from_slice(str.as_bytes());
+
+                        str.len()
+                    }
+                } else {
+                    // Fallback
+                    let mut buffer = ryu::Buffer::new();
+                    let value = buffer.format(val);
+                    f.extend_from_slice(value.as_bytes());
+                    value.len()
+                }
             }
         }
-    }
-};
-    }
-
+    };
+}
 
 cast_float_to_string!(f32, LOWER_SCIENTIFIC_BOUND_F32, UPPER_SCIENTIFIC_BOUND_F32);
 cast_float_to_string!(f64, LOWER_SCIENTIFIC_BOUND_F64, UPPER_SCIENTIFIC_BOUND_F64);
