@@ -135,11 +135,13 @@ pub enum StringFunction {
     },
 
     // Flarion functions
+    FlarionInstr,
     #[cfg(all(feature = "regex", feature = "dtype-struct"))]
     FlarionSplit {
         pattern: PlSmallStr,
         n: i32,
     },
+    FlarionSlice,
 }
 
 impl StringFunction {
@@ -208,8 +210,10 @@ impl StringFunction {
             #[cfg(feature = "find_many")]
             ExtractMany { .. } => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
 
+            FlarionInstr { .. } => mapper.with_same_dtype(),
             #[cfg(all(feature = "regex", feature = "dtype-struct"))]
             FlarionSplit { .. } => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
+            FlarionSlice { .. } => mapper.with_same_dtype(),
         }
     }
 }
@@ -300,6 +304,8 @@ impl Display for StringFunction {
             ExtractMany { .. } => "extract_many",
 
             // Flarion functions
+            FlarionInstr { .. } => "flarion_instr",
+            FlarionSlice { .. } => "flarion_slice",
             #[cfg(all(feature = "regex", feature = "dtype-struct"))]
             FlarionSplit { .. } => "flarion_split",
         };
@@ -420,6 +426,8 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             },
 
             // Flarion functions
+            FlarionInstr {} => map_as_slice!(strings::flarion_instr),
+            FlarionSlice {} => map_as_slice!(strings::flarion_slice),
             #[cfg(all(feature = "regex", feature = "dtype-struct"))]
             FlarionSplit { pattern, n } => {
                 map_as_slice!(strings::flarion_split, pattern.as_str(), n)
@@ -680,6 +688,27 @@ pub(super) fn split(s: &[Series], inclusive: bool) -> PolarsResult<Series> {
     } else {
         Ok(ca.split(by).into_series())
     }
+}
+
+pub(super) fn flarion_instr(s: &[Series]) -> PolarsResult<Series> {
+    polars_ensure!(
+        _ensure_lengths(s),
+        ComputeError: "all series in `str_slice` should have equal or unit length",
+    );
+    let ca = s[0].str()?;
+    let pattern: &Series = &s[1];
+    Ok(ca.flarion_instr(pattern)?.into_series())
+}
+
+pub(super) fn flarion_slice(s: &[Series]) -> PolarsResult<Series> {
+    polars_ensure!(
+        _ensure_lengths(s),
+        ComputeError: "all series in `str_slice` should have equal or unit length",
+    );
+    let ca = s[0].str()?;
+    let offset: &Series = &s[1];
+    let length = &s[2];
+    Ok(ca.flarion_slice(offset, length)?.into_series())
 }
 
 #[cfg(all(feature = "regex", feature = "dtype-struct"))]

@@ -1,6 +1,7 @@
 use arrow::array::View;
 use polars_core::prelude::arity::{binary_elementwise, ternary_elementwise, unary_elementwise};
 use polars_core::prelude::{ChunkFullNull, Int64Chunked, StringChunked, UInt64Chunked};
+use polars_core::series::Series;
 use polars_error::{polars_ensure, PolarsResult};
 
 fn head_binary(opt_str_val: Option<&str>, opt_n: Option<i64>) -> Option<&str> {
@@ -151,6 +152,14 @@ fn update_view(mut view: View, start: usize, end: usize, val: &str) -> View {
         view.prefix = u32::from_le_bytes(subval[0..4].try_into().unwrap());
         view
     }
+}
+
+pub(super) fn flarion_substring(
+    ca: &StringChunked,
+    offset: &Series,
+    length: &Series,
+) -> StringChunked {
+    panic!("HELLO FLARION");
 }
 
 pub(super) fn substring(

@@ -608,6 +608,15 @@ impl StringNameSpace {
         )
     }
 
+    pub fn flarion_instr(self, pattern: Expr) -> Expr {
+        self.0.map_many_private(
+            FunctionExpr::StringExpr(StringFunction::FlarionInstr),
+            &[pattern],
+            false,
+            None,
+        )
+    }
+
     /// Split the string by a substring regex. The resulting dtype is `List<String>`.
     #[cfg(all(feature = "regex", feature = "dtype-struct"))]
     pub fn flarion_split(self, pattern: &str, n: i32) -> Expr {
@@ -617,6 +626,15 @@ impl StringNameSpace {
                 n,
             }
             .into(),
+        )
+    }
+
+    pub fn flarion_slice(self, offset: Expr, length: Expr) -> Expr {
+        self.0.map_many_private(
+            FunctionExpr::StringExpr(StringFunction::FlarionSlice),
+            &[offset, length],
+            false,
+            None,
         )
     }
 }

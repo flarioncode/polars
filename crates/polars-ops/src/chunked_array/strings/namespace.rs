@@ -514,11 +514,23 @@ pub trait StringNameSpaceImpl: AsString {
         split_helper(ca, by, str::split_inclusive)
     }
 
+    fn flarion_instr(&self, pattern: &Series) -> PolarsResult<Series> {
+        let ca = self.as_string();
+
+        flarion_instr_helper(ca, pattern)
+    }
+
     #[cfg(feature = "dtype-struct")]
     fn flarion_split(&self, pattern: &str, n: i32) -> PolarsResult<ListChunked> {
         let ca = self.as_string();
 
         flarion_split_helper(ca, pattern, n)
+    }
+
+    fn flarion_slice(&self, offset: &Series, length: &Series) -> PolarsResult<Series> {
+        let ca = self.as_string();
+
+        flarion_slice_helper(ca, offset, length)
     }
 
     /// Extract each successive non-overlapping regex match in an individual string as an array.
