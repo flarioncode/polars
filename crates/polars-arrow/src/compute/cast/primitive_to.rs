@@ -1,5 +1,4 @@
 use std::hash::Hash;
-use std::ops::{BitAnd, Sub};
 
 use num_traits::{AsPrimitive, Float, ToPrimitive};
 use polars_error::PolarsResult;
@@ -9,6 +8,7 @@ use super::CastOptionsImpl;
 use crate::array::*;
 use crate::bitmap::Bitmap;
 use crate::compute::arity::unary;
+use crate::compute::cast::spark_impl::SparkAsPrimitive;
 use crate::datatypes::{ArrowDataType, IntervalUnit, TimeUnit};
 use crate::offset::{Offset, Offsets};
 use crate::temporal_conversions::*;
@@ -45,296 +45,30 @@ impl_ser_primitive!(u16);
 impl_ser_primitive!(u32);
 impl_ser_primitive!(u64);
 
-impl SerPrimitive for f32 {
-    fn write(f: &mut Vec<u8>, val: Self) -> usize
-    where
-        Self: Sized,
-    {
-        let mut buffer = ryu::Buffer::new();
-        let value = buffer.format(val);
-        f.extend_from_slice(value.as_bytes());
-        value.len()
-    }
-}
-
-impl SerPrimitive for f64 {
-    fn write(f: &mut Vec<u8>, val: Self) -> usize
-    where
-        Self: Sized,
-    {
-        let mut buffer = ryu::Buffer::new();
-        let value = buffer.format(val);
-        f.extend_from_slice(value.as_bytes());
-        value.len()
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////
-///////////////////// FLARION CODE - BEGIN
-////////////////////////////////////////////////////////////////////////////////////
-
-// These are defined to push calculations to compile time.
-const I32_MAX_F64: f64 = i32::MAX as f64;
-const I32_MIN_F64: f64 = i32::MIN as f64;
-const I64_MAX_F64: f64 = i64::MAX as f64;
-const I64_MIN_F64: f64 = i64::MIN as f64;
-
-/// Generic remainder cast using bit operations for any integer downcast
-#[inline(always)]
-fn primitive_as_remainder<T, O>(
-    from: &PrimitiveArray<T>,
-    mask: T,
-    max_val: O,
-    offset: O,
-    to_type: ArrowDataType,
-) -> PrimitiveArray<O>
-where
-    T: NativeType + BitAnd<Output = T> + AsPrimitive<O>,
-    O: NativeType + PartialOrd + Sub<Output = O>,
-{
-    let values = from.values().iter().map(|&x| {
-        Some({
-            let rem = (x & mask).as_();
-            if rem > max_val {
-                rem - offset
-            } else {
-                rem
-            }
-        })
-    });
-
-    PrimitiveArray::<O>::from_trusted_len_iter(values).to(to_type)
-}
-
-/// Fast float to i8/i16/i32 casting with remainder for values in i32 range
-/// and saturating to 0/-1 for larger values
-#[inline(always)]
-fn float_to_int_remainder<O>(value: f64, mask: i32, max_val: O, offset: i32) -> O
-where
-    O: NativeType + PartialOrd + AsPrimitive<i32>,
-    i32: AsPrimitive<O>,
-{
-    if value.is_nan() {
-        // Spark converts NaN to 0
-        0_i32.as_()
-    } else if value.is_infinite() {
-        if value.is_sign_positive() {
-            // Positive infinity -> INT_MAX
-            i32::MAX.as_()
-        } else {
-            // Negative infinity -> INT_MIN
-            i32::MIN.as_()
-        }
-    } else if value >= I32_MAX_F64 {
-        // Values larger than MAX -> INT_MAX
-        i32::MAX.as_()
-    } else if value <= I32_MIN_F64 {
-        // Values smaller than MIN -> INT_MIN
-        i32::MIN.as_()
-    } else {
-        let as_i32 = value as i32;
-        let rem = (as_i32 & mask).as_();
-        if rem > max_val {
-            (rem.as_() - offset).as_()
-        } else {
-            rem
-        }
-    }
-}
-
-#[inline(always)]
-fn float_to_i32_saturating(value: f64) -> i32 {
-    if value.is_nan() {
-        // Spark converts NaN to 0
-        0
-    } else if value.is_infinite() {
-        if value.is_sign_positive() {
-            // Positive infinity -> INT_MAX
-            i32::MAX
-        } else {
-            // Negative infinity -> INT_MIN
-            i32::MIN
-        }
-    } else if value >= I32_MAX_F64 {
-        i32::MAX
-    } else if value <= I32_MIN_F64 {
-        i32::MIN
-    } else {
-        value as i32
-    }
-}
-
-#[inline(always)]
-fn float_to_i64_saturating(value: f64) -> i64 {
-    if value.is_nan() {
-        // Spark converts NaN to 0
-        0
-    } else if value.is_infinite() {
-        if value.is_sign_positive() {
-            // Positive infinity -> LONG_MAX
-            i64::MAX
-        } else {
-            // Negative infinity -> LONG_MIN
-            i64::MIN
-        }
-    } else if value >= I64_MAX_F64 {
-        i64::MAX
-    } else if value <= I64_MIN_F64 {
-        i64::MIN
-    } else {
-        value as i64
-    }
-}
-
-#[inline(always)]
-pub fn f64_as_i8_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i8> {
-    let validity = from.validity().cloned();
-
-    // Compute offset using a larger integer type to prevent overflow
-    let offset = (i8::MAX as i16).abs() + 1; // offset is 128, stored as i16
-    let offset = offset as i32; // Ensure offset is i32 for function parameter
-
-    let values = from
-        .values()
-        .iter()
-        .map(|&x| float_to_int_remainder(x, 0xFF, i8::MAX, offset));
-
-    let arr = PrimitiveArray::<i8>::from_vec(values.collect());
-    if let Some(validity) = validity {
-        arr.with_validity(Some(validity))
-    } else {
-        arr
-    }
-    .to(ArrowDataType::Int8)
-}
-
-#[inline(always)]
-pub fn f64_as_i16_remainder(from: &PrimitiveArray<f64>) -> PrimitiveArray<i16> {
-    let validity = from.validity().cloned();
-
-    let offset = (i16::MAX as i32).abs() + 1; // offset is 32,768
-                                              // offset is already i32
-
-    let values = from
-        .values()
-        .iter()
-        .map(|&x| float_to_int_remainder(x, 0xFFFF, i16::MAX, offset));
-
-    let arr = PrimitiveArray::<i16>::from_vec(values.collect());
-    if let Some(validity) = validity {
-        arr.with_validity(Some(validity))
-    } else {
-        arr
-    }
-    .to(ArrowDataType::Int16)
-}
-
-#[inline(always)]
-pub fn f64_as_i32_saturating(from: &PrimitiveArray<f64>) -> PrimitiveArray<i32> {
-    let validity = from.validity().cloned();
-    let values = from.values().iter().map(|&x| float_to_i32_saturating(x));
-
-    let arr = PrimitiveArray::<i32>::from_vec(values.collect());
-    if let Some(validity) = validity {
-        arr.with_validity(Some(validity))
-    } else {
-        arr
-    }
-}
-
-#[inline(always)]
-pub fn f64_as_i64_saturating(from: &PrimitiveArray<f64>) -> PrimitiveArray<i64> {
-    let validity = from.validity().cloned();
-    let values = from.values().iter().map(|&x| float_to_i64_saturating(x));
-
-    let arr = PrimitiveArray::<i64>::from_vec(values.collect());
-    if let Some(validity) = validity {
-        arr.with_validity(Some(validity))
-    } else {
-        arr
-    }
-    .to(ArrowDataType::Int64)
-}
-
-// i64 -> i32 (mask with 0xFFFFFFFF for 32 bits)
-#[inline(always)]
-pub fn i64_as_i32_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i32> {
-    primitive_as_remainder(
-        from,
-        0xFFFFFFFF,
-        i32::MAX,
-        (-(i32::MIN as i64)) as i32,
-        ArrowDataType::Int32,
-    )
-}
-
-// i64 -> i16 (mask with 0xFFFF for 16 bits)
-#[inline(always)]
-pub fn i64_as_i16_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i16> {
-    primitive_as_remainder(
-        from,
-        0xFFFF,
-        i16::MAX,
-        (-(i16::MIN as i64)) as i16,
-        ArrowDataType::Int16,
-    )
-}
-
-// i64 -> i8 (mask with 0xFF for 8 bits)
-#[inline(always)]
-pub fn i64_as_i8_remainder(from: &PrimitiveArray<i64>) -> PrimitiveArray<i8> {
-    primitive_as_remainder(
-        from,
-        0xFF,
-        i8::MAX,
-        (-(i8::MIN as i64)) as i8,
-        ArrowDataType::Int8,
-    )
-}
-
-// i32 -> i16 (mask with 0xFFFF for 16 bits)
-#[inline(always)]
-pub fn i32_as_i16_remainder(from: &PrimitiveArray<i32>) -> PrimitiveArray<i16> {
-    primitive_as_remainder(
-        from,
-        0xFFFF,
-        i16::MAX,
-        (-(i16::MIN as i32)) as i16,
-        ArrowDataType::Int16,
-    )
-}
-
-// i32 -> i8 (mask with 0xFF for 8 bits)
-#[inline(always)]
-pub fn i32_as_i8_remainder(from: &PrimitiveArray<i32>) -> PrimitiveArray<i8> {
-    primitive_as_remainder(
-        from,
-        0xFF,
-        i8::MAX,
-        (-(i8::MIN as i32)) as i8,
-        ArrowDataType::Int8,
-    )
-}
-
-/*
- * Right now we do not care about this use case
- *
-// i16 -> i8 (mask with 0xFF for 8 bits)
-#[inline(always)]
-pub fn i16_as_i8_remainder(from: &PrimitiveArray<i16>) -> PrimitiveArray<i8> {
-    primitive_as_remainder(
-        from,
-        0xFF,
-        i8::MAX,
-        (-(i8::MIN as i16)) as i8,
-        ArrowDataType::Int8
-    )
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////////
-///////////////////// FLARION CODE - END
-////////////////////////////////////////////////////////////////////////////////////
+// FLARION OVERRIDE IN `spark_impl` file
+// impl SerPrimitive for f32 {
+//     fn write(f: &mut Vec<u8>, val: Self) -> usize
+//     where
+//         Self: Sized,
+//     {
+//         let mut buffer = ryu::Buffer::new();
+//         let value = buffer.format(val);
+//         f.extend_from_slice(value.as_bytes());
+//         value.len()
+//     }
+// }
+//
+// impl SerPrimitive for f64 {
+//     fn write(f: &mut Vec<u8>, val: Self) -> usize
+//     where
+//         Self: Sized,
+//     {
+//         let mut buffer = ryu::Buffer::new();
+//         let value = buffer.format(val);
+//         f.extend_from_slice(value.as_bytes());
+//         value.len()
+//     }
+// }
 
 fn primitive_to_values_and_offsets<T: NativeType + SerPrimitive, O: Offset>(
     from: &PrimitiveArray<T>,
@@ -414,7 +148,7 @@ pub(super) fn primitive_to_primitive_dyn<I, O>(
     options: CastOptionsImpl,
 ) -> PolarsResult<Box<dyn Array>>
 where
-    I: NativeType + num_traits::NumCast + num_traits::AsPrimitive<O>,
+    I: NativeType + num_traits::NumCast + SparkAsPrimitive<O>,
     O: NativeType + num_traits::NumCast,
 {
     let from = from.as_any().downcast_ref::<PrimitiveArray<I>>().unwrap();
@@ -492,7 +226,7 @@ where
     f64: AsPrimitive<T>,
 {
     // 1.2 => 12
-    let multiplier: T = (10_f64).powi(to_scale as i32).as_();
+    let multiplier: T = AsPrimitive::as_((10_f64).powi(to_scale as i32));
 
     let min_for_precision = 9_i128
         .saturating_pow(1 + to_precision as u32)
@@ -534,10 +268,10 @@ pub fn primitive_as_primitive<I, O>(
     to_type: &ArrowDataType,
 ) -> PrimitiveArray<O>
 where
-    I: NativeType + num_traits::AsPrimitive<O>,
+    I: NativeType + SparkAsPrimitive<O>,
     O: NativeType,
 {
-    unary(from, num_traits::AsPrimitive::<O>::as_, to_type.clone())
+    unary(from, SparkAsPrimitive::<O>::as_, to_type.clone())
 }
 
 /// Cast [`PrimitiveArray`] to a [`PrimitiveArray`] of the same physical type.

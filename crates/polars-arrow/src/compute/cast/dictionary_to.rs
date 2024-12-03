@@ -3,6 +3,7 @@ use polars_error::{polars_bail, PolarsResult};
 use super::{primitive_as_primitive, primitive_to_primitive, CastOptionsImpl};
 use crate::array::{Array, DictionaryArray, DictionaryKey};
 use crate::compute::cast::cast;
+use crate::compute::cast::spark_impl::SparkAsPrimitive;
 use crate::datatypes::ArrowDataType;
 use crate::match_integer_type;
 
@@ -99,7 +100,7 @@ pub fn wrapping_dictionary_to_dictionary_keys<K1, K2>(
     from: &DictionaryArray<K1>,
 ) -> PolarsResult<DictionaryArray<K2>>
 where
-    K1: DictionaryKey + num_traits::AsPrimitive<K2>,
+    K1: DictionaryKey + SparkAsPrimitive<K2>,
     K2: DictionaryKey,
 {
     let keys = from.keys();

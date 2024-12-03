@@ -6,6 +6,7 @@ mod boolean_to;
 mod decimal_to;
 mod dictionary_to;
 mod primitive_to;
+mod spark_impl;
 mod utf8_to;
 
 pub use binary_to::*;
@@ -19,6 +20,7 @@ pub use dictionary_to::*;
 use polars_error::{polars_bail, polars_ensure, polars_err, PolarsResult};
 use polars_utils::IdxSize;
 pub use primitive_to::*;
+pub use spark_impl::*;
 pub use utf8_to::*;
 
 use crate::array::*;
@@ -629,12 +631,8 @@ pub fn cast(
         (Int32, UInt16) => primitive_to_primitive_dyn::<i32, u16>(array, to_type, options),
         (Int32, UInt32) => primitive_to_primitive_dyn::<i32, u32>(array, to_type, options),
         (Int32, UInt64) => primitive_to_primitive_dyn::<i32, u64>(array, to_type, options),
-        (Int32, Int8) => Ok(Box::new(i32_as_i8_remainder(
-            array.as_any().downcast_ref().unwrap(),
-        ))),
-        (Int32, Int16) => Ok(Box::new(i32_as_i16_remainder(
-            array.as_any().downcast_ref().unwrap(),
-        ))),
+        (Int32, Int8) => primitive_to_primitive_dyn::<i32, i8>(array, to_type, options),
+        (Int32, Int16) => primitive_to_primitive_dyn::<i32, i16>(array, to_type, options),
         (Int32, Int64) => primitive_to_primitive_dyn::<i32, i64>(array, to_type, as_options),
         (Int32, Float32) => primitive_to_primitive_dyn::<i32, f32>(array, to_type, as_options),
         (Int32, Float64) => primitive_to_primitive_dyn::<i32, f64>(array, to_type, as_options),
@@ -644,15 +642,9 @@ pub fn cast(
         (Int64, UInt16) => primitive_to_primitive_dyn::<i64, u16>(array, to_type, options),
         (Int64, UInt32) => primitive_to_primitive_dyn::<i64, u32>(array, to_type, options),
         (Int64, UInt64) => primitive_to_primitive_dyn::<i64, u64>(array, to_type, options),
-        (Int64, Int8) => Ok(Box::new(i64_as_i8_remainder(
-            array.as_any().downcast_ref().unwrap(),
-        ))),
-        (Int64, Int16) => Ok(Box::new(i64_as_i16_remainder(
-            array.as_any().downcast_ref().unwrap(),
-        ))),
-        (Int64, Int32) => Ok(Box::new(i64_as_i32_remainder(
-            array.as_any().downcast_ref().unwrap(),
-        ))),
+        (Int64, Int8) => primitive_to_primitive_dyn::<i64, i8>(array, to_type, options),
+        (Int64, Int16) => primitive_to_primitive_dyn::<i64, i16>(array, to_type, options),
+        (Int64, Int32) => primitive_to_primitive_dyn::<i64, i32>(array, to_type, options),
         (Int64, Float32) => primitive_to_primitive_dyn::<i64, f32>(array, to_type, options),
         (Int64, Float64) => primitive_to_primitive_dyn::<i64, f64>(array, to_type, as_options),
         (Int64, Decimal(p, s)) => integer_to_decimal_dyn::<i64>(array, *p, *s),
@@ -677,18 +669,10 @@ pub fn cast(
         (Float64, UInt16) => primitive_to_primitive_dyn::<f64, u16>(array, to_type, options),
         (Float64, UInt32) => primitive_to_primitive_dyn::<f64, u32>(array, to_type, options),
         (Float64, UInt64) => primitive_to_primitive_dyn::<f64, u64>(array, to_type, options),
-        (Float64, Int8) => Ok(Box::new(f64_as_i8_remainder(
-            array.as_any().downcast_ref().unwrap(),
-        ))),
-        (Float64, Int16) => Ok(Box::new(f64_as_i16_remainder(
-            array.as_any().downcast_ref().unwrap(),
-        ))),
-        (Float64, Int32) => Ok(Box::new(f64_as_i32_saturating(
-            array.as_any().downcast_ref().unwrap(),
-        ))),
-        (Float64, Int64) => Ok(Box::new(f64_as_i64_saturating(
-            array.as_any().downcast_ref().unwrap(),
-        ))),
+        (Float64, Int8) => primitive_to_primitive_dyn::<f64, i8>(array, to_type, options),
+        (Float64, Int16) => primitive_to_primitive_dyn::<f64, i16>(array, to_type, options),
+        (Float64, Int32) => primitive_to_primitive_dyn::<f64, i32>(array, to_type, options),
+        (Float64, Int64) => primitive_to_primitive_dyn::<f64, i64>(array, to_type, options),
         (Float64, Float32) => primitive_to_primitive_dyn::<f64, f32>(array, to_type, options),
         (Float64, Decimal(p, s)) => float_to_decimal_dyn::<f64>(array, *p, *s),
 
