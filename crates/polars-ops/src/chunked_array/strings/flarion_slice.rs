@@ -26,13 +26,13 @@ pub fn flarion_slice_helper(
         _ => None,
     };
 
-    let froms_length = from_iter.len();
+    let from_length = from_iter.len();
     let lens_length = lens_iter.len();
     let first_from = from_iter.get(0);
     let first_len = lens_iter.get(0);
 
     // Fast path: if from_iter is length 1 and it's null, return all nulls
-    if froms_length == 1 && first_from.is_none() {
+    if from_length == 1 && first_from.is_none() {
         return Ok(Series::full_null(
             "".into(),
             strings.len(),
@@ -40,7 +40,7 @@ pub fn flarion_slice_helper(
         ));
     }
 
-    let result: StringChunked = match (froms_length, lens_length) {
+    let result: StringChunked = match (from_length, lens_length) {
         // Commented out because it is already covered in previous check
         // (0, _) | (_, 0) => None,
         (1, _) => {

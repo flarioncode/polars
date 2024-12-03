@@ -8,7 +8,7 @@ mod extract;
 mod find_many;
 #[cfg(feature = "strings")]
 mod flarion_instr;
-#[cfg(all(feature = "strings"))]
+#[cfg(feature = "strings")]
 mod flarion_slice;
 #[cfg(all(feature = "strings", feature = "dtype-struct"))]
 mod flarion_split;
