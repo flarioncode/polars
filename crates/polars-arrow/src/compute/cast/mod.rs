@@ -6,8 +6,8 @@ mod boolean_to;
 mod decimal_to;
 mod dictionary_to;
 mod primitive_to;
-mod utf8_to;
 mod spark_impl;
+mod utf8_to;
 
 pub use binary_to::*;
 #[cfg(feature = "dtype-decimal")]
