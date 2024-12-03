@@ -210,7 +210,7 @@ impl StringFunction {
             #[cfg(feature = "find_many")]
             ExtractMany { .. } => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
 
-            FlarionInstr { .. } => mapper.with_same_dtype(),
+            FlarionInstr { .. } => mapper.with_dtype(DataType::Int32),
             #[cfg(all(feature = "regex", feature = "dtype-struct"))]
             FlarionSplit { .. } => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
             FlarionSlice { .. } => mapper.with_same_dtype(),
