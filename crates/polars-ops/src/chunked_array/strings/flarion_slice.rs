@@ -8,10 +8,10 @@ pub fn flarion_slice_helper(
     offset: &Series,
     length: &Series,
 ) -> PolarsResult<Series> {
-    let froms_iter = offset.i32()?;
+    let from_iter = offset.i32()?;
     let lens_iter = length.i32()?;
 
-    if froms_iter.is_empty() || lens_iter.is_empty() {
+    if from_iter.is_empty() || lens_iter.is_empty() {
         return Ok(Series::full_null(
             "".into(),
             strings.len(),
@@ -26,12 +26,12 @@ pub fn flarion_slice_helper(
         _ => None,
     };
 
-    let froms_length = froms_iter.len();
+    let froms_length = from_iter.len();
     let lens_length = lens_iter.len();
-    let first_from = froms_iter.get(0);
+    let first_from = from_iter.get(0);
     let first_len = lens_iter.get(0);
 
-    // Fast path: if froms_iter is length 1 and it's null, return all nulls
+    // Fast path: if from_iter is length 1 and it's null, return all nulls
     if froms_length == 1 && first_from.is_none() {
         return Ok(Series::full_null(
             "".into(),
@@ -57,7 +57,7 @@ pub fn flarion_slice_helper(
         },
         (_, 1) => {
             let mut builder = StringChunkedBuilder::new("".into(), strings.len());
-            for (s_opt, from_opt) in strings.into_iter().zip(froms_iter) {
+            for (s_opt, from_opt) in strings.into_iter().zip(from_iter) {
                 let value = match (s_opt, from_opt, first_len) {
                     (Some(s), Some(from), Some(len)) => Some(flarion_substring(s, from, len)),
                     (Some(s), Some(from), None) => substring_with_null_length(s, from),
@@ -71,7 +71,7 @@ pub fn flarion_slice_helper(
             let mut builder = StringChunkedBuilder::new("".into(), strings.len());
             for (s_opt, (from_opt, len_opt)) in strings
                 .into_iter()
-                .zip(froms_iter.into_iter().zip(lens_iter))
+                .zip(from_iter.into_iter().zip(lens_iter))
             {
                 let value = match (s_opt, from_opt, len_opt) {
                     (Some(s), Some(from), Some(len)) => Some(flarion_substring(s, from, len)),

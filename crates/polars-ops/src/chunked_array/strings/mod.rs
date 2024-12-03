@@ -6,7 +6,7 @@ mod concat;
 mod extract;
 #[cfg(feature = "find_many")]
 mod find_many;
-#[cfg(all(feature = "strings"))]
+#[cfg(feature = "strings")]
 mod flarion_instr;
 #[cfg(all(feature = "strings"))]
 mod flarion_slice;
@@ -34,9 +34,9 @@ mod unicode_internals;
 pub use concat::*;
 #[cfg(feature = "find_many")]
 pub use find_many::*;
-#[cfg(all(feature = "strings"))]
+#[cfg(feature = "strings")]
 pub use flarion_instr::*;
-#[cfg(all(feature = "strings"))]
+#[cfg(feature = "strings")]
 pub use flarion_slice::*;
 #[cfg(all(feature = "strings", feature = "dtype-struct"))]
 pub use flarion_split::*;

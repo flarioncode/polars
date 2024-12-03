@@ -154,14 +154,6 @@ fn update_view(mut view: View, start: usize, end: usize, val: &str) -> View {
     }
 }
 
-pub(super) fn flarion_substring(
-    ca: &StringChunked,
-    offset: &Series,
-    length: &Series,
-) -> StringChunked {
-    panic!("HELLO FLARION");
-}
-
 pub(super) fn substring(
     ca: &StringChunked,
     offset: &Int64Chunked,
