@@ -44,15 +44,16 @@ fn get_spill_dir(operation_name: &'static str) -> PolarsResult<PathBuf> {
 
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|err| {
-            PolarsError::ComputeError(ErrString::from(format!(
+            polars_err!(ComputeError: format!(
                 "Failed to create spill directory: {}",
                 err
-            )))
+            ))
         })?;
     } else if !dir.is_dir() {
-        return Err(PolarsError::ComputeError(
-            "Specified spill path is not a directory".into(),
-        ));
+        polars_bail!(
+            ComputeError:
+            "Specified spill path is not a directory",
+        );
     }
 
     Ok(dir)

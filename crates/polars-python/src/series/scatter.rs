@@ -38,7 +38,7 @@ fn scatter(mut s: Series, idx: &Series, values: &Series) -> Result<Series, (Seri
     if idx.null_count() > 0 {
         return Err((
             s,
-            PolarsError::ComputeError("index values should not be null".into()),
+            polars_err!(ComputeError: "index values should not be null"),
         ));
     }
 
@@ -131,9 +131,10 @@ fn scatter_impl(
             ca.scatter(idx, values)
         },
         _ => {
-            return Err(PolarsError::ComputeError(
-                format!("not yet implemented for dtype: {logical_dtype}").into(),
-            ));
+            polars_bail!(
+                ComputeError:
+                format!("not yet implemented for dtype: {logical_dtype}"),
+            );
         },
     };
 

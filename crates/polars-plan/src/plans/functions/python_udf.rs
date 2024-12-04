@@ -23,13 +23,13 @@ pub(super) fn call_python_udf(
         let output_schema = out.schema();
         let expected = expected_schema.unwrap();
         if expected.as_ref() != &output_schema {
-            return Err(PolarsError::ComputeError(
+            polars_bail!(
+                ComputeError:
                 format!(
                     "The output schema of 'LazyFrame.map' is incorrect. Expected: {expected:?}\n\
                         Got: {output_schema:?}"
-                )
-                .into(),
-            ));
+                ),
+            );
         }
     }
     Ok(out)

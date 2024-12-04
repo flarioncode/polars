@@ -18,7 +18,7 @@ use crate::Wrap;
 fn python_function_caller_series(s: Series, lambda: &PyObject) -> PolarsResult<Series> {
     Python::with_gil(|py| {
         let object = call_lambda_with_series(py, s.clone(), lambda)
-            .map_err(|s| ComputeError(format!("{}", s).into()))?;
+            .map_err(|s| polars_err!(ComputeError: format!("{}", s)))?;
         object.to_series(py, &POLARS, s.name())
     })
 }
@@ -35,14 +35,14 @@ fn python_function_caller_df(df: DataFrame, lambda: &PyObject) -> PolarsResult<D
             .unwrap();
         // call the lambda and get a python side df wrapper
         let result_df_wrapper = lambda.call1(py, (python_df_wrapper,)).map_err(|e| {
-            PolarsError::ComputeError(format!("User provided python function failed: {e}").into())
+            polars_err!(ComputeError: format!("User provided python function failed: {e}"))
         })?;
         // unpack the wrapper in a PyDataFrame
         let py_pydf = result_df_wrapper.getattr(py, "_df").map_err(|_| {
             let pytype = result_df_wrapper.bind(py).get_type();
-            PolarsError::ComputeError(
-                format!("Expected 'LazyFrame.map' to return a 'DataFrame', got a '{pytype}'",)
-                    .into(),
+            polars_err!(
+                ComputeError:
+                format!("Expected 'LazyFrame.map' to return a 'DataFrame', got a '{pytype}'"),
             )
         })?;
 

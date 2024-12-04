@@ -1,5 +1,7 @@
 //! Contains [`Error`]
 
+use polars_error::polars_err;
+
 /// List of features whose non-activation may cause a runtime error.
 /// Used to indicate which lack of feature caused [`Error::FeatureNotActive`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -129,7 +131,7 @@ pub type ParquetResult<T> = std::result::Result<T, ParquetError>;
 
 impl From<ParquetError> for polars_error::PolarsError {
     fn from(e: ParquetError) -> polars_error::PolarsError {
-        polars_error::PolarsError::ComputeError(format!("parquet: {}", e).into())
+        polars_err!(ComputeError: format!("parquet: {}", e))
     }
 }
 

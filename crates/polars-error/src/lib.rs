@@ -1,13 +1,15 @@
+#![feature(error_generic_member_access)]
 pub mod constants;
 mod warning;
 
+use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::collections::TryReserveError;
 use std::error::Error;
 use std::fmt::{self, Display, Formatter, Write};
 use std::ops::Deref;
 use std::sync::{Arc, LazyLock};
-use std::{env, io};
+use std::{backtrace, env, io};
 
 pub use warning::*;
 
@@ -76,13 +78,13 @@ impl Display for ErrString {
 #[derive(Debug, thiserror::Error, Clone)]
 pub enum PolarsError {
     #[error("not found: {0}")]
-    ColumnNotFound(ErrString),
+    ColumnNotFound(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("{0}")]
-    ComputeError(ErrString),
+    ComputeError(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("duplicate: {0}")]
-    Duplicate(ErrString),
+    Duplicate(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("{0}")]
-    InvalidOperation(ErrString),
+    InvalidOperation(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("{}", match msg {
         Some(msg) => format!("{}", msg),
         None => format!("{}", error)
@@ -92,23 +94,23 @@ pub enum PolarsError {
         msg: Option<ErrString>,
     },
     #[error("no data: {0}")]
-    NoData(ErrString),
+    NoData(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("{0}")]
-    OutOfBounds(ErrString),
+    OutOfBounds(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("field not found: {0}")]
-    SchemaFieldNotFound(ErrString),
+    SchemaFieldNotFound(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("{0}")]
-    SchemaMismatch(ErrString),
+    SchemaMismatch(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("lengths don't match: {0}")]
-    ShapeMismatch(ErrString),
+    ShapeMismatch(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("{0}")]
-    SQLInterface(ErrString),
+    SQLInterface(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("{0}")]
-    SQLSyntax(ErrString),
+    SQLSyntax(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("string caches don't match: {0}")]
-    StringCacheMismatch(ErrString),
+    StringCacheMismatch(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("field not found: {0}")]
-    StructFieldNotFound(ErrString),
+    StructFieldNotFound(ErrString, #[backtrace] Arc<Backtrace>),
     #[error("{error}: {msg}")]
     Context {
         error: Box<PolarsError>,
@@ -128,7 +130,7 @@ impl From<io::Error> for PolarsError {
 #[cfg(feature = "regex")]
 impl From<regex::Error> for PolarsError {
     fn from(err: regex::Error) -> Self {
-        PolarsError::ComputeError(format!("regex error: {err}").into())
+        PolarsError::ComputeError(format!("regex error: {err}").into(), Arc::new(Backtrace::capture()))
     }
 }
 
@@ -207,10 +209,10 @@ impl PolarsError {
     pub fn wrap_msg<F: FnOnce(&str) -> String>(&self, func: F) -> Self {
         use PolarsError::*;
         match self {
-            ColumnNotFound(msg) => ColumnNotFound(func(msg).into()),
-            ComputeError(msg) => ComputeError(func(msg).into()),
-            Duplicate(msg) => Duplicate(func(msg).into()),
-            InvalidOperation(msg) => InvalidOperation(func(msg).into()),
+            ColumnNotFound(msg, b) => ColumnNotFound(func(msg).into(), b.clone()),
+            ComputeError(msg, b) => ComputeError(func(msg).into(), b.clone()),
+            Duplicate(msg, b) => Duplicate(func(msg).into(), b.clone()),
+            InvalidOperation(msg, b) => InvalidOperation(func(msg).into(), b.clone()),
             IO { error, msg } => {
                 let msg = match msg {
                     Some(msg) => func(msg),
@@ -221,15 +223,15 @@ impl PolarsError {
                     msg: Some(msg.into()),
                 }
             },
-            NoData(msg) => NoData(func(msg).into()),
-            OutOfBounds(msg) => OutOfBounds(func(msg).into()),
-            SchemaFieldNotFound(msg) => SchemaFieldNotFound(func(msg).into()),
-            SchemaMismatch(msg) => SchemaMismatch(func(msg).into()),
-            ShapeMismatch(msg) => ShapeMismatch(func(msg).into()),
-            StringCacheMismatch(msg) => StringCacheMismatch(func(msg).into()),
-            StructFieldNotFound(msg) => StructFieldNotFound(func(msg).into()),
-            SQLInterface(msg) => SQLInterface(func(msg).into()),
-            SQLSyntax(msg) => SQLSyntax(func(msg).into()),
+            NoData(msg, b) => NoData(func(msg).into(), b.clone()),
+            OutOfBounds(msg, b) => OutOfBounds(func(msg).into(), b.clone()),
+            SchemaFieldNotFound(msg, b) => SchemaFieldNotFound(func(msg).into(), b.clone()),
+            SchemaMismatch(msg, b) => SchemaMismatch(func(msg).into(), b.clone()),
+            ShapeMismatch(msg, b) => ShapeMismatch(func(msg).into(), b.clone()),
+            StringCacheMismatch(msg, b) => StringCacheMismatch(func(msg).into(), b.clone()),
+            StructFieldNotFound(msg, b) => StructFieldNotFound(func(msg).into(), b.clone()),
+            SQLInterface(msg, b) => SQLInterface(func(msg).into(), b.clone()),
+            SQLSyntax(msg, b) => SQLSyntax(func(msg).into(), b.clone()),
             _ => unreachable!(),
         }
     }
@@ -248,28 +250,49 @@ impl PolarsError {
             error: Box::new(self),
         }
     }
+
+    pub fn backtrace(&self) -> Arc<Backtrace> {
+        match self {
+            PolarsError::ColumnNotFound(_, arc) => arc.clone(),
+            PolarsError::ComputeError(_, arc) => arc.clone(),
+            PolarsError::Duplicate(_, arc) => arc.clone(),
+            PolarsError::InvalidOperation(_, arc) => arc.clone(),
+            PolarsError::IO { error: _, msg: _ } => todo!(),
+            PolarsError::NoData(_, arc) => arc.clone(),
+            PolarsError::OutOfBounds(_, arc) => arc.clone(),
+            PolarsError::SchemaFieldNotFound(_, arc) => arc.clone(),
+            PolarsError::SchemaMismatch(_, arc) => arc.clone(),
+            PolarsError::ShapeMismatch(_, arc) => arc.clone(),
+            PolarsError::SQLInterface(_, arc) => arc.clone(),
+            PolarsError::SQLSyntax(_, arc) => arc.clone(),
+            PolarsError::StringCacheMismatch(_, arc) => arc.clone(),
+            PolarsError::StructFieldNotFound(_, arc) => arc.clone(),
+            PolarsError::Context { error, msg } => todo!(),
+        }
+    }
 }
 
 pub fn map_err<E: Error>(error: E) -> PolarsError {
-    PolarsError::ComputeError(format!("{error}").into())
+    PolarsError::ComputeError(format!("{error}").into(), Arc::new(Backtrace::capture()))
 }
 
 #[macro_export]
 macro_rules! polars_err {
     ($variant:ident: $fmt:literal $(, $arg:expr)* $(,)?) => {
         $crate::__private::must_use(
-            $crate::PolarsError::$variant(format!($fmt, $($arg),*).into())
+            $crate::PolarsError::$variant(format!($fmt, $($arg),*).into(), std::sync::Arc::new(std::backtrace::Backtrace::capture()))
         )
     };
     ($variant:ident: $err:expr $(,)?) => {
         $crate::__private::must_use(
-            $crate::PolarsError::$variant($err.into())
+            $crate::PolarsError::$variant($err.into(), std::sync::Arc::new(std::backtrace::Backtrace::capture()))
         )
     };
     (expr = $expr:expr, $variant:ident: $err:expr $(,)?) => {
         $crate::__private::must_use(
             $crate::PolarsError::$variant(
-                format!("{}\n\nError originated in expression: '{:?}'", $err, $expr).into()
+                format!("{}\n\nError originated in expression: '{:?}'", $err, $expr).into(),
+                std::sync::Arc::new(std::backtrace::Backtrace::capture())
             )
         )
     };
@@ -395,7 +418,7 @@ macro_rules! polars_ensure {
 #[cold]
 #[must_use]
 pub fn to_compute_err(err: impl Display) -> PolarsError {
-    PolarsError::ComputeError(err.to_string().into())
+    PolarsError::ComputeError(err.to_string().into(), Arc::new(Backtrace::capture()))
 }
 
 #[macro_export]

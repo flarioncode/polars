@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow::legacy::error::PolarsResult;
 use polars_core::datatypes::{DataType, Field, ListChunked};
-use polars_core::error::PolarsError;
+use polars_core::error::{polars_err, PolarsError};
 use polars_core::frame::DataFrame;
 use polars_core::prelude::{GroupsProxy, IntoSeries, Schema, Series};
 use polars_core::POOL;
@@ -30,8 +30,9 @@ fn normalize_series_with_dtype<const IS_AGG: bool>(input_series: &Series) -> Pol
             ))
         },
         DataType::Null => input_series.clone(),
-        _ => Err(PolarsError::ComputeError(
-            "FlarionNormalizeNanAndZero only supports floating point numbers".into(),
+        _ => Err(polars_err!(
+            ComputeError:
+            "FlarionNormalizeNanAndZero only supports floating point numbers",
         ))?,
     })
 }

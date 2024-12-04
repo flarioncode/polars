@@ -122,7 +122,7 @@ impl PySeries {
     fn get_index(&self, py: Python, index: usize) -> PyResult<PyObject> {
         let av = match self.series.get(index) {
             Ok(v) => v,
-            Err(PolarsError::OutOfBounds(err)) => {
+            Err(PolarsError::OutOfBounds(err, _)) => {
                 return Err(PyIndexError::new_err(err.to_string()))
             },
             Err(e) => return Err(PyPolarsErr::from(e).into()),
@@ -407,8 +407,9 @@ impl PySeries {
                         self.series = s;
                     })
                     .ok_or_else(|| {
-                        PyPolarsErr::from(PolarsError::NoData(
-                            "No columns found in IPC byte stream".into(),
+                        PyPolarsErr::from(polars_err!(
+                            NoData:
+                            "No columns found in IPC byte stream",
                         ))
                         .into()
                     })

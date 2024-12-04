@@ -88,7 +88,7 @@ pub struct IpcReader<R: MmapBytesReader> {
 }
 
 fn check_mmap_err(err: PolarsError) -> PolarsResult<()> {
-    if let PolarsError::ComputeError(s) = &err {
+    if let PolarsError::ComputeError(s, _) = &err {
         if s.as_ref() == "memory_map can only be done on uncompressed IPC files" {
             eprintln!(
                 "Could not memory_map compressed IPC file, defaulting to normal read. \

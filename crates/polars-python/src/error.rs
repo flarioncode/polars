@@ -40,10 +40,10 @@ impl std::convert::From<PyPolarsErr> for PyErr {
         use PyPolarsErr::*;
         match err {
             Polars(err) => match err {
-                PolarsError::ColumnNotFound(name) => ColumnNotFoundError::new_err(name.to_string()),
-                PolarsError::ComputeError(err) => ComputeError::new_err(err.to_string()),
-                PolarsError::Duplicate(err) => DuplicateError::new_err(err.to_string()),
-                PolarsError::InvalidOperation(err) => {
+                PolarsError::ColumnNotFound(name, _) => ColumnNotFoundError::new_err(name.to_string()),
+                PolarsError::ComputeError(err, _) => ComputeError::new_err(err.to_string()),
+                PolarsError::Duplicate(err, _) => DuplicateError::new_err(err.to_string()),
+                PolarsError::InvalidOperation(err, _) => {
                     InvalidOperationError::new_err(err.to_string())
                 },
                 PolarsError::IO { error, msg } => {
@@ -59,19 +59,19 @@ impl std::convert::From<PyPolarsErr> for PyErr {
                         _ => PyIOError::new_err(msg),
                     }
                 },
-                PolarsError::NoData(err) => NoDataError::new_err(err.to_string()),
-                PolarsError::OutOfBounds(err) => OutOfBoundsError::new_err(err.to_string()),
-                PolarsError::SQLInterface(name) => SQLInterfaceError::new_err(name.to_string()),
-                PolarsError::SQLSyntax(name) => SQLSyntaxError::new_err(name.to_string()),
-                PolarsError::SchemaFieldNotFound(name) => {
+                PolarsError::NoData(err, _) => NoDataError::new_err(err.to_string()),
+                PolarsError::OutOfBounds(err, _ ) => OutOfBoundsError::new_err(err.to_string()),
+                PolarsError::SQLInterface(name, _ ) => SQLInterfaceError::new_err(name.to_string()),
+                PolarsError::SQLSyntax(name, _) => SQLSyntaxError::new_err(name.to_string()),
+                PolarsError::SchemaFieldNotFound(name, _) => {
                     SchemaFieldNotFoundError::new_err(name.to_string())
                 },
-                PolarsError::SchemaMismatch(err) => SchemaError::new_err(err.to_string()),
-                PolarsError::ShapeMismatch(err) => ShapeError::new_err(err.to_string()),
-                PolarsError::StringCacheMismatch(err) => {
+                PolarsError::SchemaMismatch(err, _) => SchemaError::new_err(err.to_string()),
+                PolarsError::ShapeMismatch(err, _) => ShapeError::new_err(err.to_string()),
+                PolarsError::StringCacheMismatch(err, _) => {
                     StringCacheMismatchError::new_err(err.to_string())
                 },
-                PolarsError::StructFieldNotFound(name) => {
+                PolarsError::StructFieldNotFound(name, _) => {
                     StructFieldNotFoundError::new_err(name.to_string())
                 },
                 PolarsError::Context { .. } => {
@@ -97,7 +97,7 @@ impl Debug for PyPolarsErr {
 #[macro_export]
 macro_rules! raise_err(
     ($msg:expr, $err:ident) => {{
-        Err(PolarsError::$err($msg.into())).map_err(PyPolarsErr::from)?;
+        Err(polars_error::polars_err!($err: $msg)).map_err(PyPolarsErr::from)?;
         unreachable!()
     }}
 );

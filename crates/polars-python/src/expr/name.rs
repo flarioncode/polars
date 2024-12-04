@@ -21,8 +21,9 @@ impl PyExpr {
                 let out = Python::with_gil(|py| lambda.call1(py, (name.as_str(),)));
                 match out {
                     Ok(out) => Ok(format_pl_smallstr!("{}", out)),
-                    Err(e) => Err(PolarsError::ComputeError(
-                        format!("Python function in 'name.map' produced an error: {e}.").into(),
+                    Err(e) => Err(polars_err!(
+                        ComputeError:
+                        format!("Python function in 'name.map' produced an error: {e}."),
                     )),
                 }
             })

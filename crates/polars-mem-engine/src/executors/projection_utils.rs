@@ -287,7 +287,7 @@ pub(super) fn check_expand_literals(
                     `.alias(\"new_name\")` to avoid duplicate column names.",
                     name
                 );
-                return Err(PolarsError::Duplicate(msg.into()));
+                polars_bail!(Duplicate: msg);
             }
         }
     }

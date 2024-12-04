@@ -57,7 +57,7 @@ pub fn read_this_row_group(
                 // a parquet file may not have statistics of all columns
                 if matches!(should_read, Ok(false)) {
                     return Ok(false);
-                } else if !matches!(should_read, Err(PolarsError::ColumnNotFound(_))) {
+                } else if !matches!(should_read, Err(PolarsError::ColumnNotFound(..))) {
                     let _ = should_read?;
                 }
             }

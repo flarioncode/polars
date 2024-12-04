@@ -300,9 +300,10 @@ pub trait StringNameSpaceImpl: AsString {
                 opt_s.and_then(|s| rx.find(s)).map(|m| m.start() as u32)
             })),
             Err(_) if !strict => Ok(UInt32Chunked::full_null(ca.name().clone(), ca.len())),
-            Err(e) => Err(PolarsError::ComputeError(
-                format!("Invalid regular expression: {}", e).into(),
-            )),
+            Err(e) => polars_bail!(
+                ComputeError:
+                format!("Invalid regular expression: {}", e),
+            ),
         }
     }
 

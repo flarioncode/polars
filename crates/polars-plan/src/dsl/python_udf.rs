@@ -153,7 +153,7 @@ impl PythonUdfExpression {
 }
 
 fn from_pyerr(e: PyErr) -> PolarsError {
-    PolarsError::ComputeError(format!("error raised in python: {e}").into())
+    polars_err!(ComputeError: format!("error raised in python: {e}"))
 }
 
 impl DataFrameUdf for PythonFunction {

@@ -39,7 +39,7 @@ use crate::SQLContext;
 #[must_use]
 /// Convert a Display-able error to PolarsError::SQLInterface
 pub fn to_sql_interface_err(err: impl Display) -> PolarsError {
-    PolarsError::SQLInterface(err.to_string().into())
+    polars_err!(SQLInterface: err.to_string())
 }
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

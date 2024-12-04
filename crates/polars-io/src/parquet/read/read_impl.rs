@@ -27,7 +27,7 @@ use super::{mmap, ParallelStrategy};
 use crate::hive::materialize_hive_partitions;
 use crate::mmap::{MmapBytesReader, ReaderBytes};
 use crate::parquet::metadata::FileMetadataRef;
-use crate::parquet::read::ROW_COUNT_OVERFLOW_ERR;
+use crate::parquet::read::row_countoverflow_err;
 use crate::predicates::{apply_predicate, PhysicalIoExpr};
 use crate::utils::get_reader_bytes;
 use crate::utils::slice::split_slice_at_file;
@@ -495,10 +495,10 @@ fn rg_to_dfs_prefiltered(
     let dfs: Vec<DataFrame> = dfs.into_iter().flatten().collect();
 
     let row_count: usize = dfs.iter().map(|df| df.height()).sum();
-    let row_count = IdxSize::try_from(row_count).map_err(|_| ROW_COUNT_OVERFLOW_ERR)?;
+    let row_count = IdxSize::try_from(row_count).map_err(|_| row_countoverflow_err())?;
     *previous_row_count = previous_row_count
         .checked_add(row_count)
-        .ok_or(ROW_COUNT_OVERFLOW_ERR)?;
+        .ok_or(row_countoverflow_err())?;
 
     Ok(dfs)
 }
@@ -638,7 +638,7 @@ fn rg_to_dfs_par_over_rg(
             split_slice_at_file(&mut n_rows_processed, rg_md.num_rows(), slice.0, slice_end);
         *previous_row_count = previous_row_count
             .checked_add(rg_slice.1 as IdxSize)
-            .ok_or(ROW_COUNT_OVERFLOW_ERR)?;
+            .ok_or(row_countoverflow_err())?;
 
         if rg_slice.1 == 0 {
             continue;

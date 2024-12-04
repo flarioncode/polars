@@ -1,4 +1,4 @@
-use polars_error::PolarsError;
+use polars_error::{polars_err, PolarsError};
 use serde::de::Error;
 use serde::*;
 
@@ -27,7 +27,7 @@ impl<'de> Deserialize<'de> for DataFrame {
     {
         let parsed = <Util>::deserialize(deserializer)?;
         DataFrame::new(parsed.columns).map_err(|e| {
-            let e = PolarsError::ComputeError(format!("successful parse invalid data: {e}").into());
+            let e = polars_err!(ComputeError: format!("successful parse invalid data: {e}"));
             D::Error::custom::<PolarsError>(e)
         })
     }

@@ -85,7 +85,7 @@ impl AExpr {
             )),
             Column(name) => schema
                 .get_field(name)
-                .ok_or_else(|| PolarsError::ColumnNotFound(name.to_string().into())),
+                .ok_or_else(|| polars_err!(ColumnNotFound: name.to_string())),
             Literal(sv) => {
                 *nested = 0;
                 Ok(match sv {

@@ -164,9 +164,10 @@ where
         if matches!(dtype, DataType::Object(_, None)) {
             Ok(self.0.clone().into_series())
         } else {
-            Err(PolarsError::ComputeError(
-                "cannot cast 'Object' type".into(),
-            ))
+            polars_bail!(
+                ComputeError:
+                "cannot cast 'Object' type",
+            )
         }
     }
 

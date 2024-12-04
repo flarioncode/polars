@@ -186,8 +186,9 @@ impl<R: MmapBytesReader> CsvReader<R> {
                                 fld.coerce(String);
                                 Ok(fld)
                             },
-                            _ => Err(PolarsError::ComputeError(
-                                "'scale' must be set when reading csv column as Decimal".into(),
+                            _ => Err(polars_err!(
+                                ComputeError:
+                                "'scale' must be set when reading csv column as Decimal",
                             )),
                         },
                         _ => Ok(fld),
