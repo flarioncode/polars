@@ -170,9 +170,16 @@ impl std::fmt::Debug for NullArray {
 
 unsafe impl ToFfi for NullArray {
     fn buffers(&self) -> Vec<Option<*const u8>> {
+
+        // Polars:
+        //
         // `None` is technically not required by the specification, but older C++ implementations require it, so leaving
         // it here for backward compatibility
-        vec![None]
+        // vec![None]
+
+        // Ours
+        // I don't care about older C++ implementations
+        vec![]
     }
 
     fn offset(&self) -> Option<usize> {
