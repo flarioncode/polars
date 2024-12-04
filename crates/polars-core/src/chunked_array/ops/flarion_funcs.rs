@@ -43,7 +43,8 @@ pub fn flarion_substring(s: &str, from: i32, len: i32) -> String {
         let mut found_start = false;
 
         let distance_to_advance = from.unsigned_abs() as usize;
-        let end_idx = std::cmp::max(0, distance_to_advance as i32 - len) as usize; // We know len is positive
+
+        let end_idx = (distance_to_advance as i32).wrapping_sub(len) as usize; // We know len is positive
 
         for (idx, (byte_pos, ch)) in s.char_indices().rev().enumerate() {
             // We will always reach this code because end_idx is smaller than distance_to_advance, and idx == distance_to_advance breaks the flow.
