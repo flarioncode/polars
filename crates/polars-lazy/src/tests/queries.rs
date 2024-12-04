@@ -1950,8 +1950,9 @@ fn when_timers_in_profile_fail_should_not_fail_the_collect() -> PolarsResult<()>
 
     match (&collect_result, &time_result) {
         // Should fail the time result
-        (_, Ok(_)) => Err(PolarsError::ComputeError(
-            "Expected the time result to fail".into(),
+        (_, Ok(_)) => Err(polars_err!(
+            ComputeError:
+            "Expected the time result to fail",
         )),
 
         // Should not fail the collect result

@@ -1318,7 +1318,7 @@ fn test_empty_csv() {
                 .with_has_header(h)
                 .into_reader_with_file_handle(file.clone())
                 .finish(),
-            Err(PolarsError::NoData(_))
+            Err(PolarsError::NoData(_, _))
         ))
     }
 }
