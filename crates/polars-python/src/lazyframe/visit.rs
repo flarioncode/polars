@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-use polars::prelude::PolarsError;
 use polars_plan::plans::{to_aexpr, Context, IR};
 use polars_plan::prelude::expr_ir::ExprIR;
 use polars_plan::prelude::{AExpr, PythonOptions, PythonScanSource};

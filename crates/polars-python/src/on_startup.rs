@@ -4,7 +4,6 @@ use polars::prelude::*;
 use polars_core::chunked_array::object::builder::ObjectChunkedBuilder;
 use polars_core::chunked_array::object::registry::AnonymousObjectBuilder;
 use polars_core::chunked_array::object::{registry, set_polars_allow_extension};
-use polars_core::error::PolarsError::ComputeError;
 use polars_error::PolarsWarning;
 use pyo3::intern;
 use pyo3::prelude::*;

@@ -9,7 +9,7 @@ use std::error::Error;
 use std::fmt::{self, Display, Formatter, Write};
 use std::ops::Deref;
 use std::sync::{Arc, LazyLock};
-use std::{backtrace, env, io};
+use std::{env, io};
 
 pub use warning::*;
 
@@ -257,7 +257,7 @@ impl PolarsError {
             PolarsError::ComputeError(_, arc) => arc.clone(),
             PolarsError::Duplicate(_, arc) => arc.clone(),
             PolarsError::InvalidOperation(_, arc) => arc.clone(),
-            PolarsError::IO { error: _, msg: _ } => todo!(),
+            PolarsError::IO { error: _, msg: _ } => Arc::new(Backtrace::disabled()),
             PolarsError::NoData(_, arc) => arc.clone(),
             PolarsError::OutOfBounds(_, arc) => arc.clone(),
             PolarsError::SchemaFieldNotFound(_, arc) => arc.clone(),
@@ -267,7 +267,7 @@ impl PolarsError {
             PolarsError::SQLSyntax(_, arc) => arc.clone(),
             PolarsError::StringCacheMismatch(_, arc) => arc.clone(),
             PolarsError::StructFieldNotFound(_, arc) => arc.clone(),
-            PolarsError::Context { error, msg } => todo!(),
+            PolarsError::Context { error: _, msg: _ } => Arc::new(Backtrace::disabled()),
         }
     }
 }

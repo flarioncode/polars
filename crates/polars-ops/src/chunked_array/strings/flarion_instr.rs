@@ -1,7 +1,7 @@
 use polars_core::prelude::flarion_funcs::flarion_get_char_position;
 use polars_core::prelude::{Int32Chunked, StringChunked};
 use polars_core::series::{IntoSeries, Series};
-use polars_error::{polars_bail, PolarsError, PolarsResult};
+use polars_error::{polars_bail, PolarsResult};
 
 pub fn flarion_instr_helper(
     string_series: &StringChunked,

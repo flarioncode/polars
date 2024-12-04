@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow::legacy::error::PolarsResult;
 use polars_core::datatypes::{DataType, Field, ListChunked};
-use polars_core::error::{polars_err, PolarsError};
+use polars_core::error::polars_err;
 use polars_core::frame::DataFrame;
 use polars_core::prelude::{GroupsProxy, IntoSeries, Schema, Series};
 use polars_core::POOL;

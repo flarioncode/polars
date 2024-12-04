@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use polars::lazy::frame::{LazyFrame, LazyGroupBy};
-use polars::prelude::{DataFrame, PolarsError, Schema};
+use polars::prelude::{DataFrame, Schema};
 use polars_error::polars_err;
 use pyo3::prelude::*;
 
