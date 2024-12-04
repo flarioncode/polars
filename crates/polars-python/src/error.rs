@@ -40,7 +40,9 @@ impl std::convert::From<PyPolarsErr> for PyErr {
         use PyPolarsErr::*;
         match err {
             Polars(err) => match err {
-                PolarsError::ColumnNotFound(name, _) => ColumnNotFoundError::new_err(name.to_string()),
+                PolarsError::ColumnNotFound(name, _) => {
+                    ColumnNotFoundError::new_err(name.to_string())
+                },
                 PolarsError::ComputeError(err, _) => ComputeError::new_err(err.to_string()),
                 PolarsError::Duplicate(err, _) => DuplicateError::new_err(err.to_string()),
                 PolarsError::InvalidOperation(err, _) => {
@@ -60,8 +62,8 @@ impl std::convert::From<PyPolarsErr> for PyErr {
                     }
                 },
                 PolarsError::NoData(err, _) => NoDataError::new_err(err.to_string()),
-                PolarsError::OutOfBounds(err, _ ) => OutOfBoundsError::new_err(err.to_string()),
-                PolarsError::SQLInterface(name, _ ) => SQLInterfaceError::new_err(name.to_string()),
+                PolarsError::OutOfBounds(err, _) => OutOfBoundsError::new_err(err.to_string()),
+                PolarsError::SQLInterface(name, _) => SQLInterfaceError::new_err(name.to_string()),
                 PolarsError::SQLSyntax(name, _) => SQLSyntaxError::new_err(name.to_string()),
                 PolarsError::SchemaFieldNotFound(name, _) => {
                     SchemaFieldNotFoundError::new_err(name.to_string())

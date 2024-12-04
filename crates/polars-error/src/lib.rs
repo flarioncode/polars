@@ -130,7 +130,10 @@ impl From<io::Error> for PolarsError {
 #[cfg(feature = "regex")]
 impl From<regex::Error> for PolarsError {
     fn from(err: regex::Error) -> Self {
-        PolarsError::ComputeError(format!("regex error: {err}").into(), Arc::new(Backtrace::capture()))
+        PolarsError::ComputeError(
+            format!("regex error: {err}").into(),
+            Arc::new(Backtrace::capture()),
+        )
     }
 }
 

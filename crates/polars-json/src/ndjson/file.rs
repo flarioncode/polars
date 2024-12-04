@@ -17,9 +17,9 @@ fn read_rows<R: BufRead>(reader: &mut R, rows: &mut [String], limit: usize) -> P
     for row in rows.iter_mut() {
         loop {
             row.clear();
-            let _ = reader.read_line(row).map_err(|e| {
-                polars_err!(ComputeError: format!("{e} at line {row_number}"))
-            })?;
+            let _ = reader
+                .read_line(row)
+                .map_err(|e| polars_err!(ComputeError: format!("{e} at line {row_number}")))?;
             if row.is_empty() {
                 break;
             }
@@ -91,8 +91,7 @@ fn parse_value<'a>(scratch: &'a mut Vec<u8>, val: &[u8]) -> PolarsResult<Borrowe
     scratch.extend_from_slice(val);
     // 0 because it is row by row
 
-    simd_json::to_borrowed_value(scratch)
-        .map_err(|e| polars_err!(ComputeError: format!("{e}")))
+    simd_json::to_borrowed_value(scratch).map_err(|e| polars_err!(ComputeError: format!("{e}")))
 }
 
 /// Infers the [`ArrowDataType`] from an NDJSON file, optionally only using `number_of_rows` rows.
@@ -104,7 +103,8 @@ pub fn iter_unique_dtypes<R: std::io::BufRead>(
     reader: &mut R,
     number_of_rows: Option<NonZeroUsize>,
 ) -> PolarsResult<impl Iterator<Item = ArrowDataType>> {
-    if reader.fill_buf().map(|b| b.is_empty())? { // polars_err!(ComputeError: "overflow")
+    if reader.fill_buf().map(|b| b.is_empty())? {
+        // polars_err!(ComputeError: "overflow")
         polars_bail!(
             ComputeError:
             "Cannot infer NDJSON types on empty reader because empty string is not a valid JSON value"

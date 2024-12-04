@@ -37,12 +37,11 @@ fn row_countoverflow_err() -> PolarsError {
     polars_err!(
         ComputeError:
         "\
-Parquet file produces more than pow(2, 32) rows; \
-consider compiling with polars-bigidx feature (polars-u64-idx package on python), \
-or set 'streaming'"
+    Parquet file produces more than pow(2, 32) rows; \
+    consider compiling with polars-bigidx feature (polars-u64-idx package on python), \
+    or set 'streaming'"
     )
 }
-
 
 pub use options::{ParallelStrategy, ParquetOptions};
 use polars_error::{polars_err, PolarsError};

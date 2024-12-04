@@ -33,9 +33,9 @@ fn python_function_caller_df(df: DataFrame, lambda: &PyObject) -> PolarsResult<D
             .call1(py, (pydf,))
             .unwrap();
         // call the lambda and get a python side df wrapper
-        let result_df_wrapper = lambda.call1(py, (python_df_wrapper,)).map_err(|e| {
-            polars_err!(ComputeError: format!("User provided python function failed: {e}"))
-        })?;
+        let result_df_wrapper = lambda.call1(py, (python_df_wrapper,)).map_err(
+            |e| polars_err!(ComputeError: format!("User provided python function failed: {e}")),
+        )?;
         // unpack the wrapper in a PyDataFrame
         let py_pydf = result_df_wrapper.getattr(py, "_df").map_err(|_| {
             let pytype = result_df_wrapper.bind(py).get_type();

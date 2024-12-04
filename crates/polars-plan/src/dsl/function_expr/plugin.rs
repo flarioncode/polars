@@ -18,9 +18,9 @@ fn get_lib(lib: &str) -> PolarsResult<&'static PluginAndVersion> {
     } else {
         drop(lib_map);
         let library = unsafe {
-            Library::new(lib).map_err(|e| {
-                polars_err!(ComputeError: format!("error loading dynamic library: {e}"))
-            })?
+            Library::new(lib).map_err(
+                |e| polars_err!(ComputeError: format!("error loading dynamic library: {e}")),
+            )?
         };
         let version_function: libloading::Symbol<unsafe extern "C" fn() -> u32> = unsafe {
             library
