@@ -19,6 +19,7 @@ mod explode_and_offsets;
 mod extend;
 pub mod fill_null;
 mod filter;
+pub mod flarion_funcs;
 mod flatten;
 pub mod float_sorted_arg_max;
 mod for_each;

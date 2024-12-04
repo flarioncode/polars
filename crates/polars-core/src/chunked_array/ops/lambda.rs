@@ -5,6 +5,7 @@ use num_traits::ToBytes;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 
+use super::flarion_funcs::{flarion_get_char_position, flarion_substring};
 use super::DataType;
 use crate::datatypes::{AnyValue, PolarsNumericType};
 use crate::prelude::Array;
@@ -87,37 +88,16 @@ impl Hash for LambdaExpression {
     }
 }
 
-fn substring<'a>(s: AnyValue<'a>, from: AnyValue<'a>, len: AnyValue<'a>) -> AnyValue<'a> {
-    fn convert_indexes(from: i32, len: i32, s_len: usize) -> (usize, usize) {
-        let mut from = from as i64;
-        let len = len as i64; // this can be int32_max
-        let s_len = s_len as i64;
-        if from == 0 {
-            panic!("From can't be zero in 1 based indexation")
-        }
-        if from > 0 {
-            from -= 1;
-        }
-        if from < 0 {
-            from += s_len;
-        }
-        let to = (from + len).min(s_len);
-        (from.max(0) as usize, to.max(0) as usize)
-    }
-    unsafe {
-        match (s, from, len) {
-            (AnyValue::String(s), AnyValue::Int32(from), AnyValue::Int32(len)) => {
-                let (from, to) = convert_indexes(from, len, s.len());
-                let result = &s[from.max(0)..to.max(0)];
-                AnyValue::String(result)
-            },
-            (AnyValue::Binary(bin), AnyValue::Int32(from), AnyValue::Int32(len)) => {
-                let (from, to) = convert_indexes(from, len, bin.len());
-                let result = &bin[from.max(0)..to.max(0)];
-                AnyValue::Binary(result)
-            },
-            _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
-        }
+pub fn flarion_substring_anyvalue<'a>(
+    s: AnyValue<'a>,
+    from: AnyValue<'a>,
+    len: AnyValue<'a>,
+) -> AnyValue<'a> {
+    match (s, from, len) {
+        (AnyValue::String(s), AnyValue::Int32(from), AnyValue::Int32(len)) => {
+            AnyValue::StringOwned(flarion_substring(s, from, len).into())
+        },
+        _ => AnyValue::Null,
     }
 }
 
@@ -266,7 +246,7 @@ impl LambdaExpression {
                 let s = s.eval_array(args);
                 let from = from.eval_array(args).cast(&DataType::Int32);
                 let len = len.eval_array(args).cast(&DataType::Int32);
-                substring(s, from, len)
+                flarion_substring_anyvalue(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
                 let s = s.eval_array(args);
@@ -274,7 +254,7 @@ impl LambdaExpression {
                 unsafe {
                     match (s, pat) {
                         (AnyValue::String(s), AnyValue::String(pat)) => {
-                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                            AnyValue::Int32(flarion_get_char_position(s, pat))
                         },
                         _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
                     }
@@ -348,7 +328,7 @@ impl LambdaExpression {
                 let s = s.eval_numeric::<T>(args);
                 let from = from.eval_numeric::<T>(args).cast(&DataType::Int32);
                 let len = len.eval_numeric::<T>(args).cast(&DataType::Int32);
-                substring(s, from, len)
+                flarion_substring_anyvalue(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
                 let s = s.eval_numeric::<T>(args);
@@ -356,7 +336,7 @@ impl LambdaExpression {
                 unsafe {
                     match (s, pat) {
                         (AnyValue::String(s), AnyValue::String(pat)) => {
-                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                            AnyValue::Int32(flarion_get_char_position(s, pat))
                         },
                         _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
                     }
@@ -430,7 +410,7 @@ impl LambdaExpression {
                 let s = s.eval_bool(args);
                 let from = from.eval_bool(args).cast(&DataType::Int32);
                 let len = len.eval_bool(args).cast(&DataType::Int32);
-                substring(s, from, len)
+                flarion_substring_anyvalue(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
                 let s = s.eval_bool(args);
@@ -438,7 +418,7 @@ impl LambdaExpression {
                 unsafe {
                     match (s, pat) {
                         (AnyValue::String(s), AnyValue::String(pat)) => {
-                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                            AnyValue::Int32(flarion_get_char_position(s, pat))
                         },
                         _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
                     }
@@ -515,7 +495,7 @@ impl LambdaExpression {
                 let s = s.eval_slice(args);
                 let from = from.eval_slice(args).cast(&DataType::Int32);
                 let len = len.eval_slice(args).cast(&DataType::Int32);
-                substring(s, from, len)
+                flarion_substring_anyvalue(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
                 let s = s.eval_slice(args);
@@ -523,7 +503,7 @@ impl LambdaExpression {
                 unsafe {
                     match (s, pat) {
                         (AnyValue::String(s), AnyValue::String(pat)) => {
-                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                            AnyValue::Int32(flarion_get_char_position(s, pat))
                         },
                         _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
                     }
@@ -599,7 +579,7 @@ impl LambdaExpression {
                 let s = s.eval_any(args);
                 let from = from.eval_any(args).cast(&DataType::Int32);
                 let len = len.eval_any(args).cast(&DataType::Int32);
-                substring(s, from, len)
+                flarion_substring_anyvalue(s, from, len)
             },
             LambdaExpression::Instr(s, pat) => {
                 let s = s.eval_any(args);
@@ -607,7 +587,7 @@ impl LambdaExpression {
                 unsafe {
                     match (s, pat) {
                         (AnyValue::String(s), AnyValue::String(pat)) => {
-                            AnyValue::Int32(s.find(pat).map(|x| x + 1).unwrap_or(0) as i32)
+                            AnyValue::Int32(flarion_get_char_position(s, pat))
                         },
                         _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
                     }
