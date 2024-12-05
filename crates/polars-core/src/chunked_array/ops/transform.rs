@@ -28,7 +28,8 @@ where
             })
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        let raw_s = Series::from_any_values("".into(), &vec, true)?;
+        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
     }
 }
 

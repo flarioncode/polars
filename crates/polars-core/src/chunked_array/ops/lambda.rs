@@ -558,7 +558,7 @@ impl LambdaExpression {
             LambdaExpression::Length(expr) => match expr.eval_any(args) {
                 AnyValue::Null => AnyValue::Null,
                 AnyValue::Binary(bytes) => AnyValue::Int32(bytes.len() as i32),
-                AnyValue::String(s) => AnyValue::Int32(s.len() as i32),
+                AnyValue::String(s) => AnyValue::Int32(s.chars().count() as i32),
                 AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
                 _ => AnyValue::Int32(1),
             },
