@@ -1,5 +1,3 @@
-use arrow::array::Array;
-
 use super::{
     BinaryChunked, BooleanChunked, ChunkTransform, ChunkedArray, ListChunked, PolarsNumericType,
     SeriesTrait, StringChunked,
@@ -7,6 +5,8 @@ use super::{
 use crate::prelude::AnyValue;
 use crate::series::implementations::SeriesWrap;
 use crate::series::{IntoSeries, Series};
+use arrow::array::Array;
+use polars_utils::pl_str::PlSmallStr;
 
 impl<T: PolarsNumericType + 'static> ChunkTransform for ChunkedArray<T>
 where
@@ -28,7 +28,7 @@ where
             })
             .collect();
 
-        let raw_s = Series::from_any_values("".into(), &vec, true)?;
+        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
         raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
     }
 }
@@ -45,7 +45,8 @@ impl ChunkTransform for StringChunked {
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
+        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
     }
 }
 
@@ -64,7 +65,8 @@ impl ChunkTransform for BinaryChunked {
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
+        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
     }
 }
 
@@ -94,7 +96,8 @@ impl ChunkTransform for ListChunked {
             .map(|(i, value)| lambda.eval_any(&[array_to_any(value), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
+        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
     }
 }
 
@@ -113,6 +116,7 @@ impl ChunkTransform for BooleanChunked {
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
+        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
     }
 }
