@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 
 use num_traits::ToBytes;
+use polars_error::{PolarsError, PolarsResult};
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +11,7 @@ use super::DataType;
 use crate::datatypes::{AnyValue, PolarsNumericType};
 use crate::prelude::Array;
 use crate::series::Series;
+use crate::utils::dtypes_to_supertype;
 
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "serde-lazy", derive(Serialize, Deserialize))]
@@ -609,37 +611,42 @@ impl LambdaExpression {
     }
 
     // None encode that type same as input value
-    pub fn return_type(&self) -> Option<DataType> {
-        match self {
-            LambdaExpression::Null => Some(DataType::Null),
-            LambdaExpression::Boolean(_) => Some(DataType::Boolean),
-            LambdaExpression::Int8(_) => Some(DataType::Int8),
-            LambdaExpression::Int16(_) => Some(DataType::Int16),
-            LambdaExpression::Int32(_) => Some(DataType::Int32),
-            LambdaExpression::Int64(_) => Some(DataType::Int64),
-            LambdaExpression::Float32(_) => Some(DataType::Float32),
-            LambdaExpression::Float64(_) => Some(DataType::Float64),
-            LambdaExpression::BinaryBlob(_) => Some(DataType::Binary),
-            LambdaExpression::StaticStr(_) => Some(DataType::String),
-            LambdaExpression::Variable(_) => None,
-            LambdaExpression::GreaterThan(_, _) => Some(DataType::Boolean),
-            LambdaExpression::LessThan(_, _) => Some(DataType::Boolean),
-            LambdaExpression::IfThenElse(_, then, _) => then.return_type(),
-            LambdaExpression::Length(_) => Some(DataType::Int32),
-            LambdaExpression::CaseWhen(cases, _) => cases
-                .iter()
-                .find_map(|pair| {
-                    if let Some(dtype) = pair.1.return_type() {
-                        dtype.is_null().then_some(dtype).map(Some)
-                    } else {
-                        Some(None)
-                    }
-                })
-                .unwrap_or(Some(DataType::Null)),
-            LambdaExpression::Substring(s, _, _) => s.return_type(), // substring is used for string and byte arrays
-            LambdaExpression::Instr(_, _) => Some(DataType::Int32),
-            LambdaExpression::Add(left, _) => left.return_type(),
-            LambdaExpression::IsNull(_) => Some(DataType::Boolean),
-        }
+    pub fn return_type(&self, input_type: &DataType) -> Result<DataType, PolarsError> { // dtypes_to_supertype
+        Ok(match self {
+            LambdaExpression::Null => DataType::Null,
+            LambdaExpression::Boolean(_) => DataType::Boolean,
+            LambdaExpression::Int8(_) => DataType::Int8,
+            LambdaExpression::Int16(_) => DataType::Int16,
+            LambdaExpression::Int32(_) => DataType::Int32,
+            LambdaExpression::Int64(_) => DataType::Int64,
+            LambdaExpression::Float32(_) => DataType::Float32,
+            LambdaExpression::Float64(_) => DataType::Float64,
+            LambdaExpression::BinaryBlob(_) => DataType::Binary,
+            LambdaExpression::StaticStr(_) => DataType::String,
+            LambdaExpression::Variable(_) => input_type.clone(),
+            LambdaExpression::GreaterThan(_, _) => DataType::Boolean,
+            LambdaExpression::LessThan(_, _) => DataType::Boolean,
+            LambdaExpression::IfThenElse(_, then, els) => {
+                dtypes_to_supertype([&then.return_type(input_type)?, &els.return_type(input_type)?])?
+            }
+            LambdaExpression::Length(_) => DataType::Int32,
+            LambdaExpression::CaseWhen(cases, otherwise) => {
+                let otherwise: &LambdaExpression = &otherwise;
+                let child_types = cases
+                    .iter()
+                    .map(|pair| &pair.1)
+                    .chain([otherwise])
+                    .map(|expr| {
+                        expr.return_type(input_type)
+                    }).collect::<PolarsResult<Vec<_>>>()?;
+                dtypes_to_supertype(&child_types)?
+            },
+            LambdaExpression::Substring(s, _, _) => s.return_type(input_type)?, // substring is used for string and byte arrays
+            LambdaExpression::Instr(_, _) => DataType::Int32,
+            LambdaExpression::Add(left, right) => {
+                dtypes_to_supertype([&left.return_type(input_type)?, &right.return_type(input_type)?])?
+            }
+            LambdaExpression::IsNull(_) => DataType::Boolean,
+        })
     }
 }

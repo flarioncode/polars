@@ -111,10 +111,7 @@ impl ListFunction {
             // Flarion functinos
             FilterByFunc(_) => mapper.with_same_dtype(),
             SortByFunc(_, _) => mapper.with_same_dtype(),
-            Transform(lambda) => match lambda.return_type() {
-                Some(dtype) => mapper.with_dtype(dtype),
-                None => mapper.with_same_dtype(),
-            }, // TODO: transform can produce different type
+            Transform(lambda) => mapper.try_map_dtype(|dt| lambda.return_type(&dt)),
             FlarionSlice => mapper.with_same_dtype(),
         }
     }
