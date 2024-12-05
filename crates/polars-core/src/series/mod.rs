@@ -531,7 +531,10 @@ impl Series {
             DataType::List(inner) if inner.is_list() || inner.is_array() => {
                 self.list().unwrap().flatten()
             },
-            DataType::List(_) => self.list().unwrap().explode(), // Last nesting, can use regular explode, which is faster
+            DataType::List(_) => {
+                let exploded = self.list().unwrap().explode()?;
+                Ok(exploded.filter(&exploded.is_not_null())?) // Spark expects the nulls to go away, including in the [None] case which happens in [[]].
+            },
             _ => Ok(self.clone()),
         }
     }
