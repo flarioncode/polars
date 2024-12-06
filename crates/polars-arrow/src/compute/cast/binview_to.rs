@@ -69,7 +69,17 @@ pub(super) fn binview_to_primitive<T>(
 where
     T: NativeType + Parse,
 {
-    let iter = from.iter().map(|x| x.and_then::<T, _>(|x| T::parse(x)));
+    let iter = from.iter().map(|x| {
+        x.and_then::<T, _>(|x| {
+            match x.last() {
+                // This was initially .map(to_ascii_lowercase) but apparently Spark doesn't do that for longs
+                Some(b'f') | Some(b'F') | Some(b'd') | Some(b'D') | Some(b'L') => {
+                    T::parse(&x[..x.len() - 1])
+                },
+                _ => T::parse(x),
+            }
+        })
+    });
 
     PrimitiveArray::<T>::from_trusted_len_iter(iter).to(to.clone())
 }
