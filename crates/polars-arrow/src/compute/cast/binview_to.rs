@@ -72,26 +72,25 @@ where
     let iter = from.iter().map(|x| {
         x.and_then::<T, _>(|x| {
             let trimmed_x = x.trim_ascii();
-            let nonlettered_x = &trimmed_x[..x.len()
-                - match x.last() {
-                    Some(b'f') | Some(b'F') | Some(b'd') | Some(b'D') => 1,
-                    _ => 0,
-                }];
+            let suffix_len = matches!(trimmed_x.last(), Some(b'f' | b'F' | b'd' | b'D'))
+                .then_some(1)
+                .unwrap_or(0);
+            let nonlettered_x = &trimmed_x[..x.len() - suffix_len];
+
             let trimmed_leading_zeros_x = if nonlettered_x.starts_with(b"0") {
-                // Find position of first non-zero character
-                match nonlettered_x.iter().position(|&c| c != b'0') {
-                    Some(pos) => {
-                        if nonlettered_x[pos].is_ascii_digit() {
-                            &nonlettered_x[pos..]
-                        } else {
-                            nonlettered_x
-                        }
-                    },
-                    None => b"0", // all zeros case now returns "0"
-                }
+                nonlettered_x
+                    .iter()
+                    .position(|&c| c != b'0')
+                    .and_then(|pos| {
+                        nonlettered_x[pos]
+                            .is_ascii_digit()
+                            .then_some(&nonlettered_x[pos..])
+                    })
+                    .unwrap_or(b"0")
             } else {
                 nonlettered_x
             };
+
             T::parse(trimmed_leading_zeros_x)
         })
     });
