@@ -71,13 +71,27 @@ where
 {
     let iter = from.iter().map(|x| {
         x.and_then::<T, _>(|x| {
-            match x.last() {
-                // This was initially .map(to_ascii_lowercase) but apparently Spark doesn't do that for longs
-                Some(b'f') | Some(b'F') | Some(b'd') | Some(b'D') | Some(b'L') => {
-                    T::parse(&x[..x.len() - 1])
-                },
-                _ => T::parse(x),
-            }
+            let trimmed_x = x.trim_ascii();
+            let nonlettered_x = &trimmed_x[..x.len() - match x.last() {
+                Some(b'f') | Some(b'F') | Some(b'd') | Some(b'D') => 1,
+                _ => 0,
+            }];
+            let trimmed_leading_zeros_x = if nonlettered_x.starts_with(b"0") {
+                // Find position of first non-zero character
+                match nonlettered_x.iter().position(|&c| c != b'0') {
+                    Some(pos) => {
+                        if nonlettered_x[pos].is_ascii_digit() {
+                            &nonlettered_x[pos..]
+                        } else {
+                            nonlettered_x
+                        }
+                    }
+                    None => b"0"  // all zeros case now returns "0"
+                }
+            } else {
+                nonlettered_x
+            };
+            T::parse(trimmed_leading_zeros_x)
         })
     });
 
