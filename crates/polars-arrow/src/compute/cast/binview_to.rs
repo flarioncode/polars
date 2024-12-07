@@ -71,13 +71,35 @@ where
 {
     let iter = from.iter().map(|x| {
         x.and_then::<T, _>(|x| {
-            match x.last() {
-                // This was initially .map(to_ascii_lowercase) but apparently Spark doesn't do that for longs
-                Some(b'f') | Some(b'F') | Some(b'd') | Some(b'D') | Some(b'L') => {
-                    T::parse(&x[..x.len() - 1])
-                },
-                _ => T::parse(x),
-            }
+            // First, trim whitespaces
+            let trimmed_x = x.trim_ascii();
+
+            // If the ending character is a float suffix, remove it
+            let suffix_len = matches!(trimmed_x.last(), Some(b'f' | b'F' | b'd' | b'D'))
+                .then_some(1)
+                .unwrap_or(0);
+            let nonlettered_x = &trimmed_x[..x.len() - suffix_len];
+
+            // If the number starts with a zero:
+            let trimmed_leading_zeros_x = if nonlettered_x.starts_with(b"0") {
+                // Find the position of the first character that isn't a zero
+                nonlettered_x
+                    .iter()
+                    .position(|&c| c != b'0')
+                    .and_then(|pos| {
+                        // If that character is a digit, we can safely remove the leading zeros
+                        nonlettered_x[pos]
+                            .is_ascii_digit()
+                            .then_some(&nonlettered_x[pos..])
+                    })
+                    // Otherwise, the number is zero, so we just return a single zero
+                    .unwrap_or(b"0")
+            } else {
+                nonlettered_x
+            };
+
+            // Then we can safely parse the number
+            T::parse(trimmed_leading_zeros_x)
         })
     });
 
