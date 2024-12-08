@@ -233,10 +233,11 @@ impl FromIterator<Option<Series>> for ListChunked {
                                 if let Some(s) = opt_s {
                                     if s.len() != 0 {
                                         builder.append_series(&s).unwrap();
-                                    } else { 
-                                        let new_s = Series::new_empty(PlSmallStr::EMPTY, first_s.dtype());
-                                        builder.append_series(&new_s).unwrap(); 
-                                    } 
+                                    } else {
+                                        let new_s =
+                                            Series::new_empty(PlSmallStr::EMPTY, first_s.dtype());
+                                        builder.append_series(&new_s).unwrap();
+                                    }
                                 } else {
                                     builder.append_null();
                                 }

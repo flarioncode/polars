@@ -29,7 +29,12 @@ where
             })
             .collect();
 
-        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            true,
+        )
     }
 }
 
@@ -42,12 +47,15 @@ impl ChunkTransform for StringChunked {
         let vec: Vec<AnyValue> = self
             .iter()
             .enumerate()
-            .map(|(i, value)| {
-                lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)])
-            })
+            .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            true,
+        )
     }
 }
 
@@ -66,7 +74,12 @@ impl ChunkTransform for BinaryChunked {
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            true,
+        )
     }
 }
 
@@ -96,7 +109,12 @@ impl ChunkTransform for ListChunked {
             .map(|(i, value)| lambda.eval_any(&[array_to_any(value), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            true,
+        )
     }
 }
 
@@ -114,7 +132,12 @@ impl ChunkTransform for BooleanChunked {
             .enumerate()
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
-        
-        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
+
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            true,
+        )
     }
 }
