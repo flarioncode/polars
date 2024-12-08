@@ -29,8 +29,7 @@ where
             })
             .collect();
 
-        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
-        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
+        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
     }
 }
 
@@ -48,8 +47,7 @@ impl ChunkTransform for StringChunked {
             })
             .collect();
 
-        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
-        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
+        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
     }
 }
 
@@ -68,8 +66,7 @@ impl ChunkTransform for BinaryChunked {
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
 
-        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
-        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
+        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
     }
 }
 
@@ -99,8 +96,7 @@ impl ChunkTransform for ListChunked {
             .map(|(i, value)| lambda.eval_any(&[array_to_any(value), AnyValue::Int32(i as i32)]))
             .collect();
 
-        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
-        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
+        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
     }
 }
 
@@ -119,7 +115,6 @@ impl ChunkTransform for BooleanChunked {
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
         
-        let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
-        raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
+        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &lambda.return_type().unwrap_or(self.dtype().clone()), true)
     }
 }
