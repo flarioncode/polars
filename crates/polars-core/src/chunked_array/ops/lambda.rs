@@ -103,6 +103,44 @@ pub fn flarion_substring_anyvalue<'a>(
 
 impl LambdaExpression {
     #[inline]
+    fn has_var(&self) -> bool {
+        let mut stack = vec![self];
+        while let Some(current) = stack.pop() {
+            match current {
+                LambdaExpression::Variable(_) => return true,
+                LambdaExpression::IsNull(inner) => stack.push(inner),
+                LambdaExpression::GreaterThan(left, right) |
+                LambdaExpression::LessThan(left, right) |
+                LambdaExpression::Add(left, right) |
+                LambdaExpression::Instr(left, right) => {
+                    stack.push(left);
+                    stack.push(right);
+                },
+                LambdaExpression::IfThenElse(cond, then_expr, else_expr) => {
+                    stack.push(cond);
+                    stack.push(then_expr);
+                    stack.push(else_expr);
+                },
+                LambdaExpression::Substring(s, from, len) => {
+                    stack.push(s);
+                    stack.push(from);
+                    stack.push(len);
+                },
+                LambdaExpression::CaseWhen(cases, otherwise) => {
+                    stack.push(otherwise);
+                    for (cond, value) in cases {
+                        stack.push(cond);
+                        stack.push(value);
+                    }
+                },
+                LambdaExpression::Length(expr) => stack.push(expr),
+                _ => (),
+            }
+        }
+        false
+    }
+
+    #[inline]
     pub(crate) fn eval_array<'a>(&'a self, args: &'a [&'a dyn Array]) -> AnyValue<'a> {
         match self {
             LambdaExpression::Null => AnyValue::Null,
@@ -628,13 +666,12 @@ impl LambdaExpression {
             LambdaExpression::Length(_) => Some(DataType::Int32),
             LambdaExpression::CaseWhen(cases, _) => cases
                 .iter()
-                .find_map(|pair| {
-                    if let Some(dtype) = pair.1.return_type() {
-                        dtype.is_null().then_some(dtype).map(Some)
-                    } else {
-                        Some(None)
-                    }
+                .map(|pair| match pair.1.return_type() {
+                    None => None,
+                    Some(dtype) if dtype.is_null() => None,
+                    Some(dtype) => Some(dtype),
                 })
+                .next()
                 .unwrap_or(Some(DataType::Null)),
             LambdaExpression::Substring(s, _, _) => s.return_type(), // substring is used for string and byte arrays
             LambdaExpression::Instr(_, _) => Some(DataType::Int32),
