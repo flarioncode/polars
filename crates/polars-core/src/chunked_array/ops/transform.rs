@@ -1,3 +1,6 @@
+use arrow::array::Array;
+use polars_utils::pl_str::PlSmallStr;
+
 use super::{
     BinaryChunked, BooleanChunked, ChunkTransform, ChunkedArray, ListChunked, PolarsNumericType,
     SeriesTrait, StringChunked,
@@ -5,8 +8,6 @@ use super::{
 use crate::prelude::AnyValue;
 use crate::series::implementations::SeriesWrap;
 use crate::series::{IntoSeries, Series};
-use arrow::array::Array;
-use polars_utils::pl_str::PlSmallStr;
 
 impl<T: PolarsNumericType + 'static> ChunkTransform for ChunkedArray<T>
 where
@@ -42,7 +43,9 @@ impl ChunkTransform for StringChunked {
         let vec: Vec<AnyValue> = self
             .iter()
             .enumerate()
-            .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
+            .map(|(i, value)| {
+                lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)])
+            })
             .collect();
 
         let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
@@ -115,7 +118,7 @@ impl ChunkTransform for BooleanChunked {
             .enumerate()
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
-
+        
         let raw_s = Series::from_any_values(PlSmallStr::EMPTY, &vec, true)?;
         raw_s.cast(&lambda.return_type().unwrap_or(self.dtype().clone()))
     }
