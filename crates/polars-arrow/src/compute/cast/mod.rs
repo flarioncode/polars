@@ -426,9 +426,11 @@ pub fn cast(
                     for opt_s in strings {
                         let value = match opt_s {
                             Some(s) => {
-                                // Only matches U+0020 to be exactly like Spark's behavior
+                                // Only matches U+0020, \n, \t, \f (\x0C), \v (\x0B) and \r to be exactly like Spark's behavior regarding whitespaces.
                                 // Original logic appears in Spark functions isTrueString and isFalseString in StringUtils.scala
-                                let s = s.trim_matches(' ').to_lowercase();
+                                let s = s
+                                    .trim_matches(&[' ', '\n', '\r', '\t', '\x0C', '\x0B'][..])
+                                    .to_lowercase();
                                 match s.as_str() {
                                     "t" | "true" | "y" | "yes" | "1" => Some(true),
                                     "f" | "false" | "n" | "no" | "0" => Some(false),
