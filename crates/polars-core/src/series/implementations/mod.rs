@@ -569,7 +569,7 @@ mod tests {
 
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
-        let result = transformed.i32();
+        let result = transformed.i64();
 
         assert!(result.is_ok());
 
@@ -578,7 +578,7 @@ mod tests {
 
     #[test]
     fn test_transform_numeric_different_type() {
-        // here we test that lambda can return complitly different type
+        // here we test that lambda can return completely different type
         let series =
             ChunkedArray::<Int32Type>::from_vec("array".into(), vec![1, 2, 3]).into_series();
 
@@ -628,7 +628,7 @@ mod tests {
 
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
-        let result = transformed.i32();
+        let result = transformed.i64();
 
         assert!(result.is_ok());
 
@@ -652,7 +652,7 @@ mod tests {
 
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
-        let result = transformed.i32();
+        let result = transformed.i64();
 
         assert!(result.is_ok());
 

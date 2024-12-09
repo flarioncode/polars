@@ -1,4 +1,5 @@
 use arrow::array::Array;
+use polars_utils::pl_str::PlSmallStr;
 
 use super::{
     BinaryChunked, BooleanChunked, ChunkTransform, ChunkedArray, ListChunked, PolarsNumericType,
@@ -28,7 +29,12 @@ where
             })
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type(self.dtype())?,
+            true,
+        )
     }
 }
 
@@ -44,7 +50,12 @@ impl ChunkTransform for StringChunked {
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type(self.dtype())?,
+            true,
+        )
     }
 }
 
@@ -63,7 +74,12 @@ impl ChunkTransform for BinaryChunked {
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type(self.dtype())?,
+            true,
+        )
     }
 }
 
@@ -93,7 +109,12 @@ impl ChunkTransform for ListChunked {
             .map(|(i, value)| lambda.eval_any(&[array_to_any(value), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type(self.dtype())?,
+            true,
+        )
     }
 }
 
@@ -112,6 +133,11 @@ impl ChunkTransform for BooleanChunked {
             .map(|(i, value)| lambda.eval_any(&[value.into(), AnyValue::Int32(i as i32)]))
             .collect();
 
-        Series::from_any_values("".into(), &vec, true)
+        Series::from_any_values_and_dtype(
+            PlSmallStr::EMPTY,
+            &vec,
+            &lambda.return_type(self.dtype())?,
+            true,
+        )
     }
 }
