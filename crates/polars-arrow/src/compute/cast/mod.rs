@@ -419,6 +419,28 @@ pub fn cast(
                 | Float32
                 | Float64
                 | Decimal(_, _) => cast(&arr.to_binview(), to_type, options),
+                Boolean => {
+                    let strings = arr.iter();
+                    let mut builder = MutableBooleanArray::with_capacity(arr.len());
+                    
+                    for opt_s in strings {
+                        let value = match opt_s {
+                            Some(s) => {
+                                // Only matches U+0020 to be exactly like Spark's behavior
+                                // Original logic appears in Spark functions isTrueString and isFalseString in StringUtils.scala
+                                let s = s.trim_matches(' ').to_lowercase();
+                                match s.as_str() {
+                                    "t" | "true" | "y" | "yes" | "1" => Some(true),
+                                    "f" | "false" | "n" | "no" | "0" => Some(false),
+                                    _ => None, 
+                                }
+                            },
+                            None => None,
+                        };
+                        builder.push(value);
+                    }
+                    Ok(Box::new(builder.freeze()))
+                },
                 Timestamp(time_unit, None) => {
                     utf8view_to_naive_timestamp_dyn(array, time_unit.to_owned())
                 },

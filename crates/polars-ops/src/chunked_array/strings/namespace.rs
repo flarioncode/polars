@@ -434,15 +434,12 @@ pub trait StringNameSpaceImpl: AsString {
         Ok(builder.finish())
     }
 
-    fn is_direct_space(c: char) -> bool {
-        c == ' ' // Only matches U+0020 to be exactly like Spark's behavior
-    }
-
     fn strip_chars(&self, pat: &Series) -> PolarsResult<StringChunked> {
         let ca = self.as_string();
         if pat.dtype() == &DataType::Null {
             Ok(unary_elementwise(ca, |opt_s| {
-                opt_s.map(|s| s.trim_matches(Self::is_direct_space))
+                // Only matches U+0020 to be exactly like Spark's behavior
+                opt_s.map(|s| s.trim_matches(' '))
             }))
         } else {
             Ok(strip_chars(ca, pat.str()?))
@@ -453,7 +450,8 @@ pub trait StringNameSpaceImpl: AsString {
         let ca = self.as_string();
         if pat.dtype() == &DataType::Null {
             return Ok(unary_elementwise(ca, |opt_s| {
-                opt_s.map(|s| s.trim_start_matches(Self::is_direct_space))
+                // Only matches U+0020 to be exactly like Spark's behavior
+                opt_s.map(|s| s.trim_start_matches(' '))
             }));
         } else {
             Ok(strip_chars_start(ca, pat.str()?))
@@ -464,7 +462,8 @@ pub trait StringNameSpaceImpl: AsString {
         let ca = self.as_string();
         if pat.dtype() == &DataType::Null {
             return Ok(unary_elementwise(ca, |opt_s| {
-                opt_s.map(|s| s.trim_end_matches(Self::is_direct_space))
+                // Only matches U+0020 to be exactly like Spark's behavior
+                opt_s.map(|s| s.trim_end_matches(' '))
             }));
         } else {
             Ok(strip_chars_end(ca, pat.str()?))
