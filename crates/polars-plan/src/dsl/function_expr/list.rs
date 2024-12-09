@@ -108,13 +108,13 @@ impl ListFunction {
             #[cfg(feature = "dtype-array")]
             ToArray(width) => mapper.try_map_dtype(|dt| map_list_dtype_to_array_dtype(dt, *width)),
             NUnique => mapper.with_dtype(IDX_DTYPE),
-            // Flarion functinos
+            // Flarion functions
             FilterByFunc(_) => mapper.with_same_dtype(),
             SortByFunc(_, _) => mapper.with_same_dtype(),
-            Transform(lambda) => match lambda.return_type() {
-                Some(dtype) => mapper.with_dtype(dtype),
-                None => mapper.with_same_dtype(),
-            }, // TODO: transform can produce different type
+            Transform(lambda) => mapper.try_map_dtype(|dt| match dt {
+                DataType::List(dtype) => Ok(DataType::List(lambda.return_type(&dtype).unwrap().into())),
+                _ => Ok(lambda.return_type(&dt).unwrap()), // TODO: transform can produce different type
+            }),
             FlarionSlice => mapper.with_same_dtype(),
         }
     }

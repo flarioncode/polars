@@ -32,7 +32,7 @@ where
         Series::from_any_values_and_dtype(
             PlSmallStr::EMPTY,
             &vec,
-            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            &lambda.return_type(self.dtype())?,
             true,
         )
     }
@@ -53,7 +53,7 @@ impl ChunkTransform for StringChunked {
         Series::from_any_values_and_dtype(
             PlSmallStr::EMPTY,
             &vec,
-            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            &lambda.return_type(self.dtype())?,
             true,
         )
     }
@@ -77,7 +77,7 @@ impl ChunkTransform for BinaryChunked {
         Series::from_any_values_and_dtype(
             PlSmallStr::EMPTY,
             &vec,
-            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            &lambda.return_type(self.dtype())?,
             true,
         )
     }
@@ -112,7 +112,7 @@ impl ChunkTransform for ListChunked {
         Series::from_any_values_and_dtype(
             PlSmallStr::EMPTY,
             &vec,
-            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            &lambda.return_type(self.dtype())?,
             true,
         )
     }
@@ -136,7 +136,7 @@ impl ChunkTransform for BooleanChunked {
         Series::from_any_values_and_dtype(
             PlSmallStr::EMPTY,
             &vec,
-            &lambda.return_type().unwrap_or(self.dtype().clone()),
+            &lambda.return_type(self.dtype())?,
             true,
         )
     }
