@@ -112,10 +112,10 @@ impl ListFunction {
             FilterByFunc(_) => mapper.with_same_dtype(),
             SortByFunc(_, _) => mapper.with_same_dtype(),
             Transform(lambda) => mapper.try_map_dtype(|dt| match dt {
-                DataType::List(dtype) => {
-                    Ok(DataType::List(lambda.return_type(&dtype).unwrap().into()))
+                DataType::List(dt) => {
+                    Ok(DataType::List(lambda.return_type(dt).unwrap().into()))
                 },
-                _ => Ok(lambda.return_type(&dt).unwrap()),
+                _ => Ok(lambda.return_type(dt).unwrap()),
             }),
             FlarionSlice => mapper.with_same_dtype(),
         }
