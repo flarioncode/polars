@@ -231,7 +231,7 @@ impl FromIterator<Option<Series>> for ListChunked {
 
                             for opt_s in it {
                                 if let Some(s) = opt_s {
-                                    if s.len() != 0 {
+                                    if !s.is_empty() {
                                         builder.append_series(&s).unwrap();
                                     } else {
                                         let new_s =
