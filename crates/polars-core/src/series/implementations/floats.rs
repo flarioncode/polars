@@ -385,18 +385,19 @@ impl_dyn_series!(Float64Chunked);
 
 #[cfg(test)]
 mod tests {
-    use crate::series::{ChunkedArray, Float32Type, IntoSeries, LambdaExpression};
+    use crate::datatypes::Float64Type;
+    use crate::series::{ChunkedArray, IntoSeries, LambdaExpression};
 
     #[test]
     fn test_transform_float() {
         // here we test integer conversion
         // and thats we implemented transform on integer types
-        let series = ChunkedArray::<Float32Type>::from_vec("array".into(), vec![0.1, 0.2, 0.3])
+        let series = ChunkedArray::<Float64Type>::from_vec("array".into(), vec![0.1, 0.2, 0.3])
             .into_series();
 
         let lambda = LambdaExpression::Add(
             Box::new(LambdaExpression::Variable(0)),
-            Box::new(LambdaExpression::Int64(1)),
+            Box::new(LambdaExpression::Float64(1.0)),
         );
 
         let transformed = series.transform(&lambda);
@@ -405,7 +406,7 @@ mod tests {
 
         let transformed = transformed.unwrap();
         eprintln!("{:?}", transformed.dtype());
-        let result = transformed.f32();
+        let result = transformed.f64();
 
         assert!(result.is_ok());
 
