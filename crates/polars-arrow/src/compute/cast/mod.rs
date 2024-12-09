@@ -422,7 +422,7 @@ pub fn cast(
                 Boolean => {
                     let strings = arr.iter();
                     let mut builder = MutableBooleanArray::with_capacity(arr.len());
-                    
+
                     for opt_s in strings {
                         let value = match opt_s {
                             Some(s) => {
@@ -432,7 +432,7 @@ pub fn cast(
                                 match s.as_str() {
                                     "t" | "true" | "y" | "yes" | "1" => Some(true),
                                     "f" | "false" | "n" | "no" | "0" => Some(false),
-                                    _ => None, 
+                                    _ => None,
                                 }
                             },
                             None => None,
