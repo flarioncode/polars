@@ -37,6 +37,7 @@ pub enum LambdaExpression {
     Instr(Box<Self>, Box<Self>),
     Add(Box<Self>, Box<Self>),
     IsNull(Box<Self>),
+    EqualNullSafe(Box<Self>, Box<Self>)
 }
 
 impl Eq for LambdaExpression {}
@@ -87,6 +88,10 @@ impl Hash for LambdaExpression {
                 second.hash(state);
             },
             LambdaExpression::IsNull(v) => v.hash(state),
+            LambdaExpression::EqualNullSafe(first, second) => {
+                first.hash(state);
+                second.hash(state);
+            },
         }
     }
 }
@@ -275,6 +280,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(false)
                 }
             },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_array(args);
+                let right = right.eval_array(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
+                }
+            }
         }
     }
 
@@ -357,6 +373,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(false)
                 }
             },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_numeric::<T>(args);
+                let right = right.eval_numeric::<T>(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
+                }
+            }
         }
     }
 
@@ -439,6 +466,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(false)
                 }
             },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_bool(args);
+                let right = right.eval_bool(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
+                }
+            }
         }
     }
 
@@ -531,6 +569,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(false)
                 }
             },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_slice(args);
+                let right = right.eval_slice(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
+                }
+            }
         }
     }
 
@@ -615,6 +664,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(false)
                 }
             },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_any(args);
+                let right = right.eval_any(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
+                }
+            }
         }
     }
 
@@ -656,6 +716,7 @@ impl LambdaExpression {
                 &right.return_type(input_type)?,
             ])?,
             LambdaExpression::IsNull(_) => DataType::Boolean,
+            LambdaExpression::EqualNullSafe(_, _) => DataType::Boolean,
         })
     }
 }
