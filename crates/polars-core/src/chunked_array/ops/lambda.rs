@@ -515,16 +515,23 @@ impl LambdaExpression {
                     falsy.eval_slice(args)
                 }
             },
-            LambdaExpression::Length(expr) => match expr.eval_slice(args) {
-                AnyValue::Null => AnyValue::Null,
-                AnyValue::Binary(bytes) => {
-                    // case we have a binary slice, convert to utf8 as spark expects
-                    let new_str = from_utf8(bytes).unwrap();
-                    AnyValue::Int32(new_str.chars().count() as i32)
-                },
-                AnyValue::String(s) => AnyValue::Int32(s.chars().count() as i32),
-                AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
-                _ => AnyValue::Int32(1),
+            LambdaExpression::Length(expr) => {
+                match expr.eval_slice(args) {
+                    AnyValue::Null => AnyValue::Null,
+                    AnyValue::Binary(bytes) => {
+                        // case we have a binary slice, convert to utf8 as spark expects
+                        let new_str = from_utf8(bytes).unwrap();
+                        AnyValue::Int32(new_str.chars().count() as i32)
+                    },
+                    AnyValue::BinaryOwned(bytes) => {
+                        // case we have a binary slice, convert to utf8 as spark expects
+                        let new_str = from_utf8(&bytes).unwrap();
+                        AnyValue::Int32(new_str.chars().count() as i32)
+                    },
+                    AnyValue::String(s) => AnyValue::Int32(s.chars().count() as i32),
+                    AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
+                    _ => AnyValue::Int32(1),
+                }
             },
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
