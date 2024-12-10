@@ -609,7 +609,6 @@ impl LambdaExpression {
                 left.add(&right.cast(&left.dtype()))
             },
             LambdaExpression::IsNull(expr) => {
-                println!("evaluating is null");
                 if expr.eval_any(args).is_null() {
                     AnyValue::Boolean(true)
                 } else {
