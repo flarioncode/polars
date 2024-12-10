@@ -73,7 +73,7 @@ where
     T: PolarsNumericType,
 {
     pub fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
-        let mut keep_nulls= false; // filter out nulls by default
+        let mut keep_nulls = false; // filter out nulls by default
 
         // in spark, if expression is isnull() then it expects to keep the nulls when it encounters one.
         if let LambdaExpression::IsNull(_) = lambda {
@@ -81,16 +81,12 @@ where
         }
 
         // Evaluate each element using eval_numeric
-        let mask = self.iter().map(|opt_val| {
-            match opt_val {
-                Some(val) => {
-                    match lambda.eval_numeric::<T>(&[&val]) {
-                        AnyValue::Boolean(b) => b,
-                        _ => panic!("Lambda must return boolean values"),
-                    }
-                },
-                None => keep_nulls,
-            }
+        let mask = self.iter().map(|opt_val| match opt_val {
+            Some(val) => match lambda.eval_numeric::<T>(&[&val]) {
+                AnyValue::Boolean(b) => b,
+                _ => panic!("Lambda must return boolean values"),
+            },
+            None => keep_nulls,
         });
 
         let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);

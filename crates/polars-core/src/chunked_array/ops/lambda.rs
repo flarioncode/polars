@@ -2,17 +2,18 @@ use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use std::str::from_utf8;
 
+use arrow::array::ViewType;
+use num_traits::ToBytes;
+use polars_error::{PolarsError, PolarsResult};
+#[cfg(feature = "serde-lazy")]
+use serde::{Deserialize, Serialize};
+
 use super::flarion_funcs::{flarion_get_char_position, flarion_substring};
 use super::DataType;
 use crate::datatypes::{AnyValue, PolarsNumericType};
 use crate::prelude::Array;
 use crate::series::Series;
 use crate::utils::dtypes_to_supertype;
-use arrow::array::ViewType;
-use num_traits::ToBytes;
-use polars_error::{PolarsError, PolarsResult};
-#[cfg(feature = "serde-lazy")]
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "serde-lazy", derive(Serialize, Deserialize))]
@@ -37,7 +38,7 @@ pub enum LambdaExpression {
     Instr(Box<Self>, Box<Self>),
     Add(Box<Self>, Box<Self>),
     IsNull(Box<Self>),
-    EqualNullSafe(Box<Self>, Box<Self>)
+    EqualNullSafe(Box<Self>, Box<Self>),
 }
 
 impl Eq for LambdaExpression {}
@@ -106,7 +107,11 @@ pub fn flarion_substring_anyvalue<'a>(
             AnyValue::StringOwned(flarion_substring(s, from, len).into())
         },
         (AnyValue::Binary(s), AnyValue::Int32(from), AnyValue::Int32(len)) => {
-            AnyValue::BinaryOwned(flarion_substring(from_utf8(s).unwrap(), from, len).to_bytes().into())
+            AnyValue::BinaryOwned(
+                flarion_substring(from_utf8(s).unwrap(), from, len)
+                    .to_bytes()
+                    .into(),
+            )
         },
         _ => unreachable!(),
     }
@@ -293,7 +298,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(left.eq(&right))
                 }
-            }
+            },
         }
     }
 
@@ -386,7 +391,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(left.eq(&right))
                 }
-            }
+            },
         }
     }
 
@@ -479,7 +484,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(left.eq(&right))
                 }
-            }
+            },
         }
     }
 
@@ -592,7 +597,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(left.eq(&right))
                 }
-            }
+            },
         }
     }
 
@@ -687,7 +692,7 @@ impl LambdaExpression {
                 } else {
                     AnyValue::Boolean(left.eq(&right))
                 }
-            }
+            },
         }
     }
 
