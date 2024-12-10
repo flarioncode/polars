@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
+use std::str::from_utf8;
 
 use num_traits::ToBytes;
 use polars_error::{PolarsError, PolarsResult};
@@ -475,8 +476,12 @@ impl LambdaExpression {
             },
             LambdaExpression::Length(expr) => match expr.eval_slice(args) {
                 AnyValue::Null => AnyValue::Null,
-                AnyValue::Binary(bytes) => AnyValue::Int32(bytes.len() as i32),
-                AnyValue::String(s) => AnyValue::Int32(s.len() as i32),
+                AnyValue::Binary(bytes) => {
+                    // case we have a binary slice, convert to utf8 as spark expects
+                    let new_str = from_utf8(bytes).unwrap();
+                    AnyValue::Int32(new_str.chars().count() as i32)
+                },
+                AnyValue::String(s) => AnyValue::Int32(s.chars().count() as i32),
                 AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
                 _ => AnyValue::Int32(1),
             },
@@ -506,6 +511,9 @@ impl LambdaExpression {
                     match (s, pat) {
                         (AnyValue::String(s), AnyValue::String(pat)) => {
                             AnyValue::Int32(flarion_get_char_position(s, pat))
+                        },
+                        (AnyValue::Binary(s), AnyValue::String(oat)) => {
+                            AnyValue::Int32(flarion_get_char_position(from_utf8(s).unwrap(), oat))
                         },
                         _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
                     }
@@ -601,6 +609,7 @@ impl LambdaExpression {
                 left.add(&right.cast(&left.dtype()))
             },
             LambdaExpression::IsNull(expr) => {
+                println!("evaluating is null");
                 if expr.eval_any(args).is_null() {
                     AnyValue::Boolean(true)
                 } else {
