@@ -268,7 +268,7 @@ fn is_reducing_expr(phys_expr: &dyn PhysicalExpr) -> bool {
             _ => false,
         }
     } else {
-        false
+        phys_expr.is_scalar()
     }
 }
 
@@ -290,6 +290,14 @@ pub(super) fn check_expand_literals(
     // If any expression is not a literal OR any is reducing -> start with height 0
     let all_literals = phys_expr
         .iter()
+        .inspect(|e| {
+            println!("Expression: {:?}", e.as_expression());
+            println!("  type: {}", std::any::type_name_of_val(e));
+            println!("  is_literal: {}", e.is_literal());
+            println!("  is_scalar: {}", e.is_scalar());
+            println!("  is_reducing: {}", is_reducing_expr(e.as_ref()));
+            println!("---");
+        })
         .all(|e| (e.is_literal() || e.is_scalar()) && !is_reducing_expr(e.as_ref()));
 
     let mut df_height = if all_literals { df.height() } else { 0 };
