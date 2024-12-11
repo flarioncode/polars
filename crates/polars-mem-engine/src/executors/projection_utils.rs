@@ -243,10 +243,28 @@ pub(super) fn evaluate_physical_expressions(
     Ok(selected_columns)
 }
 
-// In cases of aggregate or window expressions we do not want to expand.
+// In cases of reducing expressions we do not want to expand.
 fn is_reducing_expr(phys_expr: &dyn PhysicalExpr) -> bool {
     if let Some(expr) = phys_expr.as_expression() {
-        matches!(expr, Expr::Agg(_) | Expr::Window { .. })
+        match expr {
+            // Only match pure aggregations that reduce cardinality
+            Expr::Agg(agg) => matches!(
+                agg,
+                AggExpr::Min { .. }
+                    | AggExpr::Max { .. }
+                    | AggExpr::Median { .. }
+                    | AggExpr::Mean { .. }
+                    | AggExpr::Sum { .. }
+                    | AggExpr::Std { .. }
+                    | AggExpr::Var { .. }
+                    | AggExpr::NUnique { .. }
+                    | AggExpr::First { .. }
+                    | AggExpr::Last { .. }
+                    | AggExpr::Count { .. }
+                    | AggExpr::Quantile { .. }
+            ),
+            _ => false,
+        }
     } else {
         false
     }
@@ -265,10 +283,14 @@ pub(super) fn check_expand_literals(
     let duplicate_check = options.duplicate_check;
     let should_broadcast = options.should_broadcast;
 
-    // In aggregate expressions we can get all literals but not want to expand literals.
+    // The logic flow is:
+    // If all expressions are literals AND none are reducing -> use input df height
+    // If any expression is not a literal OR any is reducing -> start with height 0
     let all_literals = phys_expr
         .iter()
         .all(|e| (e.is_literal() || e.is_scalar()) && !is_reducing_expr(e.as_ref()));
+
+    let mut df_height = if all_literals { df.height() } else { 0 };
 
     let verify_scalar = all_literals
         || if !df.get_columns().is_empty() {
@@ -280,8 +302,6 @@ pub(super) fn check_expand_literals(
             true
         };
 
-    // When all expressions are literals, use input df height
-    let mut df_height = if all_literals { df.height() } else { 0 };
     let mut has_empty = false;
     let mut all_equal_len = true;
     {
