@@ -243,6 +243,15 @@ pub(super) fn evaluate_physical_expressions(
     Ok(selected_columns)
 }
 
+// In cases of aggregate expressions we do not want to expand.
+fn is_aggregate_expr(phys_expr: &dyn PhysicalExpr) -> bool {
+    if let Some(expr) = phys_expr.as_expression() {
+        matches!(expr, Expr::Agg(_))
+    } else {
+        false
+    }
+}
+
 pub(super) fn check_expand_literals(
     df: &DataFrame,
     phys_expr: &[Arc<dyn PhysicalExpr>],
@@ -256,16 +265,23 @@ pub(super) fn check_expand_literals(
     let duplicate_check = options.duplicate_check;
     let should_broadcast = options.should_broadcast;
 
-    // When we have CSE we cannot verify scalars yet.
-    let verify_scalar = if !df.get_columns().is_empty() {
-        !df.get_columns()[df.width() - 1]
-            .name()
-            .starts_with(CSE_REPLACED)
-    } else {
-        true
-    };
+    // In aggregate expressions we can get all literals but not want to expand literals.
+    let all_literals = phys_expr
+        .iter()
+        .all(|e| (e.is_literal() || e.is_scalar()) && !is_aggregate_expr(e.as_ref()));
 
-    let mut df_height = 0;
+    let verify_scalar = all_literals
+        || if !df.get_columns().is_empty() {
+            // When we have CSE (in the non-literal case) we cannot verify scalars yet.
+            !df.get_columns()[df.width() - 1]
+                .name()
+                .starts_with(CSE_REPLACED)
+        } else {
+            true
+        };
+
+    // When all expressions are literals, use input df height
+    let mut df_height = if all_literals { df.height() } else { 0 };
     let mut has_empty = false;
     let mut all_equal_len = true;
     {
@@ -274,7 +290,9 @@ pub(super) fn check_expand_literals(
             let len = s.len();
             has_empty |= len == 0;
             df_height = std::cmp::max(df_height, len);
-            if len != first_len {
+
+            let target_len = if all_literals { df.height() } else { first_len };
+            if len != target_len {
                 all_equal_len = false;
             }
             let name = s.name();
