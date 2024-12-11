@@ -248,7 +248,6 @@ fn is_reducing_expr(phys_expr: &dyn PhysicalExpr) -> bool {
     if let Some(expr) = phys_expr.as_expression() {
         match expr {
             Expr::Window { .. } => false,
-            Expr::Agg(AggExpr::Implode(_)) => false,
             // Only match pure aggregations that reduce cardinality
             Expr::Agg(agg) => matches!(
                 agg,
@@ -264,6 +263,7 @@ fn is_reducing_expr(phys_expr: &dyn PhysicalExpr) -> bool {
                     | AggExpr::Last { .. }
                     | AggExpr::Count { .. }
                     | AggExpr::Quantile { .. }
+                    | AggExpr::Implode { .. }
             ),
             _ => false,
         }
