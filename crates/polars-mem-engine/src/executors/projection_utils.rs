@@ -243,10 +243,10 @@ pub(super) fn evaluate_physical_expressions(
     Ok(selected_columns)
 }
 
-// In cases of aggregate expressions we do not want to expand.
-fn is_aggregate_expr(phys_expr: &dyn PhysicalExpr) -> bool {
+// In cases of aggregate or window expressions we do not want to expand.
+fn is_reducing_expr(phys_expr: &dyn PhysicalExpr) -> bool {
     if let Some(expr) = phys_expr.as_expression() {
-        matches!(expr, Expr::Agg(_))
+        matches!(expr, Expr::Agg(_) | Expr::Window { .. } ) 
     } else {
         false
     }
@@ -268,7 +268,7 @@ pub(super) fn check_expand_literals(
     // In aggregate expressions we can get all literals but not want to expand literals.
     let all_literals = phys_expr
         .iter()
-        .all(|e| (e.is_literal() || e.is_scalar()) && !is_aggregate_expr(e.as_ref()));
+        .all(|e| (e.is_literal() || e.is_scalar()) && !is_reducing_expr(e.as_ref()));
 
     let verify_scalar = all_literals
         || if !df.get_columns().is_empty() {
