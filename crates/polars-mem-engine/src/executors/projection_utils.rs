@@ -246,12 +246,10 @@ pub(super) fn evaluate_physical_expressions(
 // In cases of reducing expressions we do not want to expand.
 fn is_reducing_expr(phys_expr: &dyn PhysicalExpr) -> bool {
     if let Some(expr) = phys_expr.as_expression() {
-        match expr {
-            Expr::Agg(_) => true,
-            _ => false,
-        }
+        matches!(expr, Expr::Agg(_))
     } else {
-        // If None, we just check if the expression is a scalar.
+        // If we can't determine the expression type but it's scalar,
+        // assume it's reducing to be safe
         phys_expr.is_scalar()
     }
 }
