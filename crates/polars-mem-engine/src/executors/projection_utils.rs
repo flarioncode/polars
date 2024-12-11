@@ -246,7 +246,7 @@ pub(super) fn evaluate_physical_expressions(
 // In cases of aggregate or window expressions we do not want to expand.
 fn is_reducing_expr(phys_expr: &dyn PhysicalExpr) -> bool {
     if let Some(expr) = phys_expr.as_expression() {
-        matches!(expr, Expr::Agg(_) | Expr::Window { .. } ) 
+        matches!(expr, Expr::Agg(_) | Expr::Window { .. })
     } else {
         false
     }
