@@ -247,27 +247,11 @@ pub(super) fn evaluate_physical_expressions(
 fn is_reducing_expr(phys_expr: &dyn PhysicalExpr) -> bool {
     if let Some(expr) = phys_expr.as_expression() {
         match expr {
-            Expr::Window { .. } => false,
-            // Only match pure aggregations that reduce cardinality
-            Expr::Agg(agg) => matches!(
-                agg,
-                AggExpr::Min { .. }
-                    | AggExpr::Max { .. }
-                    | AggExpr::Median { .. }
-                    | AggExpr::Mean { .. }
-                    | AggExpr::Sum { .. }
-                    | AggExpr::Std { .. }
-                    | AggExpr::Var { .. }
-                    | AggExpr::NUnique { .. }
-                    | AggExpr::First { .. }
-                    | AggExpr::Last { .. }
-                    | AggExpr::Count { .. }
-                    | AggExpr::Quantile { .. }
-                    | AggExpr::Implode { .. }
-            ),
+            Expr::Agg(_) => true,
             _ => false,
         }
     } else {
+        // If None, we just check if the expression is a scalar.
         phys_expr.is_scalar()
     }
 }
@@ -290,14 +274,6 @@ pub(super) fn check_expand_literals(
     // If any expression is not a literal OR any is reducing -> start with height 0
     let all_literals = phys_expr
         .iter()
-        .inspect(|e| {
-            println!("Expression: {:?}", e.as_expression());
-            println!("  type: {}", std::any::type_name_of_val(e));
-            println!("  is_literal: {}", e.is_literal());
-            println!("  is_scalar: {}", e.is_scalar());
-            println!("  is_reducing: {}", is_reducing_expr(e.as_ref()));
-            println!("---");
-        })
         .all(|e| (e.is_literal() || e.is_scalar()) && !is_reducing_expr(e.as_ref()));
 
     let mut df_height = if all_literals { df.height() } else { 0 };
