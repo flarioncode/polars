@@ -2,18 +2,17 @@ use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use std::str::from_utf8;
 
-use arrow::array::ViewType;
-use num_traits::ToBytes;
-use polars_error::{PolarsError, PolarsResult};
-#[cfg(feature = "serde-lazy")]
-use serde::{Deserialize, Serialize};
-
 use super::flarion_funcs::{flarion_get_char_position, flarion_substring};
 use super::DataType;
 use crate::datatypes::{AnyValue, PolarsNumericType};
 use crate::prelude::Array;
 use crate::series::Series;
 use crate::utils::dtypes_to_supertype;
+use arrow::array::ViewType;
+use num_traits::ToBytes;
+use polars_error::{PolarsError, PolarsResult};
+#[cfg(feature = "serde-lazy")]
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "serde-lazy", derive(Serialize, Deserialize))]
@@ -317,10 +316,34 @@ impl LambdaExpression {
             LambdaExpression::StaticStr(v) => AnyValue::String(v),
             LambdaExpression::Variable(idx) => (*args[*idx]).into(),
             LambdaExpression::GreaterThan(left, right) => {
-                AnyValue::Boolean(left.eval_numeric::<T>(args) > right.eval_numeric::<T>(args))
+                let left = left.eval_numeric::<T>(args);
+                let right = right.eval_numeric::<T>(args);
+                
+                // Special case for Int8/Int16 and Int32 when using Array[Byte]/Array[Short]
+                match (&left, &right) {
+                    (AnyValue::Int8(left), AnyValue::Int32(right)) => {
+                        AnyValue::Boolean((*left as i32) > *right)
+                    },
+                    (AnyValue::Int16(left), AnyValue::Int32(right)) => {
+                        AnyValue::Boolean((*left as i32) > *right)
+                    },
+                   _ => AnyValue::Boolean(left > right)
+                }
             },
             LambdaExpression::LessThan(left, right) => {
-                AnyValue::Boolean(left.eval_numeric::<T>(args) < right.eval_numeric::<T>(args))
+                let left = left.eval_numeric::<T>(args);
+                let right = right.eval_numeric::<T>(args);
+
+                // Special case for Int8/Int16 and Int32 when using Array[Byte]/Array[Short]
+                match (&left, &right) {
+                    (AnyValue::Int8(left), AnyValue::Int32(right)) => {
+                        AnyValue::Boolean((*left as i32) < *right)
+                    },
+                    (AnyValue::Int16(left), AnyValue::Int32(right)) => {
+                        AnyValue::Boolean((*left as i32) < *right)
+                    },
+                    _ => AnyValue::Boolean(left < right)
+                }
             },
             LambdaExpression::IfThenElse(cond, truthy, falsy) => {
                 if unsafe {
