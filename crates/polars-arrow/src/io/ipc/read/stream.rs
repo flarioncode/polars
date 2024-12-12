@@ -266,6 +266,10 @@ impl<R: Read> StreamReader<R> {
         }
     }
 
+    pub fn reader_mut(&mut self) -> &mut R {
+        &mut self.reader
+    }
+
     /// Return the schema of the stream
     pub fn metadata(&self) -> &StreamMetadata {
         &self.metadata

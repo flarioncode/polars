@@ -79,6 +79,10 @@ pub struct IpcStreamBatchedReader<R: Read> {
 }
 
 impl<R: Read> IpcStreamBatchedReader<R> {
+    pub fn reader_mut(&mut self) -> &mut R {
+        self.reader.reader_mut()
+    }
+
     pub fn read_next_batch(&mut self) -> PolarsResult<Option<DataFrame>> {
         match self.reader.next_record_batch()? {
             None => Ok(None),
