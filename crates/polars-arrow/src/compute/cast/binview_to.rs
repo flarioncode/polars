@@ -1,9 +1,11 @@
 use chrono::Datelike;
+use num_traits::Bounded;
 use polars_error::PolarsResult;
+use polars_utils::float::IsFloat;
 
 use crate::array::*;
 use crate::compute::cast::binary_to::Parse;
-use crate::compute::cast::CastOptionsImpl;
+use crate::compute::cast::{CastOptionsImpl, SparkAsPrimitive};
 #[cfg(feature = "dtype-decimal")]
 use crate::compute::decimal::deserialize_decimal;
 use crate::datatypes::{ArrowDataType, TimeUnit};
@@ -67,39 +69,113 @@ pub(super) fn binview_to_primitive<T>(
     to: &ArrowDataType,
 ) -> PrimitiveArray<T>
 where
-    T: NativeType + Parse,
+    T: NativeType + Parse + IsFloat + Bounded + SparkAsPrimitive<f64>,
+    f64: SparkAsPrimitive<T>,
 {
     let iter = from.iter().map(|x| {
         x.and_then::<T, _>(|x| {
-            // First, trim whitespaces
-            let trimmed_x = x.trim_ascii();
+            // Attempt to interpret input as UTF-8 and trim invalid or whitespace characters
+            let x = std::str::from_utf8(x)
+                .map(|s| s.trim().as_bytes())
+                .unwrap_or_else(|_| x.trim_ascii());
 
-            // If the ending character is a float suffix, remove it
-            let suffix_len = matches!(trimmed_x.last(), Some(b'f' | b'F' | b'd' | b'D'))
-                .then_some(1)
-                .unwrap_or(0);
-            let nonlettered_x = &trimmed_x[..x.len() - suffix_len];
-
-            // If the number starts with a zero:
-            let trimmed_leading_zeros_x = if nonlettered_x.starts_with(b"0") {
-                // Find the position of the first character that isn't a zero
-                nonlettered_x
-                    .iter()
-                    .position(|&c| c != b'0')
-                    .and_then(|pos| {
-                        // If that character is a digit, we can safely remove the leading zeros
-                        nonlettered_x[pos]
-                            .is_ascii_digit()
-                            .then_some(&nonlettered_x[pos..])
-                    })
-                    // Otherwise, the number is zero, so we just return a single zero
-                    .unwrap_or(b"0")
-            } else {
-                nonlettered_x
+            // Extract and process leading sign
+            let (x, is_negative) = match x.first() {
+                Some(b'+') => (&x[1..], false),
+                Some(b'-') => (&x[1..], true),
+                _ => (x, false),
             };
 
-            // Then we can safely parse the number
-            T::parse(trimmed_leading_zeros_x)
+            // Check if the number has a float suffix
+            let x = if matches!(x.last(), Some(b'f' | b'F' | b'd' | b'D')) {
+                // If it's not a float type and has a float suffix, return None
+                if !T::is_float() {
+                    return None;
+                }
+
+                &x[..x.len() - 1]
+            } else {
+                x
+            };
+
+            // Handle leading decimal point
+            let (x, had_leading_decimal) = if let Some(b'.') = x.first() {
+                (&x[1..], true)
+            } else {
+                (x, false)
+            };
+
+            // Only decimal point(or sign and decimal point) equals 0
+            if had_leading_decimal && x.is_empty() {
+                return if !T::is_float() {
+                    Some(T::zeroed())
+                } else {
+                    // For floats, this is not true, for some reason, and we return None, idgaf anymore
+                    None
+                };
+            }
+
+            // Early exit if the first digits are a scientific notation or another sign
+            if matches!(x.first(), Some(b'E' | b'e' | b'+' | b'-')) {
+                return None;
+            }
+
+            let x = if !had_leading_decimal && matches!(x.first(), Some(b'0')) {
+                // Handle leading zeros if did not have a leading decimal
+                match x.iter().position(|&c| c != b'0') {
+                    Some(pos) if matches!(x.get(pos), Some(b'e' | b'E' | b'.')) => {
+                        &x[0.max(pos - 1)..]
+                    }, // Leave only one leading zero before scientific notation or decimals
+                    Some(pos) if !x.get(pos).map(u8::is_ascii_digit).unwrap_or(false) => {
+                        return None
+                    }, // Non-digit characters are not allowed
+                    Some(pos) => &x[pos..], // Next characters are regular digits, remove all leading zeros
+                    None => b"0".as_ref(), // If only 0s exist in this string, return only a single 0
+                }
+            } else {
+                x
+            };
+
+            if !T::is_float() && x.iter().any(|&c| c == b'e' || c == b'E') {
+                return None;
+            }
+
+            // Reconstruct with sign and leading decimal if necessary
+            let mut reconstructed = Vec::with_capacity(x.len() + 3);
+
+            if is_negative {
+                reconstructed.push(b'-');
+            }
+
+            if had_leading_decimal {
+                reconstructed.extend_from_slice(b"0.");
+            }
+
+            reconstructed.extend_from_slice(x);
+
+            if matches!(reconstructed.last(), Some(b'.')) {
+                reconstructed.push(b'0');
+            }
+
+            // Parse all numbers with decimals as f64 first
+            if reconstructed.contains(&b'.') {
+                f64::parse(&reconstructed).and_then(|value| {
+                    if T::is_float() {
+                        Some(value.as_())
+                    } else {
+                        let min: f64 = SparkAsPrimitive::as_(T::min_value());
+                        let max: f64 = SparkAsPrimitive::as_(T::max_value());
+                        if (min..=max).contains(&value) {
+                            Some(value.as_())
+                        } else {
+                            None
+                        }
+                    }
+                })
+            } else {
+                // For integers without decimal points, parse directly to T
+                T::parse(&reconstructed)
+            }
         })
     });
 
@@ -112,7 +188,8 @@ pub(super) fn binview_to_primitive_dyn<T>(
     options: CastOptionsImpl,
 ) -> PolarsResult<Box<dyn Array>>
 where
-    T: NativeType + Parse,
+    T: NativeType + Parse + IsFloat + Bounded + SparkAsPrimitive<f64>,
+    f64: SparkAsPrimitive<T>,
 {
     let from = from.as_any().downcast_ref().unwrap();
     if options.partial {
