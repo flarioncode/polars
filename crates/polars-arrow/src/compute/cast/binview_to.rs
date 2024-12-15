@@ -88,11 +88,9 @@ where
 
             // Check if the number has a float suffix
             let x = if matches!(x.last(), Some(b'f' | b'F' | b'd' | b'D')) {
-                // If it's not a float type and has a float suffix, return None
                 if !T::is_float() {
                     return None;
                 }
-
                 &x[..x.len() - 1]
             } else {
                 x
@@ -105,12 +103,11 @@ where
                 (x, false)
             };
 
-            // Only decimal point(or sign and decimal point) equals 0
+            // Only decimal point (or sign and decimal point) equals 0
             if had_leading_decimal && x.is_empty() {
                 return if !T::is_float() {
                     Some(T::zeroed())
                 } else {
-                    // For floats, this is not true, for some reason, and we return None, idgaf anymore
                     None
                 };
             }
@@ -120,17 +117,13 @@ where
                 return None;
             }
 
+            // Handle leading zeros if did not have a leading decimal
             let x = if !had_leading_decimal && matches!(x.first(), Some(b'0')) {
-                // Handle leading zeros if did not have a leading decimal
                 match x.iter().position(|&c| c != b'0') {
-                    Some(pos) if matches!(x.get(pos), Some(b'e' | b'E' | b'.')) => {
-                        &x[0.max(pos - 1)..]
-                    }, // Leave only one leading zero before scientific notation or decimals
-                    Some(pos) if !x.get(pos).map(u8::is_ascii_digit).unwrap_or(false) => {
-                        return None
-                    }, // Non-digit characters are not allowed
-                    Some(pos) => &x[pos..], // Next characters are regular digits, remove all leading zeros
-                    None => b"0".as_ref(), // If only 0s exist in this string, return only a single 0
+                    Some(pos) if matches!(x.get(pos), Some(b'e' | b'E' | b'.')) => &x[0.max(pos - 1)..],
+                    Some(pos) if !x.get(pos).map(u8::is_ascii_digit).unwrap_or(false) => return None,
+                    Some(pos) => &x[pos..],
+                    None => b"0".as_ref(),
                 }
             } else {
                 x
@@ -143,17 +136,13 @@ where
 
             // Reconstruct with sign and leading decimal if necessary
             let mut reconstructed = Vec::with_capacity(x.len() + 3);
-
             if is_negative {
                 reconstructed.push(b'-');
             }
-
             if had_leading_decimal {
                 reconstructed.extend_from_slice(b"0.");
             }
-
             reconstructed.extend_from_slice(x);
-
             if matches!(reconstructed.last(), Some(b'.')) {
                 reconstructed.push(b'0');
             }
