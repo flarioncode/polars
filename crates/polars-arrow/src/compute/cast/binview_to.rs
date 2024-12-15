@@ -136,6 +136,7 @@ where
                 x
             };
 
+            // For non-floats, having a scientific notation is not allowed in general
             if !T::is_float() && x.iter().any(|&c| c == b'e' || c == b'E') {
                 return None;
             }
