@@ -1,4 +1,5 @@
 use polars_compute::filter::filter as filter_fn;
+use std::str::from_utf8;
 
 #[cfg(feature = "object")]
 use crate::chunked_array::object::builder::ObjectChunkedBuilder;
@@ -23,6 +24,11 @@ fn is_length_comparison(lambda: &LambdaExpression) -> Option<(usize, bool)> {
             {
                 Some((*threshold as usize, true))
             },
+            (LambdaExpression::Length(var), LambdaExpression::Int32(threshold))
+            if matches!(&**var, LambdaExpression::Variable(_)) =>
+                {
+                    Some((*threshold as usize, true))
+                },
             _ => None,
         },
         LambdaExpression::LessThan(left, right) => match (left.as_ref(), right.as_ref()) {
@@ -31,6 +37,11 @@ fn is_length_comparison(lambda: &LambdaExpression) -> Option<(usize, bool)> {
             {
                 Some((*threshold as usize, false))
             },
+            (LambdaExpression::Length(var), LambdaExpression::Int32(threshold))
+            if matches!(&**var, LambdaExpression::Variable(_)) =>
+                {
+                    Some((*threshold as usize, false))
+                },
             _ => None,
         },
         _ => None,
@@ -173,7 +184,10 @@ impl ChunkFilter<StringType> for StringChunked {
             // Use optimized length-based filtering
             let mask = self.iter().map(|opt_val| match opt_val {
                 Some(val) => {
-                    let len = val.len();
+                    let len = match from_utf8(val.as_bytes()) {
+                        Ok(s) => s.chars().count(),
+                        Err(_) => val.len(),
+                    };
                     if is_greater {
                         len > threshold
                     } else {
@@ -249,7 +263,7 @@ impl ChunkFilter<BinaryType> for BinaryChunked {
                 AnyValue::Boolean(b) => b,
                 _ => panic!("Lambda must return boolean values"),
             },
-            None => false,
+            None => true,
         });
 
         let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
