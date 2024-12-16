@@ -550,14 +550,31 @@ impl LambdaExpression {
                 match expr.eval_slice(args) {
                     AnyValue::Null => AnyValue::Null,
                     AnyValue::Binary(bytes) => {
-                        // case we have a binary slice, convert to utf8 as spark expects
-                        let new_str = from_utf8(bytes).unwrap();
-                        AnyValue::Int32(new_str.chars().count() as i32)
+                        println!("binary: {:?}", bytes);
+                        // case we have a binary slice, try to convert to utf8 as spark expects, else return length of bytes
+                        match from_utf8(bytes) {
+                            Ok(new_str) => {
+                                println!("utf8: {:?}", new_str);
+                                AnyValue::Int32(new_str.chars().count() as i32)
+                            },
+                            Err(_) => {
+                                AnyValue::Int32(bytes.len() as i32)
+                            },
+                        }
                     },
                     AnyValue::BinaryOwned(bytes) => {
+                        println!("owned binary: {:?}", bytes);
                         // case we have a binary slice, convert to utf8 as spark expects
-                        let new_str = from_utf8(&bytes).unwrap();
-                        AnyValue::Int32(new_str.chars().count() as i32)
+                        match from_utf8(&bytes) {
+                            Ok(utf8_str) => {
+                                // Valid UTF-8 string - count characters like Spark
+                                AnyValue::Int32(utf8_str.chars().count() as i32)
+                            },
+                            Err(_) => {
+                                // Not valid UTF-8 - return byte length
+                                AnyValue::Int32(bytes.len() as i32)
+                            }
+                        }
                     },
                     AnyValue::String(s) => AnyValue::Int32(s.chars().count() as i32),
                     AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
