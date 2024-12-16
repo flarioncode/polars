@@ -6,6 +6,7 @@ pub(crate) use arrow::array::*;
 pub use arrow::datatypes::{ArrowSchema, Field as ArrowField};
 pub use arrow::legacy::prelude::*;
 pub(crate) use arrow::trusted_len::TrustedLen;
+pub use polars_compute as compute;
 pub use polars_utils::index::{ChunkId, IdxSize, NullableChunkId, NullableIdxSize};
 pub use polars_utils::pl_str::PlSmallStr;
 pub(crate) use polars_utils::total_ord::{TotalEq, TotalOrd};
@@ -16,7 +17,9 @@ pub use crate::chunked_array::builder::{
     ListBooleanChunkedBuilder, ListBuilderTrait, ListPrimitiveChunkedBuilder,
     ListStringChunkedBuilder, NewChunkedArray, PrimitiveChunkedBuilder, StringChunkedBuilder,
 };
+pub use crate::chunked_array::cast::CastOptions;
 pub use crate::chunked_array::collect::{ChunkedCollectInferIterExt, ChunkedCollectIterExt};
+pub use crate::chunked_array::float::Canonical;
 pub use crate::chunked_array::iterator::PolarsIterator;
 #[cfg(feature = "dtype-categorical")]
 pub use crate::chunked_array::logical::categorical::*;
@@ -56,8 +59,4 @@ pub use crate::series::arithmetic::{LhsNumOps, NumOpsDispatch};
 pub use crate::series::{IntoSeries, Series, SeriesTrait};
 pub(crate) use crate::utils::CustomIterTools;
 pub use crate::utils::IntoVec;
-pub use crate::{datatypes, df};
-pub use crate::chunked_array::float::Canonical;
-pub use crate::POOL;
-pub use crate::chunked_array::cast::CastOptions;
-pub use polars_compute as compute;
+pub use crate::{datatypes, df, POOL};
