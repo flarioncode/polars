@@ -1,5 +1,5 @@
 pub use polars_core::prelude::*;
-pub use polars_core::utils::NoNull;
+pub use polars_core::utils as core_utils;
 #[cfg(feature = "polars-io")]
 pub use polars_io::prelude::*;
 #[cfg(feature = "lazy")]

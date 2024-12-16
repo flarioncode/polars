@@ -29,7 +29,6 @@ use crate::chunked_array::metadata::{IMMetadata, Metadata, MetadataFlags};
 #[cfg(feature = "zip_with")]
 use crate::series::arithmetic::coerce_lhs_rhs;
 use crate::utils::{handle_casting_failures, materialize_dyn_int, Wrap};
-use crate::POOL;
 
 /// # Series
 /// The columnar data type for a DataFrame.
