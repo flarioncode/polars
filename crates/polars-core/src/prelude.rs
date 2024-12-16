@@ -57,3 +57,7 @@ pub use crate::series::{IntoSeries, Series, SeriesTrait};
 pub(crate) use crate::utils::CustomIterTools;
 pub use crate::utils::IntoVec;
 pub use crate::{datatypes, df};
+pub use crate::chunked_array::float::Canonical;
+pub use crate::POOL;
+pub use crate::chunked_array::cast::CastOptions;
+pub use polars_compute as compute;
