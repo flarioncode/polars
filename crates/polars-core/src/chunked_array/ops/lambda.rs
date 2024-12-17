@@ -322,14 +322,14 @@ impl LambdaExpression {
 
                 // Special case for Int8/Int16 and Int32 when using Array[Byte]/Array[Short]
                 // For example: Array[Byte](77) < 5
-                match (&left, &right) {
+                match (left, right) {
                     (AnyValue::Int8(left), AnyValue::Int32(right)) => {
-                        AnyValue::Boolean((*left as i32) > *right)
+                        AnyValue::Boolean((left as i32) > right)
                     },
                     (AnyValue::Int16(left), AnyValue::Int32(right)) => {
-                        AnyValue::Boolean((*left as i32) > *right)
+                        AnyValue::Boolean((left as i32) > right)
                     },
-                    _ => AnyValue::Boolean(left > right),
+                    (left, right) => AnyValue::Boolean(left > right),
                 }
             },
             LambdaExpression::LessThan(left, right) => {
