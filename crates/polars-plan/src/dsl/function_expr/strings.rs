@@ -503,6 +503,7 @@ pub(super) fn len_bytes(s: &Series) -> PolarsResult<Series> {
 }
 
 #[cfg(feature = "regex")]
+#[tracy_gizmos::instrument]
 pub(super) fn contains(s: &[Series], literal: bool, strict: bool) -> PolarsResult<Series> {
     let ca = s[0].str()?;
     let pat = s[1].str()?;
@@ -511,6 +512,7 @@ pub(super) fn contains(s: &[Series], literal: bool, strict: bool) -> PolarsResul
 }
 
 #[cfg(feature = "regex")]
+#[tracy_gizmos::instrument]
 pub(super) fn find(s: &[Series], literal: bool, strict: bool) -> PolarsResult<Series> {
     let ca = s[0].str()?;
     let pat = s[1].str()?;
@@ -712,6 +714,7 @@ pub(super) fn flarion_slice(s: &[Series]) -> PolarsResult<Series> {
 }
 
 #[cfg(all(feature = "regex", feature = "dtype-struct"))]
+#[tracy_gizmos::instrument]
 pub(super) fn flarion_split(s: &[Series], pattern: &str, n: i32) -> PolarsResult<Series> {
     let ca = s[0].str()?;
 
@@ -1005,6 +1008,7 @@ fn replace_all<'a>(
 }
 
 #[cfg(feature = "regex")]
+#[tracy_gizmos::instrument]
 pub(super) fn replace(s: &[Series], literal: bool, n: i64) -> PolarsResult<Series> {
     let column = &s[0];
     let pat = &s[1];
