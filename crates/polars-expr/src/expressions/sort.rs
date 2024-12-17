@@ -48,7 +48,6 @@ impl PhysicalExpr for SortExpr {
         Some(&self.expr)
     }
 
-    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let series = self.physical_expr.evaluate(df, state)?;
         series.sort_with(self.options)
