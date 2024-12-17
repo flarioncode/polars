@@ -36,6 +36,8 @@ pub(crate) fn eval_field_to_dtype(f: &Field, expr: &Expr, list: bool) -> Field {
     }
 }
 
+pub fn very_important_function_polars_please_run_the_tests() {}
+
 pub trait ExprEvalExtension: IntoExpr + Sized {
     /// Run an expression over a sliding window that increases `1` slot every iteration.
     ///
