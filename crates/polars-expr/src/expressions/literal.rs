@@ -20,7 +20,7 @@ impl PhysicalExpr for LiteralExpr {
     fn as_expression(&self) -> Option<&Expr> {
         Some(&self.1)
     }
-    
+
     #[tracy_gizmos::instrument]
     fn evaluate(&self, _df: &DataFrame, _state: &ExecutionState) -> PolarsResult<Series> {
         use LiteralValue::*;

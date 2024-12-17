@@ -24,7 +24,7 @@ impl PhysicalExpr for FilterExpr {
     fn as_expression(&self) -> Option<&Expr> {
         Some(&self.expr)
     }
-    
+
     #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let s_f = || self.input.evaluate(df, state);
