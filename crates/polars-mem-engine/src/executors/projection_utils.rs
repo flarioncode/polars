@@ -95,7 +95,6 @@ fn window_evaluate(
     })
 }
 
-#[tracy_gizmos::instrument]
 fn execute_projection_cached_window_fns(
     df: &DataFrame,
     exprs: &[Arc<dyn PhysicalExpr>],
@@ -199,7 +198,6 @@ fn execute_projection_cached_window_fns(
     Ok(selected_columns)
 }
 
-#[tracy_gizmos::instrument]
 fn run_exprs_par(
     df: &DataFrame,
     exprs: &[Arc<dyn PhysicalExpr>],
@@ -213,7 +211,6 @@ fn run_exprs_par(
     })
 }
 
-#[tracy_gizmos::instrument]
 fn run_exprs_seq(
     df: &DataFrame,
     exprs: &[Arc<dyn PhysicalExpr>],
@@ -221,7 +218,7 @@ fn run_exprs_seq(
 ) -> PolarsResult<Vec<Series>> {
     exprs.iter().map(|expr| expr.evaluate(df, state)).collect()
 }
-#[tracy_gizmos::instrument]
+
 pub(super) fn evaluate_physical_expressions(
     df: &mut DataFrame,
     exprs: &[Arc<dyn PhysicalExpr>],

@@ -21,7 +21,6 @@ impl PhysicalExpr for LiteralExpr {
         Some(&self.1)
     }
 
-    #[tracy_gizmos::instrument]
     fn evaluate(&self, _df: &DataFrame, _state: &ExecutionState) -> PolarsResult<Series> {
         use LiteralValue::*;
         let s = match &self.0 {

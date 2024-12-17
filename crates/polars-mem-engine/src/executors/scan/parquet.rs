@@ -477,7 +477,6 @@ impl ParquetExec {
 }
 
 impl Executor for ParquetExec {
-    #[tracy_gizmos::instrument]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         let profile_name = if state.has_node_timer() {
             let mut ids = vec![self.sources.id()];

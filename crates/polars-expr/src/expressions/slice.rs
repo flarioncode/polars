@@ -82,7 +82,6 @@ impl PhysicalExpr for SliceExpr {
         Some(&self.expr)
     }
 
-    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let results = POOL.install(|| {
             [&self.offset, &self.length, &self.input]

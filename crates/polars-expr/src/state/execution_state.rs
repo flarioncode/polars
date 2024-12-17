@@ -106,7 +106,6 @@ impl ExecutionState {
     }
 
     // This is wrong when the U64 overflows which will never happen.
-    #[tracy_gizmos::instrument]
     pub fn should_stop(&self) -> PolarsResult<()> {
         polars_ensure!(!self.stop.load(Ordering::Relaxed), ComputeError: "query interrupted");
         Ok(())

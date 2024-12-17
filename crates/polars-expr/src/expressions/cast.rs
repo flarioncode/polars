@@ -22,7 +22,6 @@ impl PhysicalExpr for CastExpr {
         Some(&self.expr)
     }
 
-    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let series = self.input.evaluate(df, state)?;
         self.finish(&series)

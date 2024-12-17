@@ -19,7 +19,6 @@ pub(crate) struct RollingExpr {
 }
 
 impl PhysicalExpr for RollingExpr {
-    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let groups_key = format!("{:?}", &self.options);
 

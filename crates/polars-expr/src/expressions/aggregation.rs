@@ -50,7 +50,6 @@ impl PhysicalExpr for AggregationExpr {
         None
     }
 
-    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let s = self.input.evaluate(df, state)?;
 
@@ -710,7 +709,6 @@ impl PhysicalExpr for AggQuantileExpr {
         None
     }
 
-    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let input = self.input.evaluate(df, state)?;
         let quantile = self.get_quantile(df, state)?;

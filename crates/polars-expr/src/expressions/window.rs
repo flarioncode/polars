@@ -377,7 +377,6 @@ impl PhysicalExpr for WindowExpr {
 
     // This first cached the group_by and the join tuples, but rayon under a mutex leads to deadlocks:
     // https://github.com/rayon-rs/rayon/issues/592
-    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         // This method does the following:
         // 1. determine group_by tuples based on the group_column

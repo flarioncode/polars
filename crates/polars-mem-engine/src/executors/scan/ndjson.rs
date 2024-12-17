@@ -126,7 +126,6 @@ impl JsonExec {
 }
 
 impl Executor for JsonExec {
-    #[tracy_gizmos::instrument]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         let profile_name = if state.has_node_timer() {
             let ids = vec![self.sources.id()];

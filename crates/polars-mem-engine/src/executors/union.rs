@@ -9,7 +9,6 @@ pub(crate) struct UnionExec {
 }
 
 impl Executor for UnionExec {
-    #[tracy_gizmos::instrument]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         state.should_stop()?;
         #[cfg(debug_assertions)]

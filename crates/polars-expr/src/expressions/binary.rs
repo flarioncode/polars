@@ -173,7 +173,6 @@ impl PhysicalExpr for BinaryExpr {
         Some(&self.expr)
     }
 
-    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         // Window functions may set a global state that determine their output
         // state, so we don't let them run in parallel as they race
