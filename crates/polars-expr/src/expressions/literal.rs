@@ -20,7 +20,6 @@ impl PhysicalExpr for LiteralExpr {
     fn as_expression(&self) -> Option<&Expr> {
         Some(&self.1)
     }
-
     fn evaluate(&self, _df: &DataFrame, _state: &ExecutionState) -> PolarsResult<Series> {
         use LiteralValue::*;
         let s = match &self.0 {

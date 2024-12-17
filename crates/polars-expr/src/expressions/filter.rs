@@ -24,7 +24,10 @@ impl PhysicalExpr for FilterExpr {
     fn as_expression(&self) -> Option<&Expr> {
         Some(&self.expr)
     }
-
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let s_f = || self.input.evaluate(df, state);
         let predicate_f = || self.by.evaluate(df, state);
