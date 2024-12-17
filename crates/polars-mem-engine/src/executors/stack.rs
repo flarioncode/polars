@@ -98,6 +98,7 @@ impl StackExec {
 }
 
 impl Executor for StackExec {
+    #[cfg_attr(all(feature = "tracy", not(feature = "tracy-no-instrument")), tracy_gizmos::instrument)]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         state.should_stop()?;
         #[cfg(debug_assertions)]

@@ -13,6 +13,7 @@ impl ProjectionSimple {
 }
 
 impl Executor for ProjectionSimple {
+    #[cfg_attr(all(feature = "tracy", not(feature = "tracy-no-instrument")), tracy_gizmos::instrument)]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         state.should_stop()?;
         let columns = self.columns.iter_names_cloned().collect::<Vec<_>>();
