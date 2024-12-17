@@ -86,6 +86,14 @@ tracy = [
   "polars-parquet?/tracy",
   "polars-time?/tracy",
 ]
+tracy-no-instrument = [
+  "polars-core/tracy-no-instrument",
+  "polars-io/tracy-no-instrument",
+  "polars-ops/tracy-no-instrument",
+  "polars-parquet?/tracy-no-instrument",
+  "polars-time?/tracy-no-instrument",
+
+]
 # debugging purposes
 fmt = ["polars-core/fmt"]
 strings = ["polars-core/strings", "polars-ops/strings"]

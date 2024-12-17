@@ -48,6 +48,10 @@ tracy = [
   "polars-core/tracy",
   "polars-ops/tracy",
 ]
+tracy-no-instrument = [
+  "polars-core/tracy-no-instrument",
+  "polars-ops/tracy-no-instrument",
+]
 test = ["dtype-date", "dtype-datetime", "polars-core/fmt"]
 
 default = []

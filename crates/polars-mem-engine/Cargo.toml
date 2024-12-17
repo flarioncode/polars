@@ -61,3 +61,11 @@ tracy = [
   "polars-plan/tracy",
   "polars-time?/tracy",
 ]
+tracy-no-instrument = [
+  "polars-core/tracy-no-instrument",
+  "polars-expr/tracy-no-instrument",
+  "polars-io/tracy-no-instrument",
+  "polars-ops/tracy-no-instrument",
+  "polars-plan/tracy-no-instrument",
+  "polars-time?/tracy-no-instrument",
+]

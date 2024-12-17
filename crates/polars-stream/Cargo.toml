@@ -47,3 +47,10 @@ tracy = [
   "polars-parquet/tracy",
   "polars-plan/tracy",
 ]
+tracy-no-instrument = [
+  "polars-core/tracy-no-instrument",
+  "polars-expr/tracy-no-instrument",
+  "polars-mem-engine/tracy-no-instrument",
+  "polars-parquet/tracy-no-instrument",
+  "polars-plan/tracy-no-instrument",
+]

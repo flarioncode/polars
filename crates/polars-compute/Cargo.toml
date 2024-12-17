@@ -28,5 +28,6 @@ version_check = { workspace = true }
 nightly = []
 simd = ["arrow/simd"]
 tracy = ["dep:tracy-gizmos", "tracy-gizmos/enabled"]
+tracy-no-instrument = []
 dtype-array = []
 consistent_arithmetic = []

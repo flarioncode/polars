@@ -91,7 +91,10 @@ tracy = [
   "polars-compute/tracy",
   "polars-core/tracy",
 ]
-
+tracy-no-instrument = [
+  "polars-compute/tracy-no-instrument",
+  "polars-core/tracy-no-instrument",
+]
 # extra utilities for BinaryChunked
 binary_encoding = ["base64", "hex"]
 string_encoding = ["base64", "hex"]

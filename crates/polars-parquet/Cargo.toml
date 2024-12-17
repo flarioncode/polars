@@ -62,6 +62,7 @@ tracy = [
   "tracy-gizmos/enabled",
   "polars-compute/tracy",
 ]
+tracy-no-instrument = ["polars-compute/tracy-no-instrument"]
 gzip = ["flate2/rust_backend"]
 gzip_zlib_ng = ["flate2/zlib-ng"]
 lz4 = ["dep:lz4"]

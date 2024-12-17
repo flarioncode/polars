@@ -105,6 +105,11 @@ tracy = [
   "polars-parquet?/tracy",
   "polars-time?/tracy",
 ]
+tracy-no-instrument = [
+  "polars-core/tracy-no-instrument",
+  "polars-parquet?/tracy-no-instrument",
+  "polars-time?/tracy-no-instrument",
+]
 dtype-time = ["polars-core/dtype-time", "polars-core/temporal", "polars-time/dtype-time"]
 dtype-struct = ["polars-core/dtype-struct"]
 dtype-decimal = ["polars-core/dtype-decimal", "polars-json?/dtype-decimal"]

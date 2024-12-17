@@ -47,6 +47,7 @@ tracy = [
   "polars-time?/tracy",
   "polars-plan/tracy",
 ]
+tracy-no-instrument = []
 
 dtype-full = [
   "dtype-array",
