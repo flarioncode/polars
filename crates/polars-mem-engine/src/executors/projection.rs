@@ -71,6 +71,7 @@ impl ProjectionExec {
 }
 
 impl Executor for ProjectionExec {
+    #[cfg_attr(feature="tracy", tracy_gizmos::instrument)]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         state.should_stop()?;
         #[cfg(debug_assertions)]
