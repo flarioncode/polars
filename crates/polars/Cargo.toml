@@ -224,14 +224,14 @@ timezones = [
 ]
 to_dummies = ["polars-ops/to_dummies"]
 tracy = [
-  "polars-core/tracy", 
+  "polars-core/tracy",
   "polars-io?/tracy",
   "polars-lazy?/tracy",
   "polars-ops?/tracy",
   "polars-parquet/tracy",
   "polars-plan?/tracy",
   "polars-time?/tracy",
-  "polars-lazy/tracy",  
+  "polars-lazy/tracy", 
 ]
 top_k = ["polars-lazy?/top_k"]
 trigonometry = ["polars-lazy?/trigonometry"]

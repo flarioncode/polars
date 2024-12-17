@@ -38,7 +38,7 @@ temporal = [
   "polars-plan/temporal",
 ]
 tracy = [
-  "tracy-gizmos/enabled", 
+  "tracy-gizmos/enabled",
   "polars-core/tracy",
   "polars-plan/tracy",
   "polars-io/tracy",

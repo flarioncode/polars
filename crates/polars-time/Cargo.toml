@@ -43,9 +43,9 @@ serde = ["dep:serde", "polars-utils/serde"]
 temporal = ["polars-core/temporal"]
 timezones = ["chrono-tz", "dtype-datetime", "polars-core/timezones", "arrow/timezones", "polars-ops/timezones"]
 tracy = [
-    "tracy-gizmos/enabled",
-    "polars-core/tracy",
-    "polars-ops/tracy",
+  "tracy-gizmos/enabled",
+  "polars-core/tracy",
+  "polars-ops/tracy",
 ]
 test = ["dtype-date", "dtype-datetime", "polars-core/fmt"]
 

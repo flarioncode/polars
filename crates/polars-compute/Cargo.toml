@@ -16,7 +16,7 @@ num-traits = { workspace = true }
 polars-error = { workspace = true }
 polars-utils = { workspace = true }
 strength_reduce = { workspace = true }
-tracy-gizmos = { workspace = true}
+tracy-gizmos = { workspace = true }
 
 [dev-dependencies]
 rand = { workspace = true }

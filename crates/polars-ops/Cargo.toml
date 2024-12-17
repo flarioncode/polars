@@ -86,9 +86,9 @@ rank = ["rand"]
 find_many = ["aho-corasick"]
 serde = ["dep:serde", "polars-core/serde", "polars-utils/serde", "polars-schema/serde"]
 tracy = [
-    "tracy-gizmos/enabled",
-    "polars-compute/tracy",
-    "polars-core/tracy",
+  "tracy-gizmos/enabled",
+  "polars-compute/tracy",
+  "polars-core/tracy",
 ]
 
 # extra utilities for BinaryChunked
