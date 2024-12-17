@@ -266,6 +266,7 @@ pub struct IpcStreamBatchedWriter<W: Write> {
 }
 
 impl<W: Write + Seek> IpcStreamBatchedWriter<W> {
+    #[tracy_gizmos::instrument]
     pub fn write_batch(&mut self, df: &mut DataFrame) -> PolarsResult<()> {
         if df.is_empty() {
             return Ok(());

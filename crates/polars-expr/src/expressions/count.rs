@@ -20,7 +20,8 @@ impl PhysicalExpr for CountExpr {
     fn as_expression(&self) -> Option<&Expr> {
         Some(&self.expr)
     }
-
+    
+    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, _state: &ExecutionState) -> PolarsResult<Series> {
         Ok(Series::new(
             PlSmallStr::from_static("len"),

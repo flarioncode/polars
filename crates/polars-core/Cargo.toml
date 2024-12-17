@@ -37,6 +37,7 @@ regex = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 thiserror = { workspace = true }
+tracy-gizmos = { workspace = true }
 xxhash-rust = { workspace = true }
 
 [dev-dependencies]
@@ -97,6 +98,7 @@ unique_counts = []
 partition_by = ["algorithm_group_by"]
 describe = []
 timezones = ["temporal", "chrono", "chrono-tz", "arrow/chrono-tz", "arrow/timezones"]
+tracy = ["tracy-gizmos/enabled", "polars-compute/tracy"]
 dynamic_group_by = ["dtype-datetime", "dtype-date"]
 arrow_rs = ["arrow-array", "arrow/arrow_rs"]
 

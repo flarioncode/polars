@@ -114,6 +114,7 @@ impl GroupByExec {
 }
 
 impl Executor for GroupByExec {
+    #[tracy_gizmos::instrument]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         state.should_stop()?;
         #[cfg(debug_assertions)]
@@ -125,7 +126,10 @@ impl Executor for GroupByExec {
         if state.verbose() {
             eprintln!("keys/aggregates are not partitionable: running default HASH AGGREGATION")
         }
-        let df = self.input.execute(state)?;
+        let df = {
+            tracy_gizmos::zone!("executing child");
+            self.input.execute(state)?
+        };
 
         let profile_name = if state.has_node_timer() {
             let by = self

@@ -43,6 +43,7 @@ regex = { workspace = true, optional = true }
 serde = { workspace = true, features = ["rc"], optional = true }
 serde_json = { workspace = true, optional = true }
 strum_macros = { workspace = true }
+tracy-gizmos = { workspace = true }
 
 [build-dependencies]
 version_check = { workspace = true }
@@ -75,6 +76,14 @@ temporal = [
   "polars-core/dtype-time",
   "polars-core/dtype-i8",
   "polars-core/dtype-i16",
+]
+tracy = [
+  "tracy-gizmos/enabled",
+  "polars-core/tracy",
+  "polars-io/tracy",
+  "polars-ops/tracy",
+  "polars-parquet?/tracy",
+  "polars-time?/tracy",
 ]
 # debugging purposes
 fmt = ["polars-core/fmt"]

@@ -75,6 +75,7 @@ impl Executor for GroupByDynamicExec {
         panic!("activate feature dynamic_group_by")
     }
 
+    #[tracy_gizmos::instrument]
     #[cfg(feature = "dynamic_group_by")]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         state.should_stop()?;

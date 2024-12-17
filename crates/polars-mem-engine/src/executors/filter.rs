@@ -85,6 +85,7 @@ impl FilterExec {
 }
 
 impl Executor for FilterExec {
+    #[tracy_gizmos::instrument]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         state.should_stop()?;
         #[cfg(debug_assertions)]

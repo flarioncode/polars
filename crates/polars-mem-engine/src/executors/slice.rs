@@ -7,6 +7,7 @@ pub struct SliceExec {
 }
 
 impl Executor for SliceExec {
+    #[tracy_gizmos::instrument]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         #[cfg(debug_assertions)]
         {

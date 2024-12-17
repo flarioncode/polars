@@ -9,6 +9,7 @@ pub struct CacheExec {
 }
 
 impl Executor for CacheExec {
+    #[tracy_gizmos::instrument]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         let cache = state.get_df_cache(self.id, self.count);
         let mut cache_hit = true;

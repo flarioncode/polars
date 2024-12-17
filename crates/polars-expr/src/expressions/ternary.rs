@@ -78,7 +78,8 @@ impl PhysicalExpr for TernaryExpr {
     fn as_expression(&self) -> Option<&Expr> {
         Some(&self.expr)
     }
-
+    
+    #[tracy_gizmos::instrument]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let mut state = state.split();
         // Don't cache window functions as they run in parallel.

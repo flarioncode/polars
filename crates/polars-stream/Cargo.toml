@@ -23,6 +23,7 @@ rayon = { workspace = true }
 recursive = { workspace = true }
 slotmap = { workspace = true }
 tokio = { workspace = true }
+tracy-gizmos = { workspace = true }
 
 polars-core = { workspace = true }
 polars-error = { workspace = true }
@@ -37,3 +38,11 @@ version_check = { workspace = true }
 
 [features]
 nightly = []
+tracy = [
+    "tracy-gizmos/enabled",
+    "polars-core/tracy",
+    "polars-expr/tracy",
+    "polars-mem-engine/tracy",
+    "polars-parquet/tracy",
+    "polars-plan/tracy",
+]

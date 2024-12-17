@@ -30,6 +30,7 @@ once_cell = { workspace = true }
 pyo3 = { workspace = true, optional = true }
 rayon = { workspace = true }
 tokio = { workspace = true, optional = true }
+tracy-gizmos = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
@@ -68,6 +69,16 @@ temporal = [
   "dtype-duration",
   "polars-plan/temporal",
   "polars-expr/temporal",
+]
+tracy = [
+  "tracy-gizmos/enabled",
+  "polars-core/tracy",
+  "polars-expr/tracy",
+  "polars-io/tracy",
+  "polars-mem-engine/tracy",
+  "polars-plan/tracy",
+  "polars-stream?/tracy",
+  "polars-time?/tracy",
 ]
 # debugging purposes
 fmt = ["polars-core/fmt", "polars-plan/fmt"]

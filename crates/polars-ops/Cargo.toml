@@ -36,6 +36,7 @@ rayon = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
+tracy-gizmos = { workspace = true }
 unicode-reverse = { workspace = true, optional = true }
 
 [dependencies.jsonpath_lib]
@@ -84,6 +85,11 @@ random = ["rand", "rand_distr"]
 rank = ["rand"]
 find_many = ["aho-corasick"]
 serde = ["dep:serde", "polars-core/serde", "polars-utils/serde", "polars-schema/serde"]
+tracy = [
+    "tracy-gizmos/enabled",
+    "polars-compute/tracy",
+    "polars-core/tracy",
+]
 
 # extra utilities for BinaryChunked
 binary_encoding = ["base64", "hex"]
