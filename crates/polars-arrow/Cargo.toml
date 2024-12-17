@@ -28,6 +28,7 @@ polars-schema = { workspace = true }
 polars-utils = { workspace = true }
 serde = { workspace = true, optional = true }
 simdutf8 = { workspace = true }
+tracy-gizmos = { workspace = true, optional = true }
 
 ethnum = { workspace = true }
 
@@ -168,7 +169,8 @@ nightly = []
 performant = []
 strings = []
 temporal = []
-
+tracy = ["dep:tracy-gizmos", "tracy-gizmos/enabled"]
+tracy-no-instrument = []
 [package.metadata.docs.rs]
 features = ["full"]
 rustdoc-args = ["--cfg", "docsrs"]

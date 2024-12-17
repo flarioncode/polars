@@ -93,11 +93,19 @@ impl GroupByRollingExec {
 
 impl Executor for GroupByRollingExec {
     #[cfg(not(feature = "dynamic_group_by"))]
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn execute(&mut self, _state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         panic!("activate feature dynamic_group_by")
     }
 
     #[cfg(feature = "dynamic_group_by")]
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         state.should_stop()?;
         #[cfg(debug_assertions)]

@@ -22,6 +22,7 @@ polars-plan = { workspace = true }
 polars-time = { workspace = true, optional = true }
 polars-utils = { workspace = true }
 rayon = { workspace = true }
+tracy-gizmos = { workspace = true, optional = true }
 
 [features]
 nightly = ["polars-core/nightly", "polars-plan/nightly"]
@@ -36,6 +37,17 @@ temporal = [
   "dtype-duration",
   "polars-plan/temporal",
 ]
+tracy = [
+  "dep:tracy-gizmos",
+  "tracy-gizmos/enabled",
+  "polars-core/tracy",
+  "polars-plan/tracy",
+  "polars-io/tracy",
+  "polars-ops/tracy",
+  "polars-time?/tracy",
+  "polars-plan/tracy",
+]
+tracy-no-instrument = []
 
 dtype-full = [
   "dtype-array",

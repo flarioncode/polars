@@ -24,6 +24,7 @@ polars-utils = { workspace = true }
 pyo3 = { workspace = true, optional = true }
 rayon = { workspace = true }
 tokio = { workspace = true, optional = true }
+tracy-gizmos = { workspace = true, optional = true }
 
 [features]
 async = [
@@ -50,3 +51,21 @@ dtype-u8 = ["polars-plan/dtype-u8"]
 object = ["polars-core/object"]
 dynamic_group_by = ["polars-plan/dynamic_group_by", "polars-time", "polars-expr/dynamic_group_by"]
 asof_join = ["polars-plan/asof_join", "polars-time", "polars-ops/asof_join"]
+tracy = [
+  "dep:tracy-gizmos",
+  "tracy-gizmos/enabled",
+  "polars-core/tracy",
+  "polars-expr/tracy",
+  "polars-io/tracy",
+  "polars-ops/tracy",
+  "polars-plan/tracy",
+  "polars-time?/tracy",
+]
+tracy-no-instrument = [
+  "polars-core/tracy-no-instrument",
+  "polars-expr/tracy-no-instrument",
+  "polars-io/tracy-no-instrument",
+  "polars-ops/tracy-no-instrument",
+  "polars-plan/tracy-no-instrument",
+  "polars-time?/tracy-no-instrument",
+]

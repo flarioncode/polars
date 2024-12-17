@@ -8,6 +8,10 @@ pub(crate) struct HConcatExec {
 }
 
 impl Executor for HConcatExec {
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         #[cfg(debug_assertions)]
         {

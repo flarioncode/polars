@@ -223,6 +223,26 @@ timezones = [
   "polars-sql?/timezones",
 ]
 to_dummies = ["polars-ops/to_dummies"]
+tracy = [
+  "polars-core/tracy",
+  "polars-io?/tracy",
+  "polars-lazy?/tracy",
+  "polars-ops?/tracy",
+  "polars-parquet/tracy",
+  "polars-plan?/tracy",
+  "polars-time?/tracy",
+  "polars-lazy/tracy",
+]
+tracy-no-instrument = [
+  "polars-core/tracy-no-instrument",
+  "polars-io?/tracy-no-instrument",
+  "polars-lazy?/tracy-no-instrument",
+  "polars-ops?/tracy-no-instrument",
+  "polars-parquet/tracy-no-instrument",
+  "polars-plan?/tracy-no-instrument",
+  "polars-time?/tracy-no-instrument",
+  "polars-lazy/tracy-no-instrument",
+]
 top_k = ["polars-lazy?/top_k"]
 trigonometry = ["polars-lazy?/trigonometry"]
 true_div = ["polars-lazy?/true_div"]

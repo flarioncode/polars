@@ -3034,6 +3034,7 @@ dependencies = [
  "strength_reduce",
  "tokio",
  "tokio-util",
+ "tracy-gizmos",
  "version_check",
  "zstd",
 ]
@@ -3062,6 +3063,7 @@ dependencies = [
  "polars-utils",
  "rand",
  "strength_reduce",
+ "tracy-gizmos",
  "version_check",
 ]
 
@@ -3096,6 +3098,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "tracy-gizmos",
  "version_check",
  "xxhash-rust",
 ]
@@ -3143,6 +3146,7 @@ dependencies = [
  "polars-time",
  "polars-utils",
  "rayon",
+ "tracy-gizmos",
 ]
 
 [[package]]
@@ -3197,6 +3201,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-util",
+ "tracy-gizmos",
  "url",
  "zstd",
 ]
@@ -3246,6 +3251,7 @@ dependencies = [
  "rayon",
  "serde_json",
  "tokio",
+ "tracy-gizmos",
  "version_check",
 ]
 
@@ -3268,6 +3274,7 @@ dependencies = [
  "pyo3",
  "rayon",
  "tokio",
+ "tracy-gizmos",
 ]
 
 [[package]]
@@ -3301,6 +3308,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "tracy-gizmos",
  "unicode-reverse",
  "version_check",
 ]
@@ -3332,6 +3340,7 @@ dependencies = [
  "simdutf8",
  "snap",
  "streaming-decompression",
+ "tracy-gizmos",
  "xxhash-rust",
  "zstd",
 ]
@@ -3395,6 +3404,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum_macros",
+ "tracy-gizmos",
  "version_check",
 ]
 
@@ -3497,6 +3507,7 @@ dependencies = [
  "recursive",
  "slotmap",
  "tokio",
+ "tracy-gizmos",
  "version_check",
 ]
 
@@ -3517,6 +3528,7 @@ dependencies = [
  "polars-utils",
  "regex",
  "serde",
+ "tracy-gizmos",
 ]
 
 [[package]]
@@ -4918,6 +4930,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c06d3da6113f116aaee68e4d601191614c9053067f9ab7f6edbcb161237daa54"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "tracy-gizmos"
+version = "0.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "254f43bb3c9300585b61028bf3b5e80a23919d5d6a6f5bf8711843afa55426b2"
+dependencies = [
+ "tracy-gizmos-attributes",
+ "tracy-gizmos-sys",
+]
+
+[[package]]
+name = "tracy-gizmos-attributes"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97174609f547c8a386b4fa576f522fc2b0a0bb5edf79937d516e327fc4534743"
+
+[[package]]
+name = "tracy-gizmos-sys"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8639c7f3f44b9ee79c87b38c0a44be2b5bb5ba8226c5c1ed6012d098c5dd6816"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

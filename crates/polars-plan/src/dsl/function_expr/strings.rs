@@ -503,6 +503,10 @@ pub(super) fn len_bytes(s: &Series) -> PolarsResult<Series> {
 }
 
 #[cfg(feature = "regex")]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn contains(s: &[Series], literal: bool, strict: bool) -> PolarsResult<Series> {
     let ca = s[0].str()?;
     let pat = s[1].str()?;
@@ -511,6 +515,10 @@ pub(super) fn contains(s: &[Series], literal: bool, strict: bool) -> PolarsResul
 }
 
 #[cfg(feature = "regex")]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn find(s: &[Series], literal: bool, strict: bool) -> PolarsResult<Series> {
     let ca = s[0].str()?;
     let pat = s[1].str()?;
@@ -533,6 +541,10 @@ pub(super) fn starts_with(s: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Extract a regex pattern from the a string value.
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn extract(s: &[Series], group_index: usize) -> PolarsResult<Series> {
     let ca = s[0].str()?;
     let pat = s[1].str()?;
@@ -541,6 +553,10 @@ pub(super) fn extract(s: &[Series], group_index: usize) -> PolarsResult<Series> 
 
 #[cfg(feature = "extract_groups")]
 /// Extract all capture groups from a regex pattern as a struct
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn extract_groups(s: &Series, pat: &str, dtype: &DataType) -> PolarsResult<Series> {
     let ca = s.str()?;
     ca.extract_groups(pat, dtype)
@@ -596,6 +612,10 @@ pub(super) fn strip_suffix(s: &[Series]) -> PolarsResult<Series> {
     Ok(ca.strip_suffix(suffix).into_series())
 }
 
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn extract_all(args: &[Series], group_index: usize) -> PolarsResult<Series> {
     let s = &args[0];
     let pat = &args[1];
@@ -712,6 +732,10 @@ pub(super) fn flarion_slice(s: &[Series]) -> PolarsResult<Series> {
 }
 
 #[cfg(all(feature = "regex", feature = "dtype-struct"))]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn flarion_split(s: &[Series], pattern: &str, n: i32) -> PolarsResult<Series> {
     let ca = s[0].str()?;
 
@@ -864,6 +888,10 @@ impl From<StringFunction> for FunctionExpr {
 }
 
 #[cfg(feature = "regex")]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 fn get_pat(pat: &StringChunked) -> PolarsResult<&str> {
     pat.get(0).ok_or_else(
         || polars_err!(ComputeError: "pattern cannot be 'null' in 'replace' expression"),
@@ -895,6 +923,10 @@ fn is_literal_pat(pat: &str) -> bool {
 }
 
 #[cfg(feature = "regex")]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 fn replace_n<'a>(
     ca: &'a StringChunked,
     pat: &'a StringChunked,
@@ -958,6 +990,10 @@ fn replace_n<'a>(
 }
 
 #[cfg(feature = "regex")]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 fn replace_all<'a>(
     ca: &'a StringChunked,
     pat: &'a StringChunked,
@@ -1005,6 +1041,10 @@ fn replace_all<'a>(
 }
 
 #[cfg(feature = "regex")]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn replace(s: &[Series], literal: bool, n: i64) -> PolarsResult<Series> {
     let column = &s[0];
     let pat = &s[1];
