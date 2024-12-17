@@ -309,6 +309,11 @@ pub trait ListNameSpaceImpl: AsList {
                     let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
                     Ok(filtered_ca.into_series())
                 },
+                DataType::Binary => {
+                    let ca = s_ref.binary()?;
+                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
+                    Ok(filtered_ca.into_series())
+                },
                 _ => {
                     polars_bail!(
                         ComputeError: "filter_with_func not implemented for type: {:?}",

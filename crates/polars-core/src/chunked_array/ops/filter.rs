@@ -1,3 +1,5 @@
+use std::str::from_utf8;
+
 use polars_compute::filter::filter as filter_fn;
 
 #[cfg(feature = "object")]
@@ -23,10 +25,20 @@ fn is_length_comparison(lambda: &LambdaExpression) -> Option<(usize, bool)> {
             {
                 Some((*threshold as usize, true))
             },
+            (LambdaExpression::Length(var), LambdaExpression::Int32(threshold))
+                if matches!(&**var, LambdaExpression::Variable(_)) =>
+            {
+                Some((*threshold as usize, true))
+            },
             _ => None,
         },
         LambdaExpression::LessThan(left, right) => match (left.as_ref(), right.as_ref()) {
             (LambdaExpression::Length(var), LambdaExpression::Int64(threshold))
+                if matches!(&**var, LambdaExpression::Variable(_)) =>
+            {
+                Some((*threshold as usize, false))
+            },
+            (LambdaExpression::Length(var), LambdaExpression::Int32(threshold))
                 if matches!(&**var, LambdaExpression::Variable(_)) =>
             {
                 Some((*threshold as usize, false))
@@ -73,13 +85,22 @@ where
     T: PolarsNumericType,
 {
     pub fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<ChunkedArray<T>> {
+        let mut keep_nulls = false; // filter out nulls by default
+
+        // in spark, if expression is isnull() then it expects to keep the nulls when it encounters one.
+        if let LambdaExpression::IsNull(_) = lambda {
+            keep_nulls = true;
+        }
+
+        // Evaluate each element using eval_numeric
         let mask = self.iter().map(|opt_val| match opt_val {
             Some(val) => match lambda.eval_numeric::<T>(&[&val]) {
                 AnyValue::Boolean(b) => b,
                 _ => panic!("Lambda must return boolean values"),
             },
-            None => false,
+            None => keep_nulls,
         });
+
         let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
         self.filter(&bool_mask)
     }
@@ -164,7 +185,10 @@ impl ChunkFilter<StringType> for StringChunked {
             // Use optimized length-based filtering
             let mask = self.iter().map(|opt_val| match opt_val {
                 Some(val) => {
-                    let len = val.len();
+                    let len = match from_utf8(val.as_bytes()) {
+                        Ok(s) => s.chars().count(),
+                        Err(_) => val.len(),
+                    };
                     if is_greater {
                         len > threshold
                     } else {
@@ -240,7 +264,7 @@ impl ChunkFilter<BinaryType> for BinaryChunked {
                 AnyValue::Boolean(b) => b,
                 _ => panic!("Lambda must return boolean values"),
             },
-            None => false,
+            None => true,
         });
 
         let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);

@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
+use std::str::from_utf8;
 
+use arrow::array::ViewType;
 use num_traits::ToBytes;
 use polars_error::{PolarsError, PolarsResult};
 #[cfg(feature = "serde-lazy")]
@@ -36,6 +38,7 @@ pub enum LambdaExpression {
     Instr(Box<Self>, Box<Self>),
     Add(Box<Self>, Box<Self>),
     IsNull(Box<Self>),
+    EqualNullSafe(Box<Self>, Box<Self>),
 }
 
 impl Eq for LambdaExpression {}
@@ -86,6 +89,10 @@ impl Hash for LambdaExpression {
                 second.hash(state);
             },
             LambdaExpression::IsNull(v) => v.hash(state),
+            LambdaExpression::EqualNullSafe(first, second) => {
+                first.hash(state);
+                second.hash(state);
+            },
         }
     }
 }
@@ -99,7 +106,14 @@ pub fn flarion_substring_anyvalue<'a>(
         (AnyValue::String(s), AnyValue::Int32(from), AnyValue::Int32(len)) => {
             AnyValue::StringOwned(flarion_substring(s, from, len).into())
         },
-        _ => AnyValue::Null,
+        (AnyValue::Binary(s), AnyValue::Int32(from), AnyValue::Int32(len)) => {
+            AnyValue::BinaryOwned(
+                flarion_substring(from_utf8(s).unwrap(), from, len)
+                    .to_bytes()
+                    .into(),
+            )
+        },
+        _ => unreachable!(),
     }
 }
 
@@ -274,6 +288,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(false)
                 }
             },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_array(args);
+                let right = right.eval_array(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
+                }
+            },
         }
     }
 
@@ -292,10 +317,36 @@ impl LambdaExpression {
             LambdaExpression::StaticStr(v) => AnyValue::String(v),
             LambdaExpression::Variable(idx) => (*args[*idx]).into(),
             LambdaExpression::GreaterThan(left, right) => {
-                AnyValue::Boolean(left.eval_numeric::<T>(args) > right.eval_numeric::<T>(args))
+                let left = left.eval_numeric::<T>(args);
+                let right = right.eval_numeric::<T>(args);
+
+                // Special case for Int8/Int16 and Int32 when using Array[Byte]/Array[Short]
+                // For example: Array[Byte](77) < 5
+                match (left, right) {
+                    (AnyValue::Int8(left), AnyValue::Int32(right)) => {
+                        AnyValue::Boolean((left as i32) > right)
+                    },
+                    (AnyValue::Int16(left), AnyValue::Int32(right)) => {
+                        AnyValue::Boolean((left as i32) > right)
+                    },
+                    (left, right) => AnyValue::Boolean(left > right),
+                }
             },
             LambdaExpression::LessThan(left, right) => {
-                AnyValue::Boolean(left.eval_numeric::<T>(args) < right.eval_numeric::<T>(args))
+                let left = left.eval_numeric::<T>(args);
+                let right = right.eval_numeric::<T>(args);
+
+                // Special case for Int8/Int16 and Int32 when using Array[Byte]/Array[Short]
+                // For example: Array[Byte](77) < 5
+                match (&left, &right) {
+                    (AnyValue::Int8(left), AnyValue::Int32(right)) => {
+                        AnyValue::Boolean((*left as i32) < *right)
+                    },
+                    (AnyValue::Int16(left), AnyValue::Int32(right)) => {
+                        AnyValue::Boolean((*left as i32) < *right)
+                    },
+                    _ => AnyValue::Boolean(left < right),
+                }
             },
             LambdaExpression::IfThenElse(cond, truthy, falsy) => {
                 if unsafe {
@@ -354,6 +405,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(true)
                 } else {
                     AnyValue::Boolean(false)
+                }
+            },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_numeric::<T>(args);
+                let right = right.eval_numeric::<T>(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
                 }
             },
         }
@@ -438,6 +500,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(false)
                 }
             },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_bool(args);
+                let right = right.eval_bool(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
+                }
+            },
         }
     }
 
@@ -473,12 +546,27 @@ impl LambdaExpression {
                     falsy.eval_slice(args)
                 }
             },
-            LambdaExpression::Length(expr) => match expr.eval_slice(args) {
-                AnyValue::Null => AnyValue::Null,
-                AnyValue::Binary(bytes) => AnyValue::Int32(bytes.len() as i32),
-                AnyValue::String(s) => AnyValue::Int32(s.len() as i32),
-                AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
-                _ => AnyValue::Int32(1),
+            LambdaExpression::Length(expr) => {
+                match expr.eval_slice(args) {
+                    AnyValue::Null => AnyValue::Null,
+                    AnyValue::Binary(bytes) => {
+                        // case we have a binary slice, try to convert to utf8 as spark expects, else return length of bytes
+                        match from_utf8(bytes) {
+                            Ok(new_str) => AnyValue::Int32(new_str.chars().count() as i32),
+                            Err(_) => AnyValue::Int32(bytes.len() as i32),
+                        }
+                    },
+                    AnyValue::BinaryOwned(bytes) => {
+                        // case we have a binary slice, convert to utf8 as spark expects
+                        match from_utf8(&bytes) {
+                            Ok(utf8_str) => AnyValue::Int32(utf8_str.chars().count() as i32),
+                            Err(_) => AnyValue::Int32(bytes.len() as i32),
+                        }
+                    },
+                    AnyValue::String(s) => AnyValue::Int32(s.chars().count() as i32),
+                    AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
+                    _ => AnyValue::Int32(1),
+                }
             },
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
@@ -507,6 +595,12 @@ impl LambdaExpression {
                         (AnyValue::String(s), AnyValue::String(pat)) => {
                             AnyValue::Int32(flarion_get_char_position(s, pat))
                         },
+                        (AnyValue::Binary(s), AnyValue::String(oat)) => {
+                            AnyValue::Int32(flarion_get_char_position(from_utf8(s).unwrap(), oat))
+                        },
+                        (AnyValue::BinaryOwned(s), AnyValue::String(oat)) => {
+                            AnyValue::Int32(flarion_get_char_position(from_utf8(&s).unwrap(), oat))
+                        },
                         _ => std::hint::unreachable_unchecked(), // tell the compiler it's unreachable
                     }
                 }
@@ -521,6 +615,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(true)
                 } else {
                     AnyValue::Boolean(false)
+                }
+            },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_slice(args);
+                let right = right.eval_slice(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
                 }
             },
         }
@@ -607,6 +712,17 @@ impl LambdaExpression {
                     AnyValue::Boolean(false)
                 }
             },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_any(args);
+                let right = right.eval_any(args);
+                if left.is_null() && right.is_null() {
+                    AnyValue::Boolean(true)
+                } else if left.is_null() || right.is_null() {
+                    AnyValue::Boolean(false)
+                } else {
+                    AnyValue::Boolean(left.eq(&right))
+                }
+            },
         }
     }
 
@@ -648,6 +764,7 @@ impl LambdaExpression {
                 &right.return_type(input_type)?,
             ])?,
             LambdaExpression::IsNull(_) => DataType::Boolean,
+            LambdaExpression::EqualNullSafe(_, _) => DataType::Boolean,
         })
     }
 }
