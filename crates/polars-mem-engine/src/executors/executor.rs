@@ -13,7 +13,10 @@ pub trait Executor: Send {
 
 pub struct Dummy {}
 impl Executor for Dummy {
-    #[cfg_attr(all(feature = "tracy", not(feature = "tracy-no-instrument")), tracy_gizmos::instrument)]
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn execute(&mut self, _cache: &mut ExecutionState) -> PolarsResult<DataFrame> {
         panic!("should not get here");
     }

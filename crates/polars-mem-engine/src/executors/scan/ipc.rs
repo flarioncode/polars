@@ -192,7 +192,10 @@ impl IpcExec {
 }
 
 impl Executor for IpcExec {
-    #[cfg_attr(all(feature = "tracy", not(feature = "tracy-no-instrument")), tracy_gizmos::instrument)]
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         let profile_name = if state.has_node_timer() {
             let mut ids = vec![self.sources.id()];

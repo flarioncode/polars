@@ -67,7 +67,10 @@ pub struct DataFrameExec {
 }
 
 impl Executor for DataFrameExec {
-    #[cfg_attr(all(feature = "tracy", not(feature = "tracy-no-instrument")), tracy_gizmos::instrument)]
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         let df = mem::take(&mut self.df);
         let mut df = Arc::try_unwrap(df).unwrap_or_else(|df| (*df).clone());
@@ -109,7 +112,10 @@ pub(crate) struct AnonymousScanExec {
 }
 
 impl Executor for AnonymousScanExec {
-    #[cfg_attr(all(feature = "tracy", not(feature = "tracy-no-instrument")), tracy_gizmos::instrument)]
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn execute(&mut self, state: &mut ExecutionState) -> PolarsResult<DataFrame> {
         let mut args = AnonymousScanArgs {
             n_rows: self.file_options.slice.map(|x| {
