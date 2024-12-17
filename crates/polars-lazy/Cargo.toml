@@ -30,7 +30,7 @@ once_cell = { workspace = true }
 pyo3 = { workspace = true, optional = true }
 rayon = { workspace = true }
 tokio = { workspace = true, optional = true }
-tracy-gizmos = { workspace = true }
+tracy-gizmos = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
@@ -71,6 +71,7 @@ temporal = [
   "polars-expr/temporal",
 ]
 tracy = [
+  "dep:tracy-gizmos",
   "tracy-gizmos/enabled",
   "polars-core/tracy",
   "polars-expr/tracy",

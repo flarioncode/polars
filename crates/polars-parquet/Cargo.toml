@@ -38,7 +38,7 @@ lz4 = { version = "1.24", optional = true }
 lz4_flex = { version = "0.11", optional = true }
 serde = { workspace = true, optional = true }
 snap = { version = "^1.1", optional = true }
-tracy-gizmos = { workspace = true }
+tracy-gizmos = { workspace = true, optional = true }
 zstd = { version = "^0.13", optional = true, default-features = false }
 
 xxhash-rust = { version = "0.8", optional = true, features = ["xxh64"] }
@@ -58,6 +58,7 @@ compression = [
 # compression backends
 snappy = ["snap"]
 tracy = [
+  "dep:tracy-gizmos",
   "tracy-gizmos/enabled",
   "polars-compute/tracy",
 ]

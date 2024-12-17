@@ -47,7 +47,7 @@ simd-json = { workspace = true, optional = true }
 simdutf8 = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["fs", "net", "rt-multi-thread", "time", "sync"], optional = true }
 tokio-util = { workspace = true, features = ["io", "io-util"], optional = true }
-tracy-gizmos = { workspace = true }
+tracy-gizmos = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
 zstd = { workspace = true, optional = true }
 
@@ -99,6 +99,7 @@ timezones = [
   "polars-json?/timezones",
 ]
 tracy = [
+  "dep:tracy-gizmos",
   "tracy-gizmos/enabled",
   "polars-core/tracy",
   "polars-parquet?/tracy",

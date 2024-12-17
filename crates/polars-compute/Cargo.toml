@@ -16,7 +16,7 @@ num-traits = { workspace = true }
 polars-error = { workspace = true }
 polars-utils = { workspace = true }
 strength_reduce = { workspace = true }
-tracy-gizmos = { workspace = true }
+tracy-gizmos = { workspace = true, optional = true }
 
 [dev-dependencies]
 rand = { workspace = true }
@@ -27,6 +27,6 @@ version_check = { workspace = true }
 [features]
 nightly = []
 simd = ["arrow/simd"]
-tracy = ["tracy-gizmos/enabled"]
+tracy = ["dep:tracy-gizmos", "tracy-gizmos/enabled"]
 dtype-array = []
 consistent_arithmetic = []

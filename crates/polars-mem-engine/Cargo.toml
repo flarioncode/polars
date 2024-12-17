@@ -24,7 +24,7 @@ polars-utils = { workspace = true }
 pyo3 = { workspace = true, optional = true }
 rayon = { workspace = true }
 tokio = { workspace = true, optional = true }
-tracy-gizmos = { workspace = true }
+tracy-gizmos = { workspace = true, optional = true }
 
 [features]
 async = [
@@ -52,6 +52,7 @@ object = ["polars-core/object"]
 dynamic_group_by = ["polars-plan/dynamic_group_by", "polars-time", "polars-expr/dynamic_group_by"]
 asof_join = ["polars-plan/asof_join", "polars-time", "polars-ops/asof_join"]
 tracy = [
+  "dep:tracy-gizmos",
   "tracy-gizmos/enabled",
   "polars-core/tracy",
   "polars-expr/tracy",
