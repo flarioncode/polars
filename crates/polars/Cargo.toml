@@ -231,7 +231,7 @@ tracy = [
   "polars-parquet/tracy",
   "polars-plan?/tracy",
   "polars-time?/tracy",
-  "polars-lazy/tracy", 
+  "polars-lazy/tracy",
 ]
 top_k = ["polars-lazy?/top_k"]
 trigonometry = ["polars-lazy?/trigonometry"]
