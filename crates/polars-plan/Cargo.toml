@@ -92,7 +92,6 @@ tracy-no-instrument = [
   "polars-ops/tracy-no-instrument",
   "polars-parquet?/tracy-no-instrument",
   "polars-time?/tracy-no-instrument",
-
 ]
 # debugging purposes
 fmt = ["polars-core/fmt"]
