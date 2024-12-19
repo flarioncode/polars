@@ -11,7 +11,7 @@ mod utf8_to;
 
 pub use binary_to::*;
 #[cfg(feature = "dtype-decimal")]
-pub use binview_to::binview_to_decimal;
+pub use binview_to::{binview_to_decimal, binview_to_primitive_impl};
 use binview_to::binview_to_primitive_dyn;
 pub use binview_to::utf8view_to_utf8;
 pub use boolean_to::*;

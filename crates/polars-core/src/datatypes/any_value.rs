@@ -1,3 +1,5 @@
+use std::str::{from_utf8_unchecked};
+use arrow::compute::cast::binview_to_primitive_impl;
 #[cfg(feature = "dtype-struct")]
 use arrow::legacy::trusted_len::TrustedLenPush;
 use arrow::types::PrimitiveType;
@@ -416,7 +418,7 @@ impl<'a> AnyValue<'a> {
     /// Extract a numerical value from the AnyValue
     #[doc(hidden)]
     #[inline]
-    pub fn extract<T: NumCast>(&self) -> Option<T> {
+    pub fn extract<T: NumCast>(&self) -> Option<T> where  {
         use AnyValue::*;
         match self {
             Int8(v) => NumCast::from(*v),
@@ -687,11 +689,48 @@ impl<'a> AnyValue<'a> {
         )
     }
 
+    // Continuously add casts here as we need them, it will fallback to `strict_cast`
     pub fn cast(&self, dtype: &'a DataType) -> AnyValue<'a> {
-        match self.strict_cast(dtype) {
-            Some(av) => av,
-            None => AnyValue::Null,
+        macro_rules! impl_numeric_cast {
+            ($self:ident, $dtype:ident, [$($variant:tt),*]) => {
+                match ($self, $dtype) {
+                    (AnyValue::Boolean(v), DataType::String) => AnyValue::String(if *v {
+                        "true"
+                    } else {
+                        "false"
+                    }),
+                    $(
+                        (AnyValue::$variant(v), DataType::Int8) => AnyValue::Int8(*v as _),
+                        (AnyValue::$variant(v), DataType::Int16) => AnyValue::Int16(*v as _),
+                        (AnyValue::$variant(v), DataType::Int32) => AnyValue::Int32(*v as _),
+                        (AnyValue::$variant(v), DataType::Int64) => AnyValue::Int64(*v as _),
+                        (AnyValue::$variant(v), DataType::UInt8) => AnyValue::UInt8(*v as _),
+                        (AnyValue::$variant(v), DataType::UInt16) => AnyValue::UInt16(*v as _),
+                        (AnyValue::$variant(v), DataType::UInt32) => AnyValue::UInt32(*v as _),
+                        (AnyValue::$variant(v), DataType::UInt64) => AnyValue::UInt64(*v as _),
+                        (AnyValue::$variant(v), DataType::Float32) => AnyValue::Float32(*v as _),
+                        (AnyValue::$variant(v), DataType::Float64) => AnyValue::Float64(*v as _),
+                        (AnyValue::$variant(v), DataType::Binary) => AnyValue::BinaryOwned(v.to_be_bytes().to_vec()),
+                    )*
+
+                    (AnyValue::Binary(v), DataType::Binary) => AnyValue::Binary(v),
+                    (AnyValue::Binary(v), DataType::String) => AnyValue::String(unsafe { from_utf8_unchecked(v) }),
+
+                    $((AnyValue::String(v), DataType::$variant) => AnyValue::$variant(binview_to_primitive_impl(v.as_bytes())?),)*
+                    (AnyValue::String(v), DataType::Binary) => AnyValue::Binary(v.as_bytes()),
+                    (AnyValue::String(v), DataType::String) => AnyValue::String(v),
+
+                    _ => self.strict_cast(dtype)?
+                }
+            };
         }
+
+        let res = (
+            || Some(impl_numeric_cast!(self, dtype,
+                [Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, Float64]))
+        )();
+
+        res.unwrap_or(AnyValue::Null)
     }
 }
 

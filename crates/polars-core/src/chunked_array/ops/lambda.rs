@@ -7,7 +7,6 @@ use num_traits::ToBytes;
 use polars_error::{PolarsError, PolarsResult};
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
-
 use super::flarion_funcs::{flarion_get_char_position, flarion_substring};
 use super::DataType;
 use crate::datatypes::{AnyValue, PolarsNumericType};
@@ -39,6 +38,7 @@ pub enum LambdaExpression {
     Add(Box<Self>, Box<Self>),
     IsNull(Box<Self>),
     EqualNullSafe(Box<Self>, Box<Self>),
+    Cast(Box<Self>, DataType),
 }
 
 impl Eq for LambdaExpression {}
@@ -92,6 +92,10 @@ impl Hash for LambdaExpression {
             LambdaExpression::EqualNullSafe(first, second) => {
                 first.hash(state);
                 second.hash(state);
+            },
+            LambdaExpression::Cast(v, data_type) => {
+                v.hash(state);
+                data_type.hash(state);
             },
         }
     }
@@ -182,7 +186,6 @@ impl LambdaExpression {
                     (left, right) => left.gt(&right).into(),
                 }
             },
-
             LambdaExpression::LessThan(left, right) => {
                 // CURRENTLY ONLY SUPPORTS NESTED ARRAYS THAT HAVE A SINGLE MEMBER.
                 // WITH MULTIPLE MEMBERS WE CAN DECIDE THE LOGIC IF WE ACTUALLY ENCOUNTER THESE CASES.
@@ -299,6 +302,9 @@ impl LambdaExpression {
                     AnyValue::Boolean(left.eq(&right))
                 }
             },
+            LambdaExpression::Cast(expr, data_type) => {
+                expr.eval_array(args).cast(data_type)
+            }
         }
     }
 
@@ -418,6 +424,9 @@ impl LambdaExpression {
                     AnyValue::Boolean(left.eq(&right))
                 }
             },
+            LambdaExpression::Cast(expr, data_type) => {
+                expr.eval_numeric::<T>(args).cast(data_type)
+            }
         }
     }
 
@@ -511,6 +520,9 @@ impl LambdaExpression {
                     AnyValue::Boolean(left.eq(&right))
                 }
             },
+            LambdaExpression::Cast(expr, data_type) => {
+                expr.eval_bool(args).cast(data_type)
+            }
         }
     }
 
@@ -628,6 +640,9 @@ impl LambdaExpression {
                     AnyValue::Boolean(left.eq(&right))
                 }
             },
+            LambdaExpression::Cast(expr, data_type) => {
+                expr.eval_slice(args).cast(data_type)
+            }
         }
     }
 
@@ -723,6 +738,9 @@ impl LambdaExpression {
                     AnyValue::Boolean(left.eq(&right))
                 }
             },
+            LambdaExpression::Cast(expr, data_type) => {
+                expr.eval_any(args).cast(data_type)
+            }
         }
     }
 
@@ -765,6 +783,7 @@ impl LambdaExpression {
             ])?,
             LambdaExpression::IsNull(_) => DataType::Boolean,
             LambdaExpression::EqualNullSafe(_, _) => DataType::Boolean,
+            LambdaExpression::Cast(_, data_type) => data_type.clone(),
         })
     }
 }
