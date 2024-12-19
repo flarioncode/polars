@@ -396,6 +396,7 @@ impl ListChunked {
             return Ok(self.clone());
         }
         let mut fast_explode = self.null_count() == 0;
+        let inner_dtype = data_type.inner_dtype().unwrap();
         let mut ca: ListChunked = {
             self.amortized_iter()
                 .map(|opt_v| {
@@ -407,8 +408,8 @@ impl ListChunked {
                                     fast_explode = false
                                 }
 
-                                if out.dtype() != &data_type {
-                                    return out.cast(&data_type);
+                                if out.dtype() != inner_dtype {
+                                    return out.cast(inner_dtype);
                                 }
                             };
                             out

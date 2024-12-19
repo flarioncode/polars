@@ -47,6 +47,7 @@ fn cast_rhs(
             // coerce to list JIT
             *s = s.reshape_list(&[-1, 1]).unwrap();
         }
+
         if s.dtype() != dtype {
             *s = s.cast(dtype).map_err(|e| {
                 polars_err!(
