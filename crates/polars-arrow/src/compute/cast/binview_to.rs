@@ -5,7 +5,7 @@ use polars_utils::float::IsFloat;
 
 use crate::array::*;
 use crate::compute::cast::binary_to::Parse;
-use crate::compute::cast::{CastOptionsImpl};
+use crate::compute::cast::CastOptionsImpl;
 #[cfg(feature = "dtype-decimal")]
 use crate::compute::decimal::deserialize_decimal;
 use crate::datatypes::{ArrowDataType, TimeUnit};

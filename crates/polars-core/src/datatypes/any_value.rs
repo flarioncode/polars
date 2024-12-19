@@ -1,4 +1,5 @@
-use std::str::{from_utf8_unchecked};
+use std::str::from_utf8_unchecked;
+
 use arrow::compute::cast::binview_to_primitive_impl;
 #[cfg(feature = "dtype-struct")]
 use arrow::legacy::trusted_len::TrustedLenPush;
@@ -418,7 +419,7 @@ impl<'a> AnyValue<'a> {
     /// Extract a numerical value from the AnyValue
     #[doc(hidden)]
     #[inline]
-    pub fn extract<T: NumCast>(&self) -> Option<T> where  {
+    pub fn extract<T: NumCast>(&self) -> Option<T> where {
         use AnyValue::*;
         match self {
             Int8(v) => NumCast::from(*v),
@@ -725,10 +726,13 @@ impl<'a> AnyValue<'a> {
             };
         }
 
-        let res = (
-            || Some(impl_numeric_cast!(self, dtype,
-                [Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, Float64]))
-        )();
+        let res = (|| {
+            Some(impl_numeric_cast!(
+                self,
+                dtype,
+                [Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, Float64]
+            ))
+        })();
 
         res.unwrap_or(AnyValue::Null)
     }

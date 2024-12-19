@@ -30,12 +30,7 @@ where
             .collect();
 
         let return_type = lambda.return_type(self.dtype())?;
-        Series::from_any_values_and_dtype(
-            PlSmallStr::EMPTY,
-            &vec,
-            &return_type,
-            true,
-        )
+        Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vec, &return_type, true)
     }
 }
 

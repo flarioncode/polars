@@ -384,7 +384,11 @@ impl ListChunked {
         Ok(ca)
     }
 
-    pub fn try_apply_amortized_with_dtype<F>(&self, mut f: F, data_type: DataType) -> PolarsResult<Self>
+    pub fn try_apply_amortized_with_dtype<F>(
+        &self,
+        mut f: F,
+        data_type: DataType,
+    ) -> PolarsResult<Self>
     where
         F: FnMut(AmortSeries) -> PolarsResult<Series>,
     {
@@ -402,9 +406,9 @@ impl ListChunked {
                                 if out.is_empty() {
                                     fast_explode = false
                                 }
-                                
+
                                 if out.dtype() != &data_type {
-                                    return out.cast(&data_type)
+                                    return out.cast(&data_type);
                                 }
                             };
                             out
