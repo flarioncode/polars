@@ -64,6 +64,20 @@ pub fn utf8view_to_utf8<O: Offset>(array: &Utf8ViewArray) -> Utf8Array<O> {
     }
 }
 
+#[inline]
+pub fn str_to_bool(s: &str) -> Option<bool> {
+    // Only matches U+0020, \n, \t, \f (\x0C), \v (\x0B) and \r to be exactly like Spark's behavior regarding whitespaces.
+    // Original logic appears in Spark functions isTrueString and isFalseString in StringUtils.scala
+    let s = s
+        .trim_matches(&[' ', '\n', '\r', '\t', '\x0C', '\x0B'][..])
+        .to_lowercase();
+    match s.as_str() {
+        "t" | "true" | "y" | "yes" | "1" => Some(true),
+        "f" | "false" | "n" | "no" | "0" => Some(false),
+        _ => None,
+    }
+}
+
 pub fn binview_to_primitive_impl<T>(x: &[u8]) -> Option<T>
 where
     T: NativeType + Parse + IsFloat + Bounded + AsPrimitive<f64>,

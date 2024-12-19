@@ -1,6 +1,6 @@
 use std::str::from_utf8_unchecked;
 
-use arrow::compute::cast::binview_to_primitive_impl;
+use arrow::compute::cast::{binview_to_primitive_impl, str_to_bool};
 #[cfg(feature = "dtype-struct")]
 use arrow::legacy::trusted_len::TrustedLenPush;
 use arrow::types::PrimitiveType;
@@ -692,8 +692,9 @@ impl<'a> AnyValue<'a> {
 
     // Continuously add casts here as we need them, it will fallback to `strict_cast`
     pub fn cast(&self, dtype: &'a DataType) -> AnyValue<'a> {
+        // Tried using a function with generics here, its doable but is a shitshow of constraints
         macro_rules! impl_numeric_cast {
-            ($self:ident, $dtype:ident, [$($variant:tt),*]) => {
+            ($self:ident, $dtype:ident, [$($variant:tt),*], {$(($floating_variant:tt, $floating_native:ty)),*}) => {
                 match ($self, $dtype) {
                     (AnyValue::Boolean(v), DataType::String) => AnyValue::String(if *v {
                         "true"
@@ -705,19 +706,59 @@ impl<'a> AnyValue<'a> {
                         (AnyValue::$variant(v), DataType::Int16) => AnyValue::Int16(*v as _),
                         (AnyValue::$variant(v), DataType::Int32) => AnyValue::Int32(*v as _),
                         (AnyValue::$variant(v), DataType::Int64) => AnyValue::Int64(*v as _),
-                        (AnyValue::$variant(v), DataType::UInt8) => AnyValue::UInt8(*v as _),
-                        (AnyValue::$variant(v), DataType::UInt16) => AnyValue::UInt16(*v as _),
-                        (AnyValue::$variant(v), DataType::UInt32) => AnyValue::UInt32(*v as _),
-                        (AnyValue::$variant(v), DataType::UInt64) => AnyValue::UInt64(*v as _),
                         (AnyValue::$variant(v), DataType::Float32) => AnyValue::Float32(*v as _),
                         (AnyValue::$variant(v), DataType::Float64) => AnyValue::Float64(*v as _),
                         (AnyValue::$variant(v), DataType::Binary) => AnyValue::BinaryOwned(v.to_be_bytes().to_vec()),
                     )*
 
+                    $(
+                        (AnyValue::$floating_variant(v), DataType::Int8) => {
+                            AnyValue::Int8(
+                                if *v < i8::MIN as $floating_native || *v > i8::MAX as $floating_native {
+                                -1 as _
+                            } else {
+                                *v as _
+                            })
+                        },
+                        (AnyValue::$floating_variant(v), DataType::Int16) => {
+                            AnyValue::Int16(
+                                if *v < i16::MIN as $floating_native || *v > i16::MAX as $floating_native {
+                                -1 as _
+                            } else {
+                                *v as _
+                            })
+                        },
+                        (AnyValue::$floating_variant(v), DataType::Int32) => {
+                            AnyValue::Int32(
+                                if *v < i32::MIN as $floating_native {
+                                    i32::MIN
+                                } else if *v > i32::MAX as $floating_native {
+                                    i32::MAX
+                                } else {
+                                    *v as _
+                            })
+                        },
+                        (AnyValue::$floating_variant(v), DataType::Int64) => {
+                            AnyValue::Int64(
+                                if *v < i64::MIN as $floating_native {
+                                    i64::MIN
+                                } else if *v > i64::MAX as $floating_native {
+                                    i64::MAX
+                                } else {
+                                    *v as _
+                            })
+                        },
+                        (AnyValue::$floating_variant(v), DataType::Float32) => AnyValue::Float32(*v as _),
+                        (AnyValue::$floating_variant(v), DataType::Float64) => AnyValue::Float64(*v as _),
+                        (AnyValue::$floating_variant(v), DataType::Binary) => AnyValue::BinaryOwned(v.to_be_bytes().to_vec()),
+                    )*
+
                     (AnyValue::Binary(v), DataType::Binary) => AnyValue::Binary(v),
                     (AnyValue::Binary(v), DataType::String) => AnyValue::String(unsafe { from_utf8_unchecked(v) }),
 
+                    (AnyValue::String(v), DataType::Boolean) => AnyValue::Boolean(str_to_bool(v)?),
                     $((AnyValue::String(v), DataType::$variant) => AnyValue::$variant(binview_to_primitive_impl(v.as_bytes())?),)*
+                    $((AnyValue::String(v), DataType::$floating_variant) => AnyValue::$floating_variant(binview_to_primitive_impl(v.as_bytes())?),)*
                     (AnyValue::String(v), DataType::Binary) => AnyValue::Binary(v.as_bytes()),
                     (AnyValue::String(v), DataType::String) => AnyValue::String(v),
 
@@ -730,7 +771,8 @@ impl<'a> AnyValue<'a> {
             Some(impl_numeric_cast!(
                 self,
                 dtype,
-                [Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, Float64]
+                [Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64],
+                {(Float32, f32), (Float64, f64)}
             ))
         })();
 
