@@ -5,9 +5,23 @@ use super::{
     BinaryChunked, BooleanChunked, ChunkTransform, ChunkedArray, ListChunked, PolarsNumericType,
     SeriesTrait, StringChunked,
 };
-use crate::prelude::AnyValue;
+use crate::prelude::{AnyValue, ChunkCast, DataType};
 use crate::series::implementations::SeriesWrap;
 use crate::series::{IntoSeries, Series};
+
+macro_rules! impl_common_early_return {
+    ($self:ident, $lambda:ident) => {
+        if $self.is_empty() {
+            if let Ok(out_type) = $lambda.return_type($self.dtype()) {
+                if $self.dtype() != &out_type {
+                    return $self.cast(&out_type);
+                }
+            }
+
+            return Ok($self.clone().into_series());
+        }
+    }
+}
 
 impl<T: PolarsNumericType + 'static> ChunkTransform for ChunkedArray<T>
 where
@@ -17,9 +31,7 @@ where
     where
         Self: Sized,
     {
-        if self.is_empty() {
-            return Ok(self.clone().into_series());
-        }
+        impl_common_early_return!(self, lambda);
 
         let vec: Vec<AnyValue> = self
             .iter()
@@ -36,9 +48,7 @@ where
 
 impl ChunkTransform for StringChunked {
     fn transform(&self, lambda: &super::LambdaExpression) -> polars_error::PolarsResult<Series> {
-        if self.is_empty() {
-            return Ok(self.clone().into_series());
-        }
+        impl_common_early_return!(self, lambda);
 
         let vec: Vec<AnyValue> = self
             .iter()
@@ -60,9 +70,7 @@ impl ChunkTransform for BinaryChunked {
         &self,
         lambda: &crate::chunked_array::LambdaExpression,
     ) -> polars_error::PolarsResult<Series> {
-        if self.is_empty() {
-            return Ok(self.clone().into_series());
-        }
+        impl_common_early_return!(self, lambda);
 
         let vec: Vec<AnyValue> = self
             .iter()
@@ -95,9 +103,7 @@ impl ChunkTransform for ListChunked {
         &self,
         lambda: &crate::chunked_array::LambdaExpression,
     ) -> polars_error::PolarsResult<Series> {
-        if self.is_empty() {
-            return Ok(self.clone().into_series());
-        }
+        impl_common_early_return!(self, lambda);
 
         let vec: Vec<AnyValue> = self
             .iter()
@@ -119,9 +125,7 @@ impl ChunkTransform for BooleanChunked {
         &self,
         lambda: &crate::chunked_array::LambdaExpression,
     ) -> polars_error::PolarsResult<Series> {
-        if self.is_empty() {
-            return Ok(self.clone().into_series());
-        }
+        impl_common_early_return!(self, lambda);
 
         let vec: Vec<AnyValue> = self
             .iter()

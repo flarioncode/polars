@@ -383,47 +383,6 @@ impl ListChunked {
         }
         Ok(ca)
     }
-
-    pub fn try_apply_amortized_with_dtype<F>(
-        &self,
-        mut f: F,
-        data_type: DataType,
-    ) -> PolarsResult<Self>
-    where
-        F: FnMut(AmortSeries) -> PolarsResult<Series>,
-    {
-        if self.is_empty() {
-            return Ok(self.clone());
-        }
-        let mut fast_explode = self.null_count() == 0;
-        let inner_dtype = data_type.inner_dtype().unwrap();
-        let mut ca: ListChunked = {
-            self.amortized_iter()
-                .map(|opt_v| {
-                    opt_v
-                        .map(|v| {
-                            let out = f(v);
-                            if let Ok(out) = &out {
-                                if out.is_empty() {
-                                    fast_explode = false
-                                }
-
-                                if out.dtype() != inner_dtype {
-                                    return out.cast(inner_dtype);
-                                }
-                            };
-                            out
-                        })
-                        .transpose()
-                })
-                .collect::<PolarsResult<_>>()?
-        };
-        ca.rename(self.name().clone());
-        if fast_explode {
-            ca.set_fast_explode();
-        }
-        Ok(ca)
-    }
 }
 
 #[cfg(test)]

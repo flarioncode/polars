@@ -45,30 +45,7 @@ impl_ser_primitive!(u16);
 impl_ser_primitive!(u32);
 impl_ser_primitive!(u64);
 
-// FLARION OVERRIDE IN `spark_impl` file
-// impl SerPrimitive for f32 {
-//     fn write(f: &mut Vec<u8>, val: Self) -> usize
-//     where
-//         Self: Sized,
-//     {
-//         let mut buffer = ryu::Buffer::new();
-//         let value = buffer.format(val);
-//         f.extend_from_slice(value.as_bytes());
-//         value.len()
-//     }
-// }
-//
-// impl SerPrimitive for f64 {
-//     fn write(f: &mut Vec<u8>, val: Self) -> usize
-//     where
-//         Self: Sized,
-//     {
-//         let mut buffer = ryu::Buffer::new();
-//         let value = buffer.format(val);
-//         f.extend_from_slice(value.as_bytes());
-//         value.len()
-//     }
-// }
+// FLARION OVERRIDE CAN BE FOUND IN `spark_impl` file
 
 fn primitive_to_values_and_offsets<T: NativeType + SerPrimitive, O: Offset>(
     from: &PrimitiveArray<T>,
@@ -618,6 +595,11 @@ pub fn f16_to_f32(from: &PrimitiveArray<f16>) -> PrimitiveArray<f32> {
     unary(from, |x| x.to_f32(), ArrowDataType::Float32)
 }
 
+#[inline]
+pub fn write_prim<T: NativeType + SerPrimitive>(scratch: &mut Vec<u8>, x: T) {
+    T::write(scratch, x);
+}
+
 /// Returns a [`Utf8Array`] where every element is the utf8 representation of the number.
 pub(super) fn primitive_to_binview<T: NativeType + SerPrimitive>(
     from: &PrimitiveArray<T>,
@@ -627,7 +609,7 @@ pub(super) fn primitive_to_binview<T: NativeType + SerPrimitive>(
     let mut scratch = vec![];
     for &x in from.values().iter() {
         unsafe { scratch.set_len(0) };
-        T::write(&mut scratch, x);
+        write_prim(&mut scratch, x);
         mutable.push_value_ignore_validity(&scratch)
     }
 

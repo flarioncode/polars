@@ -531,6 +531,9 @@ impl<'a> (dyn SeriesTrait + 'a) {
     where
         N: 'static + PolarsDataType,
     {
+        if &N::get_dtype() != self.dtype() {
+            eprintln!("Expected: {}, found: {}", self.dtype(), N::get_dtype());
+        }
         polars_ensure!(&N::get_dtype() == self.dtype(), unpack);
         Ok(self.as_ref())
     }

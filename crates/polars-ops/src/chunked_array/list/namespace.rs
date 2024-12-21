@@ -333,11 +333,9 @@ pub trait ListNameSpaceImpl: AsList {
         lambda_expressions: Arc<LambdaExpression>,
     ) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
-        let out = ca.try_apply_amortized_with_dtype(
-            |s| s.as_ref().transform(&lambda_expressions),
-            lambda_expressions.return_type(ca.dtype()).unwrap(),
-        )?;
-        Ok(out)
+        ca.try_apply_amortized(|s| {
+                s.as_ref().transform(&lambda_expressions)
+            })
     }
 
     fn lst_sort(&self, options: SortOptions) -> PolarsResult<ListChunked> {

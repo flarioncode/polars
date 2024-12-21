@@ -1,6 +1,6 @@
 use std::str::from_utf8_unchecked;
 
-use arrow::compute::cast::{binview_to_primitive_impl, str_to_bool};
+use arrow::compute::cast::{binview_to_primitive_impl, str_to_bool, write_prim};
 #[cfg(feature = "dtype-struct")]
 use arrow::legacy::trusted_len::TrustedLenPush;
 use arrow::types::PrimitiveType;
@@ -751,10 +751,16 @@ impl<'a> AnyValue<'a> {
                         (AnyValue::$floating_variant(v), DataType::Float32) => AnyValue::Float32(*v as _),
                         (AnyValue::$floating_variant(v), DataType::Float64) => AnyValue::Float64(*v as _),
                         (AnyValue::$floating_variant(v), DataType::Binary) => AnyValue::BinaryOwned(v.to_be_bytes().to_vec()),
+                        (AnyValue::$floating_variant(v), DataType::String) => {
+                            let mut buf = Vec::with_capacity(24); // Maximum scientific notation representation
+                            write_prim(&mut buf, *v);
+                            // SerPrimitive is guaranteed to give valid utf8
+                            AnyValue::StringOwned(PlSmallStr::from_str(unsafe { from_utf8_unchecked(&buf) }))
+                        },
                     )*
 
                     (AnyValue::Binary(v), DataType::Binary) => AnyValue::Binary(v),
-                    (AnyValue::Binary(v), DataType::String) => AnyValue::String(unsafe { from_utf8_unchecked(v) }),
+                    (AnyValue::Binary(v), DataType::String) => AnyValue::String(unsafe { from_utf8_unchecked(v) }), // Spark expects invalid utf8 to be parsed anyway
 
                     (AnyValue::String(v), DataType::Boolean) => AnyValue::Boolean(str_to_bool(v)?),
                     $((AnyValue::String(v), DataType::$variant) => AnyValue::$variant(binview_to_primitive_impl(v.as_bytes())?),)*
