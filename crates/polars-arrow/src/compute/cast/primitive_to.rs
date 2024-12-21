@@ -14,7 +14,7 @@ use crate::offset::{Offset, Offsets};
 use crate::temporal_conversions::*;
 use crate::types::{days_ms, f16, months_days_ns, NativeType};
 
-pub(super) trait SerPrimitive {
+pub trait SerPrimitive {
     fn write(f: &mut Vec<u8>, val: Self) -> usize
     where
         Self: Sized;
@@ -45,7 +45,7 @@ impl_ser_primitive!(u16);
 impl_ser_primitive!(u32);
 impl_ser_primitive!(u64);
 
-// FLARION OVERRIDE CAN BE FOUND IN `spark_impl` file
+// FLARION OVERRIDE FOR F32/F64 CAN BE FOUND IN `spark_impl` file
 
 fn primitive_to_values_and_offsets<T: NativeType + SerPrimitive, O: Offset>(
     from: &PrimitiveArray<T>,
@@ -595,11 +595,6 @@ pub fn f16_to_f32(from: &PrimitiveArray<f16>) -> PrimitiveArray<f32> {
     unary(from, |x| x.to_f32(), ArrowDataType::Float32)
 }
 
-#[inline]
-pub fn write_prim<T: NativeType + SerPrimitive>(scratch: &mut Vec<u8>, x: T) {
-    T::write(scratch, x);
-}
-
 /// Returns a [`Utf8Array`] where every element is the utf8 representation of the number.
 pub(super) fn primitive_to_binview<T: NativeType + SerPrimitive>(
     from: &PrimitiveArray<T>,
@@ -609,7 +604,7 @@ pub(super) fn primitive_to_binview<T: NativeType + SerPrimitive>(
     let mut scratch = vec![];
     for &x in from.values().iter() {
         unsafe { scratch.set_len(0) };
-        write_prim(&mut scratch, x);
+        T::write(&mut scratch, x);
         mutable.push_value_ignore_validity(&scratch)
     }
 

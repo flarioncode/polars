@@ -5,7 +5,7 @@ use super::{
     BinaryChunked, BooleanChunked, ChunkTransform, ChunkedArray, ListChunked, PolarsNumericType,
     SeriesTrait, StringChunked,
 };
-use crate::prelude::{AnyValue, ChunkCast, DataType};
+use crate::prelude::{AnyValue, ChunkCast};
 use crate::series::implementations::SeriesWrap;
 use crate::series::{IntoSeries, Series};
 
@@ -20,7 +20,7 @@ macro_rules! impl_common_early_return {
 
             return Ok($self.clone().into_series());
         }
-    }
+    };
 }
 
 impl<T: PolarsNumericType + 'static> ChunkTransform for ChunkedArray<T>

@@ -1,6 +1,6 @@
 use std::str::from_utf8_unchecked;
 
-use arrow::compute::cast::{binview_to_primitive_impl, str_to_bool, write_prim};
+use arrow::compute::cast::{binview_to_primitive_impl, str_to_bool, SerPrimitive};
 #[cfg(feature = "dtype-struct")]
 use arrow::legacy::trusted_len::TrustedLenPush;
 use arrow::types::PrimitiveType;
@@ -753,7 +753,7 @@ impl<'a> AnyValue<'a> {
                         (AnyValue::$floating_variant(v), DataType::Binary) => AnyValue::BinaryOwned(v.to_be_bytes().to_vec()),
                         (AnyValue::$floating_variant(v), DataType::String) => {
                             let mut buf = Vec::with_capacity(24); // Maximum scientific notation representation
-                            write_prim(&mut buf, *v);
+                            SerPrimitive::write(&mut buf, *v);
                             // SerPrimitive is guaranteed to give valid utf8
                             AnyValue::StringOwned(PlSmallStr::from_str(unsafe { from_utf8_unchecked(&buf) }))
                         },
