@@ -47,6 +47,7 @@ fn cast_rhs(
             // coerce to list JIT
             *s = s.reshape_list(&[-1, 1]).unwrap();
         }
+
         if s.dtype() != dtype {
             *s = s.cast(dtype).map_err(|e| {
                 polars_err!(
@@ -332,8 +333,7 @@ pub trait ListNameSpaceImpl: AsList {
         lambda_expressions: Arc<LambdaExpression>,
     ) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
-        let out = ca.try_apply_amortized(|s| s.as_ref().transform(&lambda_expressions))?;
-        Ok(out)
+        ca.try_apply_amortized(|s| s.as_ref().transform(&lambda_expressions))
     }
 
     fn lst_sort(&self, options: SortOptions) -> PolarsResult<ListChunked> {

@@ -14,7 +14,7 @@ use crate::offset::{Offset, Offsets};
 use crate::temporal_conversions::*;
 use crate::types::{days_ms, f16, months_days_ns, NativeType};
 
-pub(super) trait SerPrimitive {
+pub trait SerPrimitive {
     fn write(f: &mut Vec<u8>, val: Self) -> usize
     where
         Self: Sized;
@@ -45,30 +45,7 @@ impl_ser_primitive!(u16);
 impl_ser_primitive!(u32);
 impl_ser_primitive!(u64);
 
-// FLARION OVERRIDE IN `spark_impl` file
-// impl SerPrimitive for f32 {
-//     fn write(f: &mut Vec<u8>, val: Self) -> usize
-//     where
-//         Self: Sized,
-//     {
-//         let mut buffer = ryu::Buffer::new();
-//         let value = buffer.format(val);
-//         f.extend_from_slice(value.as_bytes());
-//         value.len()
-//     }
-// }
-//
-// impl SerPrimitive for f64 {
-//     fn write(f: &mut Vec<u8>, val: Self) -> usize
-//     where
-//         Self: Sized,
-//     {
-//         let mut buffer = ryu::Buffer::new();
-//         let value = buffer.format(val);
-//         f.extend_from_slice(value.as_bytes());
-//         value.len()
-//     }
-// }
+// FLARION OVERRIDE FOR F32/F64 CAN BE FOUND IN `spark_impl` file
 
 fn primitive_to_values_and_offsets<T: NativeType + SerPrimitive, O: Offset>(
     from: &PrimitiveArray<T>,

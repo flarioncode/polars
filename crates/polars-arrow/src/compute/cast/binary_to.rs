@@ -9,7 +9,7 @@ use crate::datatypes::ArrowDataType;
 use crate::offset::{Offset, Offsets};
 use crate::types::NativeType;
 
-pub(super) trait Parse {
+pub trait Parse {
     fn parse(val: &[u8]) -> Option<Self>
     where
         Self: Sized;

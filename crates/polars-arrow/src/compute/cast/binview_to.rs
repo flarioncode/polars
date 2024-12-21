@@ -1,11 +1,11 @@
 use chrono::Datelike;
-use num_traits::Bounded;
+use num_traits::{AsPrimitive, Bounded};
 use polars_error::PolarsResult;
 use polars_utils::float::IsFloat;
 
 use crate::array::*;
 use crate::compute::cast::binary_to::Parse;
-use crate::compute::cast::{CastOptionsImpl, SparkAsPrimitive};
+use crate::compute::cast::CastOptionsImpl;
 #[cfg(feature = "dtype-decimal")]
 use crate::compute::decimal::deserialize_decimal;
 use crate::datatypes::{ArrowDataType, TimeUnit};
@@ -64,10 +64,24 @@ pub fn utf8view_to_utf8<O: Offset>(array: &Utf8ViewArray) -> Utf8Array<O> {
     }
 }
 
-fn binview_to_primitive_impl<T>(x: &[u8]) -> Option<T>
+#[inline]
+pub fn str_to_bool(s: &str) -> Option<bool> {
+    // Only matches U+0020, \n, \t, \f (\x0C), \v (\x0B) and \r to be exactly like Spark's behavior regarding whitespaces.
+    // Original logic appears in Spark functions isTrueString and isFalseString in StringUtils.scala
+    let s = s
+        .trim_matches(&[' ', '\n', '\r', '\t', '\x0C', '\x0B'][..])
+        .to_lowercase();
+    match s.as_str() {
+        "t" | "true" | "y" | "yes" | "1" => Some(true),
+        "f" | "false" | "n" | "no" | "0" => Some(false),
+        _ => None,
+    }
+}
+
+pub fn binview_to_primitive_impl<T>(x: &[u8]) -> Option<T>
 where
-    T: NativeType + Parse + IsFloat + Bounded + SparkAsPrimitive<f64>,
-    f64: SparkAsPrimitive<T>,
+    T: NativeType + Parse + IsFloat + Bounded + AsPrimitive<f64>,
+    f64: AsPrimitive<T>,
 {
     let is_float = T::is_float();
 
@@ -154,8 +168,8 @@ where
             if is_float {
                 Some(value.as_())
             } else {
-                let min: f64 = SparkAsPrimitive::as_(T::min_value());
-                let max: f64 = SparkAsPrimitive::as_(T::max_value());
+                let min: f64 = T::min_value().as_();
+                let max: f64 = T::max_value().as_();
                 if (min..=max).contains(&value) {
                     Some(value.as_())
                 } else {
@@ -175,8 +189,8 @@ pub(super) fn binview_to_primitive<T>(
     to: &ArrowDataType,
 ) -> PrimitiveArray<T>
 where
-    T: NativeType + Parse + IsFloat + Bounded + SparkAsPrimitive<f64>,
-    f64: SparkAsPrimitive<T>,
+    T: NativeType + Parse + IsFloat + Bounded + AsPrimitive<f64>,
+    f64: AsPrimitive<T>,
 {
     let iter = from
         .iter()
@@ -191,8 +205,8 @@ pub(super) fn binview_to_primitive_dyn<T>(
     options: CastOptionsImpl,
 ) -> PolarsResult<Box<dyn Array>>
 where
-    T: NativeType + Parse + IsFloat + Bounded + SparkAsPrimitive<f64>,
-    f64: SparkAsPrimitive<T>,
+    T: NativeType + Parse + IsFloat + Bounded + AsPrimitive<f64>,
+    f64: AsPrimitive<T>,
 {
     let from = from.as_any().downcast_ref().unwrap();
     if options.partial {

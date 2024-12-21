@@ -531,7 +531,16 @@ impl<'a> (dyn SeriesTrait + 'a) {
     where
         N: 'static + PolarsDataType,
     {
-        polars_ensure!(&N::get_dtype() == self.dtype(), unpack);
+        if &N::get_dtype() != self.dtype() {
+            // I just want some more information
+            eprintln!(
+                "Series '{}', Expected: {}, found: {}",
+                self.name(),
+                self.dtype(),
+                N::get_dtype()
+            );
+            polars_ensure!(&N::get_dtype() == self.dtype(), unpack); // I don't care about the extra check because we already panicked here tbh
+        }
         Ok(self.as_ref())
     }
 }
