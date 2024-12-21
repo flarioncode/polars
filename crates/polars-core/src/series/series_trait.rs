@@ -535,7 +535,7 @@ impl<'a> (dyn SeriesTrait + 'a) {
             // I just want some more information
             eprintln!(
                 "Series '{}', Expected: {}, found: {}",
-                self.name()
+                self.name(),
                 self.dtype(),
                 N::get_dtype()
             );
