@@ -1,17 +1,25 @@
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
+use std::iter;
+use std::ops::Add;
 use std::str::from_utf8;
 
 use arrow::array::ViewType;
 use num_traits::ToBytes;
 use polars_error::{PolarsError, PolarsResult};
+use polars_utils::itertools::Itertools;
+use polars_utils::pl_str::PlSmallStr;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 
 use super::flarion_funcs::{flarion_get_char_position, flarion_substring};
 use super::DataType;
+use crate::chunked_array::ops::ChunkCompare;
 use crate::datatypes::{AnyValue, PolarsNumericType};
-use crate::prelude::Array;
+use crate::prelude::flarion_funcs::{flarion_instr_helper, flarion_slice_helper};
+use crate::prelude::{
+    Array, BinaryChunked, BooleanChunked, CastOptions, ChunkFull, IntoSeries, NamedFromOwned,
+};
 use crate::series::Series;
 use crate::utils::dtypes_to_supertype;
 
@@ -20,7 +28,9 @@ use crate::utils::dtypes_to_supertype;
 pub enum LambdaExpression {
     Null,
     Boolean(bool),
+    #[cfg(feature = "dtype-i8")]
     Int8(i8),
+    #[cfg(feature = "dtype-i16")]
     Int16(i16),
     Int32(i32),
     Int64(i64),
@@ -33,6 +43,7 @@ pub enum LambdaExpression {
     LessThan(Box<Self>, Box<Self>),
     IfThenElse(Box<Self>, Box<Self>, Box<Self>),
     Length(Box<Self>),
+    #[cfg(feature = "zip_with")]
     CaseWhen(Vec<(Self, Self)>, Box<Self>),
     Substring(Box<Self>, Box<Self>, Box<Self>),
     Instr(Box<Self>, Box<Self>),
@@ -49,7 +60,9 @@ impl Hash for LambdaExpression {
         match self {
             LambdaExpression::Null => 0.hash(state),
             LambdaExpression::Boolean(v) => v.hash(state),
+            #[cfg(feature = "dtype-i8")]
             LambdaExpression::Int8(v) => v.hash(state),
+            #[cfg(feature = "dtype-i16")]
             LambdaExpression::Int16(v) => v.hash(state),
             LambdaExpression::Int32(v) => v.hash(state),
             LambdaExpression::Int64(v) => v.hash(state),
@@ -72,6 +85,7 @@ impl Hash for LambdaExpression {
                 third.hash(state);
             },
             LambdaExpression::Length(v) => v.hash(state),
+            #[cfg(feature = "zip_with")]
             LambdaExpression::CaseWhen(first, second) => {
                 first.hash(state);
                 second.hash(state);
@@ -123,12 +137,181 @@ pub fn flarion_substring_anyvalue<'a>(
 }
 
 impl LambdaExpression {
+    pub fn is_literal(&self) -> bool {
+        matches!(
+            self,
+            LambdaExpression::Null
+                | LambdaExpression::Boolean(_)
+                | LambdaExpression::Int32(_)
+                | LambdaExpression::Int64(_)
+                | LambdaExpression::Float32(_)
+                | LambdaExpression::Float64(_)
+                | LambdaExpression::BinaryBlob(_)
+                | LambdaExpression::StaticStr(_)
+        )
+    }
+
+    pub fn eval(&self, s: &Series, is_root: bool) -> PolarsResult<Series> {
+        let repeat_count = if is_root { s.len() } else { 1 }; // Handle broadcast lambdas expressions if root
+        match self {
+            LambdaExpression::Null => Ok(Series::new_null(PlSmallStr::EMPTY, 1)),
+            LambdaExpression::Boolean(v) => Ok(Series::from_iter(iter::repeat_n(v, repeat_count))),
+            #[cfg(feature = "dtype-i8")]
+            LambdaExpression::Int8(v) => Ok(Series::from_iter(iter::repeat_n(v, repeat_count))),
+            #[cfg(feature = "dtype-i16")]
+            LambdaExpression::Int16(v) => Ok(Series::from_iter(iter::repeat_n(v, repeat_count))),
+            LambdaExpression::Int32(v) => Ok(Series::from_iter(iter::repeat_n(v, repeat_count))),
+            LambdaExpression::Int64(v) => Ok(Series::from_iter(iter::repeat_n(v, repeat_count))),
+            LambdaExpression::Float32(v) => Ok(Series::from_iter(iter::repeat_n(v, repeat_count))),
+            LambdaExpression::Float64(v) => Ok(Series::from_iter(iter::repeat_n(v, repeat_count))),
+            LambdaExpression::BinaryBlob(v) => Ok(BinaryChunked::from_iter(iter::repeat_n(
+                v.as_slice(),
+                repeat_count,
+            ))
+            .into_series()),
+            LambdaExpression::StaticStr(v) => {
+                Ok(Series::from_iter(iter::repeat_n(v.as_ref(), repeat_count)))
+            },
+            LambdaExpression::Variable(_) => Ok(s.clone()),
+            LambdaExpression::GreaterThan(left, right) => {
+                let left = left.eval(s, false)?;
+                let right = right.eval(s, false)?;
+                Ok(left.gt(&right)?.into_series())
+            },
+            LambdaExpression::LessThan(left, right) => {
+                let left = left.eval(s, false)?;
+                let right = right.eval(s, false)?;
+                Ok(left.lt(&right)?.into_series())
+            },
+            LambdaExpression::IfThenElse(pred, value, otherwise) => {
+                let pred = pred.eval(s, false)?;
+                let value = value.eval(s, false)?;
+                let otherwise = otherwise.eval(s, false)?;
+
+                // I think this is the only place where its valid to use AnyValues, since both series can be absolutely anything
+                let vals = pred
+                    .bool()?
+                    .iter()
+                    .zip(value.iter().zip(otherwise.iter()))
+                    .map(|(pred, (left, right))| {
+                        // Predicates are not nullable
+                        if pred.unwrap_or_default() {
+                            left
+                        } else {
+                            right
+                        }
+                    })
+                    .collect_vec();
+                Series::from_any_values(PlSmallStr::EMPTY, &vals, true)
+            },
+            LambdaExpression::Length(child) => {
+                let s = child.eval(s, false)?;
+                Ok(match s.dtype() {
+                    DataType::Null => Series::new_null(PlSmallStr::EMPTY, s.len()),
+                    DataType::Binary => Series::from_iter(
+                        s.binary()?
+                            .iter()
+                            .map(|opt_v: Option<&[u8]>| opt_v.map(|v| v.len() as i32)),
+                    ),
+                    DataType::String => Series::from_iter(
+                        s.str()?
+                            .iter()
+                            .map(|opt_v| opt_v.map(|v| v.chars().count() as i32)),
+                    ),
+                    DataType::List(_) => {
+                        let ca = s.as_list();
+                        let mut lengths = Vec::with_capacity(ca.len());
+                        ca.downcast_iter().for_each(|arr| {
+                            let offsets = arr.offsets().as_slice();
+                            let mut last = offsets[0];
+                            for o in &offsets[1..] {
+                                lengths.push((*o - last) as i32);
+                                last = *o;
+                            }
+                        });
+                        Series::from_vec(PlSmallStr::EMPTY, lengths)
+                    },
+                    _ => Series::from_iter(iter::repeat_n(1i32, s.len())),
+                })
+            },
+            #[cfg(feature = "zip_with")]
+            LambdaExpression::CaseWhen(branches, otherwise) => {
+                let predicates: Vec<Series> = branches
+                    .iter()
+                    .map(|(pred, _)| pred.eval(s, false))
+                    .collect::<PolarsResult<_>>()?;
+                let branches: Vec<(&BooleanChunked, Series)> = predicates
+                    .iter()
+                    .zip(branches)
+                    .map(|(predicates, (_, thens))| Ok((predicates.bool()?, thens.eval(s, false)?)))
+                    .collect::<PolarsResult<_>>()?;
+                let otherwise: Series = otherwise.eval(s, false)?;
+
+                // Start with all false mask of appropriate length
+                let mut final_mask =
+                    BooleanChunked::full(PlSmallStr::EMPTY, false, otherwise.len());
+                let mut result = otherwise;
+
+                // Iterate through branches in order
+                for (pred_mask, then_series) in branches {
+                    // Only apply values where:
+                    // 1. Current predicate is true
+                    // 2. No previous predicate was true (not in final_mask)
+                    let new_mask = pred_mask & &(!&final_mask);
+
+                    // Where new_mask is true, take values from then_series
+                    // Where new_mask is false, keep values from result
+                    result = then_series.zip_with(&new_mask, &result)?;
+
+                    // Update final mask to include this predicate
+                    final_mask = &final_mask | pred_mask;
+                }
+
+                Ok(result)
+            },
+            LambdaExpression::Substring(child, start, length) => {
+                let child = child.eval(s, false)?;
+                let start = start.eval(s, false)?;
+                let length = length.eval(s, false)?;
+                flarion_slice_helper(child.str()?, &start, &length)
+            },
+            LambdaExpression::Instr(left, right) => {
+                let left = left.eval(s, false)?;
+                let right = right.eval(s, false)?;
+
+                flarion_instr_helper(left.str()?, &right)
+            },
+            LambdaExpression::Add(left, right) => {
+                let left = left.eval(s, false)?;
+                let right = right.eval(s, false)?;
+                left.add(right)
+            },
+            LambdaExpression::IsNull(child) => {
+                let child = child.eval(s, false)?;
+                Ok(child.is_null().into_series())
+            },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval(s, false)?;
+                let right = right.eval(s, false)?;
+                left.equal_missing(&right).map(IntoSeries::into_series)
+            },
+            LambdaExpression::Cast(child, dtype) => {
+                let s = child.eval(s, false)?;
+                s.cast_with_options(dtype, CastOptions::Overflowing)
+            },
+        }
+    }
+}
+
+impl LambdaExpression {
     #[inline]
     pub(crate) fn eval_array<'a>(&'a self, args: &'a [&'a dyn Array]) -> AnyValue<'a> {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            #[cfg(feature = "dtype-i8")]
             LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            #[cfg(feature = "dtype-i16")]
             LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
@@ -249,6 +432,7 @@ impl LambdaExpression {
                 AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
                 _ => AnyValue::Int32(1),
             },
+            #[cfg(feature = "zip_with")]
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
                     if unsafe {
@@ -312,7 +496,9 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            #[cfg(feature = "dtype-i8")]
             LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            #[cfg(feature = "dtype-i16")]
             LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
@@ -344,9 +530,11 @@ impl LambdaExpression {
                 // Special case for Int8/Int16 and Int32 when using Array[Byte]/Array[Short]
                 // For example: Array[Byte](77) < 5
                 match (&left, &right) {
+                    #[cfg(feature = "dtype-i8")]
                     (AnyValue::Int8(left), AnyValue::Int32(right)) => {
                         AnyValue::Boolean((*left as i32) < *right)
                     },
+                    #[cfg(feature = "dtype-i16")]
                     (AnyValue::Int16(left), AnyValue::Int32(right)) => {
                         AnyValue::Boolean((*left as i32) < *right)
                     },
@@ -369,6 +557,7 @@ impl LambdaExpression {
                 AnyValue::Null => AnyValue::Null,
                 _ => AnyValue::Int32(1),
             },
+            #[cfg(feature = "zip_with")]
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
                     if unsafe {
@@ -432,7 +621,9 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            #[cfg(feature = "dtype-i8")]
             LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            #[cfg(feature = "dtype-i16")]
             LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
@@ -463,6 +654,7 @@ impl LambdaExpression {
                 AnyValue::Null => AnyValue::Null,
                 _ => AnyValue::Int32(1),
             },
+            #[cfg(feature = "zip_with")]
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
                     if unsafe {
@@ -526,7 +718,9 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            #[cfg(feature = "dtype-i8")]
             LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            #[cfg(feature = "dtype-i16")]
             LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
@@ -575,6 +769,7 @@ impl LambdaExpression {
                     _ => AnyValue::Int32(1),
                 }
             },
+            #[cfg(feature = "zip_with")]
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
                     if unsafe {
@@ -643,7 +838,9 @@ impl LambdaExpression {
         match self {
             LambdaExpression::Null => AnyValue::Null,
             LambdaExpression::Boolean(v) => AnyValue::Boolean(*v),
+            #[cfg(feature = "dtype-i8")]
             LambdaExpression::Int8(v) => AnyValue::Int8(*v),
+            #[cfg(feature = "dtype-i16")]
             LambdaExpression::Int16(v) => AnyValue::Int16(*v),
             LambdaExpression::Int32(v) => AnyValue::Int32(*v),
             LambdaExpression::Int64(v) => AnyValue::Int64(*v),
@@ -677,6 +874,7 @@ impl LambdaExpression {
                 AnyValue::List(arr) => AnyValue::Int32(arr.len() as i32),
                 _ => AnyValue::Int32(1),
             },
+            #[cfg(feature = "zip_with")]
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 for (cond, value) in cases {
                     if unsafe {
@@ -741,7 +939,9 @@ impl LambdaExpression {
         Ok(match self {
             LambdaExpression::Null => DataType::Null,
             LambdaExpression::Boolean(_) => DataType::Boolean,
+            #[cfg(feature = "dtype-i8")]
             LambdaExpression::Int8(_) => DataType::Int8,
+            #[cfg(feature = "dtype-i16")]
             LambdaExpression::Int16(_) => DataType::Int16,
             LambdaExpression::Int32(_) => DataType::Int32,
             LambdaExpression::Int64(_) => DataType::Int64,
@@ -757,6 +957,7 @@ impl LambdaExpression {
                 &els.return_type(input_type)?,
             ])?,
             LambdaExpression::Length(_) => DataType::Int32,
+            #[cfg(feature = "zip_with")]
             LambdaExpression::CaseWhen(cases, otherwise) => {
                 let child_types = cases
                     .iter()
@@ -776,5 +977,83 @@ impl LambdaExpression {
             LambdaExpression::EqualNullSafe(_, _) => DataType::Boolean,
             LambdaExpression::Cast(_, data_type) => data_type.clone(),
         })
+    }
+}
+
+// Was using these to debug but I see no harm in having more unit tests, in fact we should probably have more here
+#[cfg(test)]
+mod tests {
+    use crate::prelude::{LambdaExpression, Series};
+
+    #[test]
+    fn test_empty_transform() {
+        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
+        let empty_lambda = LambdaExpression::StaticStr("meep".into());
+
+        let res = empty_lambda.eval(&start_array, true).unwrap();
+        assert_eq!(res.len(), 2);
+
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "meep");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "meep");
+    }
+
+    #[test]
+    fn test_lambda_length() {
+        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
+        let length_lambda = LambdaExpression::Length(Box::new(LambdaExpression::Variable(0)));
+
+        let res = length_lambda.eval(&start_array, true).unwrap();
+        unsafe {
+            assert_eq!(res.i32().unwrap().value_unchecked(0), 12);
+            assert_eq!(res.i32().unwrap().value_unchecked(1), 13);
+        }
+    }
+
+    #[test]
+    fn test_lambda_substring() {
+        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
+        let substring_lambda = LambdaExpression::Substring(
+            Box::new(LambdaExpression::Variable(0)),
+            Box::new(LambdaExpression::Int32(4)),
+            Box::new(LambdaExpression::Int32(2)),
+        );
+
+        let res = substring_lambda.eval(&start_array, true).unwrap();
+        unsafe {
+            assert_eq!(res.str().unwrap().value_unchecked(0), "1=");
+            assert_eq!(res.str().unwrap().value_unchecked(1), "2=");
+        }
+    }
+
+    #[cfg(feature = "zip_with")]
+    #[test]
+    fn test_lambda_casewhen() {
+        let start_array = Series::from_iter(vec![
+            "key1==value1",
+            "key2===u",
+            "key3==value3whichisverylong",
+        ]);
+        let casewhen_lambda = LambdaExpression::CaseWhen(
+            vec![(
+                LambdaExpression::GreaterThan(
+                    Box::new(LambdaExpression::Length(Box::new(
+                        LambdaExpression::Variable(0),
+                    ))),
+                    Box::new(LambdaExpression::Int32(10)),
+                ),
+                LambdaExpression::Variable(0),
+            )],
+            Box::new(LambdaExpression::StaticStr("nope".into())),
+        );
+
+        let res = casewhen_lambda.eval(&start_array, true).unwrap();
+        unsafe {
+            assert_eq!(res.str().unwrap().value_unchecked(0), "key1==value1");
+            assert_eq!(res.str().unwrap().value_unchecked(1), "nope");
+            assert_eq!(
+                res.str().unwrap().value_unchecked(2),
+                "key3==value3whichisverylong"
+            );
+        }
     }
 }

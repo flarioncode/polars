@@ -36,6 +36,7 @@ pub mod search_sorted;
 mod set;
 mod shift;
 pub mod sort;
+pub mod split;
 mod transform;
 #[cfg(feature = "algorithm_group_by")]
 pub(crate) mod unique;
