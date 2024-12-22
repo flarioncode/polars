@@ -5,7 +5,6 @@ use std::ops::Add;
 
 use num_traits::ToBytes;
 use polars_error::{PolarsError, PolarsResult};
-use polars_utils::itertools::Itertools;
 use polars_utils::pl_str::PlSmallStr;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
