@@ -197,38 +197,33 @@ macro_rules! impl_signed_arith_kernel {
                 } else if rhs == -1 || rhs == 1 {
                     lhs.fill_with(0)
                 } else {
-                    let scalar_u = rhs.unsigned_abs();
-                    let red = <$StrRed>::new(scalar_u);
-                    prim_unary_values(lhs, |x| {
-                        // Remainder fits in signed type after reduction.
-                        // Largest possible modulo -I::MIN, with
-                        // -I::MIN-1 == I::MAX as largest remainder.
-                        let mut rem_u = x.unsigned_abs() % red;
+                    #[cfg(feature = "consistent_arithmetic")]
+                    {
+                         prim_unary_values(lhs, |x| x % rhs)
+                    }
+                    #[cfg(not(feature = "consistent_arithmetic"))]
+                    {
+                        let scalar_u = rhs.unsigned_abs();
+                        let red = <$StrRed>::new(scalar_u);
+                        prim_unary_values(lhs, |x| {
+                                // Remainder fits in signed type after reduction.
+                                // Largest possible modulo -I::MIN, with
+                                // -I::MIN-1 == I::MAX as largest remainder.
+                                let mut rem_u = x.unsigned_abs() % red;
 
-                        // Mixed signs: swap direction of remainder.
-                        if rem_u != 0 && (rhs < 0) != (x < 0) {
-                            rem_u = scalar_u - rem_u;
-                        }
+                                // Mixed signs: swap direction of remainder.
+                                if rem_u != 0 && (rhs < 0) != (x < 0) {
+                                    rem_u = scalar_u - rem_u;
+                                }
 
-                        #[cfg(feature = "consistent_arithmetic")]
-                        {
-                            // Module should have sign of LHS.
-                            if x < 0 {
-                                -(rem_u as $T)
-                            } else {
-                                rem_u as $T
-                            }
-                        }
-                        #[cfg(not(feature = "consistent_arithmetic"))]
-                        {
-                            // Remainder should have sign of RHS.
-                            if rhs < 0 {
-                                -(rem_u as $T)
-                            } else {
-                                rem_u as $T
-                            }
-                        }
-                    })
+                                // Remainder should have sign of RHS.
+                                if rhs < 0 {
+                                    -(rem_u as $T)
+                                } else {
+                                    rem_u as $T
+                                }
+                        })
+                    }
                 }
             }
 
