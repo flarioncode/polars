@@ -86,7 +86,9 @@ where
     let is_float = T::is_float();
 
     // Attempt to interpret input as UTF-8 and trim invalid or whitespace characters
-    let x = unsafe { std::str::from_utf8_unchecked(x).trim().as_bytes() };
+    let x = std::str::from_utf8(x)
+        .map(|s| s.trim().as_bytes())
+        .unwrap_or_else(|_| x.trim_ascii());
 
     // Extract and process leading sign
     let (x, is_negative) = match x.first() {
