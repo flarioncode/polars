@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt::Write;
 
 use arrow::array::ValueSize;
@@ -285,9 +286,26 @@ pub trait ListNameSpaceImpl: AsList {
     fn lst_sort_by_func(
         &self,
         _options: SortOptions,
-        _lambda_expressions: Arc<LambdaExpression>,
+        lambda_expressions: Arc<LambdaExpression>,
     ) -> PolarsResult<ListChunked> {
-        todo!("This should not be called, not implemented yet")
+        let ca = self.as_list();
+        ca.try_apply_amortized(|s| {
+            let mut vals = s.as_ref().iter().collect::<Vec<_>>();
+            vals.sort_by(
+                |curr, next| match lambda_expressions.eval_window(curr, next) {
+                    Ok(AnyValue::Null) => Ordering::Greater,
+                    Ok(AnyValue::Int32(-1)) => Ordering::Less,
+                    Ok(AnyValue::Int32(0)) => Ordering::Equal,
+                    Ok(AnyValue::Int32(1)) => Ordering::Greater,
+                    other => panic!(
+                        "Expected an Int32 with values -1, 0, or 1, got: {:?}",
+                        other
+                    ),
+                },
+            );
+
+            Series::from_any_values(PlSmallStr::EMPTY, &vals, true)
+        })
     }
 
     #[must_use]

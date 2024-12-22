@@ -4,16 +4,19 @@ use std::iter;
 use std::ops::Add;
 
 use num_traits::ToBytes;
-use polars_error::{PolarsError, PolarsResult};
+use polars_error::{polars_bail, PolarsError, PolarsResult};
 use polars_utils::pl_str::PlSmallStr;
 #[cfg(feature = "serde-lazy")]
 use serde::{Deserialize, Serialize};
 
 use super::DataType;
 use crate::chunked_array::ops::ChunkCompare;
-use crate::prelude::flarion_funcs::{flarion_instr_helper, flarion_slice_helper};
+use crate::prelude::flarion_funcs::{
+    flarion_get_char_position, flarion_instr_helper, flarion_slice_helper, flarion_substring,
+    substring_with_null_length,
+};
 use crate::prelude::{
-    BinaryChunked, BooleanChunked, CastOptions, ChunkFull, IntoSeries, NamedFromOwned,
+    AnyValue, BinaryChunked, BooleanChunked, CastOptions, ChunkFull, IntoSeries, NamedFromOwned,
 };
 use crate::series::Series;
 use crate::utils::dtypes_to_supertype;
@@ -128,6 +131,146 @@ impl LambdaExpression {
         )
     }
 
+    pub fn eval_window<'a>(
+        &'a self,
+        curr: &AnyValue<'a>,
+        next: &AnyValue<'a>,
+    ) -> PolarsResult<AnyValue<'a>> {
+        match self {
+            LambdaExpression::Null => Ok(AnyValue::Null),
+            LambdaExpression::Boolean(v) => Ok(AnyValue::Boolean(*v)),
+            #[cfg(feature = "dtype-i8")]
+            LambdaExpression::Int8(v) => Ok(AnyValue::Int8(*v)),
+            #[cfg(feature = "dtype-i16")]
+            LambdaExpression::Int16(v) => Ok(AnyValue::Int16(*v)),
+            LambdaExpression::Int32(v) => Ok(AnyValue::Int32(*v)),
+            LambdaExpression::Int64(v) => Ok(AnyValue::Int64(*v)),
+            LambdaExpression::Float32(v) => Ok(AnyValue::Float32(*v)),
+            LambdaExpression::Float64(v) => Ok(AnyValue::Float64(*v)),
+            LambdaExpression::BinaryBlob(v) => Ok(AnyValue::Binary(v.as_slice())),
+            LambdaExpression::StaticStr(v) => Ok(AnyValue::String(v.as_ref())),
+            LambdaExpression::Variable(0) => Ok(curr.to_owned()),
+            LambdaExpression::Variable(1) => Ok(next.clone()),
+            LambdaExpression::Variable(_) => {
+                polars_bail!(InvalidOperation: "No 3rd variable exists for eval_window")
+            },
+            LambdaExpression::GreaterThan(left, right) => {
+                let left = left.eval_window(curr, next)?;
+                let right = right.eval_window(curr, next)?;
+                Ok(AnyValue::Boolean(left.gt(&right)))
+            },
+            LambdaExpression::LessThan(left, right) => {
+                let left = left.eval_window(curr, next)?;
+                let right = right.eval_window(curr, next)?;
+                Ok(AnyValue::Boolean(left.lt(&right)))
+            },
+            #[cfg(feature = "zip_with")]
+            LambdaExpression::IfThenElse(pred, value, otherwise) => {
+                let pred = match pred.as_ref().eval_window(curr, next)? {
+                    AnyValue::Boolean(v) => v,
+                    _ => polars_bail!(SchemaMismatch: "Expected boolean value in predicate"),
+                };
+                if pred {
+                    value.as_ref().eval_window(curr, next)
+                } else {
+                    otherwise.as_ref().eval_window(curr, next)
+                }
+            },
+            LambdaExpression::Length(child) => {
+                let s = child.eval_window(curr, next)?;
+                Ok(match s {
+                    AnyValue::Null => AnyValue::Null,
+                    AnyValue::Binary(v) => AnyValue::Int32(v.len() as i32),
+                    AnyValue::String(v) => AnyValue::Int32(v.chars().count() as i32),
+                    AnyValue::List(inner_list) => AnyValue::Int32(inner_list.len() as i32),
+                    _ => AnyValue::Int32(1),
+                })
+            },
+            #[cfg(feature = "zip_with")]
+            LambdaExpression::CaseWhen(branches, otherwise) => {
+                let mut result = None;
+                for (pred, value) in branches {
+                    let pred = match pred.eval_window(curr, next)? {
+                        AnyValue::Boolean(v) => v,
+                        _ => polars_bail!(SchemaMismatch: "Expected boolean value in predicate"),
+                    };
+
+                    if pred {
+                        result = Some(value.eval_window(curr, next)?);
+                        break;
+                    }
+                }
+
+                if let Some(result) = result {
+                    Ok(result)
+                } else {
+                    otherwise.eval_window(curr, next)
+                }
+            },
+            LambdaExpression::Substring(child, start, length) => {
+                let child = child.eval_window(curr, next)?;
+                let start = start.eval_window(curr, next)?;
+                let length = length.eval_window(curr, next)?;
+
+                match (child, start, length) {
+                    (AnyValue::String(s), AnyValue::Int32(start), AnyValue::Null) => {
+                        if let Some(substr) = substring_with_null_length(s, start) {
+                            Ok(AnyValue::StringOwned(substr.into()))
+                        } else {
+                            Ok(AnyValue::Null)
+                        }
+                    },
+                    (AnyValue::String(s), AnyValue::Int32(start), AnyValue::Int32(length)) => Ok(
+                        AnyValue::StringOwned(flarion_substring(s, start, length).into()),
+                    ),
+                    (child, start, length) => {
+                        polars_bail!(SchemaMismatch: "Expected (string, int32, int32), Found ({}, {}, {})", child, start, length)
+                    },
+                }
+            },
+            LambdaExpression::Instr(left, right) => {
+                let left = left.eval_window(curr, next)?;
+                let right = right.eval_window(curr, next)?;
+
+                let (str_val, pat) = match (&left, &right) {
+                    (AnyValue::StringOwned(str_val), AnyValue::StringOwned(pat)) => {
+                        (str_val.as_str(), pat.as_str())
+                    },
+                    (AnyValue::StringOwned(str_val), AnyValue::String(pat)) => {
+                        (str_val.as_str(), *pat)
+                    },
+                    (AnyValue::String(str_val), AnyValue::StringOwned(pat)) => {
+                        (*str_val, pat.as_str())
+                    },
+                    (AnyValue::String(str_val), AnyValue::String(pat)) => (*str_val, *pat),
+                    (left, right) => {
+                        polars_bail!(SchemaMismatch: "Expected (string, string), found ({:?}, {:?})", left, right)
+                    },
+                };
+
+                Ok(AnyValue::Int32(flarion_get_char_position(str_val, pat)))
+            },
+            LambdaExpression::Add(left, right) => {
+                let left = left.eval_window(curr, next)?;
+                let right = right.eval_window(curr, next)?;
+                Ok(left.add(&right))
+            },
+            LambdaExpression::IsNull(child) => {
+                let child = child.eval_window(curr, next)?;
+                Ok(AnyValue::Boolean(child.is_null()))
+            },
+            LambdaExpression::EqualNullSafe(left, right) => {
+                let left = left.eval_window(curr, next)?;
+                let right = right.eval_window(curr, next)?;
+                Ok(AnyValue::Boolean(left == right))
+            },
+            LambdaExpression::Cast(child, dtype) => {
+                let s = child.eval_window(curr, next)?;
+                Ok(s.cast(dtype).to_owned())
+            },
+        }
+    }
+
     pub fn eval(&self, s: &Series, is_root: bool) -> PolarsResult<Series> {
         let repeat_count = if is_root { s.len() } else { 1 }; // Handle broadcast lambdas expressions if root
         match self {
@@ -240,6 +383,7 @@ impl LambdaExpression {
                 let child = child.eval(s, false)?;
                 let start = start.eval(s, false)?;
                 let length = length.eval(s, false)?;
+
                 flarion_slice_helper(child.str()?, &start, &length)
             },
             LambdaExpression::Instr(left, right) => {

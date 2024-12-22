@@ -26,6 +26,15 @@ pub fn flarion_get_char_position(haystack: &str, needle: &str) -> i32 {
     }
 }
 
+#[inline]
+pub fn substring_with_null_length(s: &str, from: i32) -> Option<String> {
+    match from {
+        f if f <= 0 || f == 1 => Some(s.to_string()),
+        f if (f as usize) <= s.len() => Some(s[(f as usize - 1)..].to_string()),
+        _ => None,
+    }
+}
+
 // Core substring function that handles a single string
 pub fn flarion_substring(s: &str, from: i32, len: i32) -> String {
     if s.is_empty() || len <= 0 {
@@ -130,12 +139,6 @@ pub fn flarion_slice_helper(
     }
 
     // Helper function to handle substring with null length
-    let substring_with_null_length = |s: &str, from: i32| match from {
-        f if f <= 0 || f == 1 => Some(s.to_string()),
-        f if (f as usize) <= s.len() => Some(s[(f as usize - 1)..].to_string()),
-        _ => None,
-    };
-
     let from_length = from_iter.len();
     let lens_length = lens_iter.len();
     let first_from = from_iter.get(0);
