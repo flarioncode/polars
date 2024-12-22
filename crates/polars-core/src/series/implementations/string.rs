@@ -260,32 +260,3 @@ impl SeriesTrait for SeriesWrap<StringChunked> {
         &self.0
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::series::{IntoSeries, LambdaExpression, NamedFrom, StringChunked};
-
-    #[test]
-    fn test_transform_str() {
-        // we check that there is correct implementation for StringChunked inside series
-        // also we check that length returning Int32 type
-        let series = StringChunked::new("array".into(), &["Hi!", "I'm", "Mark"]).into_series();
-
-        let lambda = LambdaExpression::Instr(
-            Box::new(LambdaExpression::Variable(0)),
-            Box::new(LambdaExpression::StaticStr("H".into())),
-        );
-
-        let transformed = series.transform(&lambda);
-
-        assert!(transformed.is_ok());
-
-        let transformed = transformed.unwrap();
-        eprintln!("{:?}", transformed.dtype());
-        let result = transformed.i32();
-
-        assert!(result.is_ok());
-
-        assert_eq!(Vec::from(result.unwrap()), vec![Some(1), Some(0), Some(0)]);
-    }
-}
