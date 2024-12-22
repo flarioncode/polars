@@ -165,20 +165,7 @@ impl LambdaExpression {
                 let otherwise = otherwise.eval(s, false)?;
 
                 // I think this is the only place where its valid to use AnyValues, since both series can be absolutely anything
-                let vals = pred
-                    .bool()?
-                    .iter()
-                    .zip(value.iter().zip(otherwise.iter()))
-                    .map(|(pred, (left, right))| {
-                        // Predicates are not nullable
-                        if pred.unwrap_or_default() {
-                            left
-                        } else {
-                            right
-                        }
-                    })
-                    .collect_vec();
-                Series::from_any_values(PlSmallStr::EMPTY, &vals, true)
+                value.zip_with(pred.bool()?, &otherwise).map(IntoSeries::into_series)
             },
             LambdaExpression::Length(child) => {
                 let s = child.eval(s, false)?;
