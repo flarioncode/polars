@@ -36,6 +36,7 @@ pub enum LambdaExpression {
     Variable(usize),
     GreaterThan(Box<Self>, Box<Self>),
     LessThan(Box<Self>, Box<Self>),
+    #[cfg(feature = "zip_with")]
     IfThenElse(Box<Self>, Box<Self>, Box<Self>),
     Length(Box<Self>),
     #[cfg(feature = "zip_with")]
@@ -74,6 +75,7 @@ impl Hash for LambdaExpression {
                 first.hash(state);
                 second.hash(state);
             },
+            #[cfg(feature = "zip_with")]
             LambdaExpression::IfThenElse(first, second, third) => {
                 first.hash(state);
                 second.hash(state);
@@ -158,6 +160,7 @@ impl LambdaExpression {
                 let right = right.eval(s, false)?;
                 Ok(left.lt(&right)?.into_series())
             },
+            #[cfg(feature = "zip_with")]
             LambdaExpression::IfThenElse(pred, value, otherwise) => {
                 let pred = pred.eval(s, false)?;
                 let value = value.eval(s, false)?;
@@ -285,6 +288,7 @@ impl LambdaExpression {
             LambdaExpression::Variable(_) => input_type.clone(),
             LambdaExpression::GreaterThan(_, _) => DataType::Boolean,
             LambdaExpression::LessThan(_, _) => DataType::Boolean,
+            #[cfg(feature = "zip_with")]
             LambdaExpression::IfThenElse(_, then, els) => dtypes_to_supertype([
                 &then.return_type(input_type)?,
                 &els.return_type(input_type)?,
