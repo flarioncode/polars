@@ -259,12 +259,23 @@ impl ChunkFilter<BinaryType> for BinaryChunked {
             return self.filter(&bool_mask);
         }
 
+        // Remove nulls when comparing (< or >) between a variable and a binary blob.
+        let keep_nulls = match lambda {
+            LambdaExpression::GreaterThan(left, right) => {
+                !matches!((left.as_ref(), right.as_ref()), (LambdaExpression::Variable(_), LambdaExpression::BinaryBlob(_)))
+            },
+            LambdaExpression::LessThan(left, right) => {
+                !matches!((left.as_ref(), right.as_ref()), (LambdaExpression::Variable(_), LambdaExpression::BinaryBlob(_)))
+            },
+            _ => true,
+        };
+
         let mask = self.iter().map(|opt_val| match opt_val {
             Some(val) => match lambda.eval_slice(&[val]) {
                 AnyValue::Boolean(b) => b,
                 _ => panic!("Lambda must return boolean values"),
             },
-            None => true,
+            None => keep_nulls,
         });
 
         let bool_mask = BooleanChunked::from_iter_values(self.name().clone(), mask);
