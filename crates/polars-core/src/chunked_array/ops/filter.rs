@@ -261,12 +261,20 @@ impl ChunkFilter<BinaryType> for BinaryChunked {
 
         // Remove nulls when comparing (< or >) between a variable and a binary blob.
         let keep_nulls = match lambda {
-            LambdaExpression::GreaterThan(left, right) => {
-                !matches!((left.as_ref(), right.as_ref()), (LambdaExpression::Variable(_), LambdaExpression::BinaryBlob(_)))
-            },
-            LambdaExpression::LessThan(left, right) => {
-                !matches!((left.as_ref(), right.as_ref()), (LambdaExpression::Variable(_), LambdaExpression::BinaryBlob(_)))
-            },
+            LambdaExpression::GreaterThan(left, right) => !matches!(
+                (left.as_ref(), right.as_ref()),
+                (
+                    LambdaExpression::Variable(_),
+                    LambdaExpression::BinaryBlob(_)
+                )
+            ),
+            LambdaExpression::LessThan(left, right) => !matches!(
+                (left.as_ref(), right.as_ref()),
+                (
+                    LambdaExpression::Variable(_),
+                    LambdaExpression::BinaryBlob(_)
+                )
+            ),
             _ => true,
         };
 
