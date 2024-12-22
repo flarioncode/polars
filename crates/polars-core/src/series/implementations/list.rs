@@ -98,10 +98,6 @@ impl SeriesTrait for SeriesWrap<ListChunked> {
         ChunkFilter::filter(&self.0, filter).map(|ca| ca.into_series())
     }
 
-    fn transform(&self, lambda: &LambdaExpression) -> PolarsResult<Series> {
-        ChunkTransform::transform(&self.0, lambda)
-    }
-
     fn take(&self, indices: &IdxCa) -> PolarsResult<Series> {
         Ok(self.0.take(indices)?.into_series())
     }

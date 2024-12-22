@@ -318,14 +318,6 @@ macro_rules! impl_dyn_series {
                 ChunkFilter::filter(&self.0, filter).map(|ca| ca.into_series())
             }
 
-            fn filter_with_func(&self, lambda: &LambdaExpression) -> PolarsResult<Series> {
-                ChunkFilter::filter_with_func(&self.0, lambda).map(|ca| ca.into_series())
-            }
-
-            fn transform(&self, lambda: &LambdaExpression) -> PolarsResult<Series> {
-                ChunkTransform::transform(&self.0, lambda)
-            }
-
             fn _sum_as_f64(&self) -> f64 {
                 self.0._sum_as_f64()
             }
@@ -389,14 +381,6 @@ macro_rules! impl_dyn_series {
 
             fn sort_with(&self, options: SortOptions) -> PolarsResult<Series> {
                 Ok(ChunkSort::sort_with(&self.0, options).into_series())
-            }
-
-            fn sort_with_func(
-                &self,
-                options: SortOptions,
-                lambda: &LambdaExpression,
-            ) -> PolarsResult<Series> {
-                Ok(ChunkSort::sort_with_func(&self.0, options, lambda).into_series())
             }
 
             fn arg_sort(&self, options: SortOptions) -> IdxCa {

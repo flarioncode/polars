@@ -284,13 +284,10 @@ pub trait ListNameSpaceImpl: AsList {
 
     fn lst_sort_by_func(
         &self,
-        options: SortOptions,
-        lambda_expressions: Arc<LambdaExpression>,
+        _options: SortOptions,
+        _lambda_expressions: Arc<LambdaExpression>,
     ) -> PolarsResult<ListChunked> {
-        let ca = self.as_list();
-        let out =
-            ca.try_apply_amortized(|s| s.as_ref().sort_with_func(options, &lambda_expressions))?;
-        Ok(self.same_type(out))
+        todo!("This should not be called, not implemented yet")
     }
 
     #[must_use]

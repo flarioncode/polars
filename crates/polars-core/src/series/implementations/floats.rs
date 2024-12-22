@@ -215,10 +215,6 @@ macro_rules! impl_dyn_series {
                 ChunkFilter::filter(&self.0, filter).map(|ca| ca.into_series())
             }
 
-            fn transform(&self, lambda: &LambdaExpression) -> PolarsResult<Series> {
-                ChunkTransform::transform(&self.0, lambda)
-            }
-
             fn _sum_as_f64(&self) -> f64 {
                 self.0._sum_as_f64()
             }
@@ -367,14 +363,6 @@ macro_rules! impl_dyn_series {
             }
             fn as_any(&self) -> &dyn Any {
                 &self.0
-            }
-
-            fn sort_with_func(
-                &self,
-                _options: SortOptions,
-                _lambda: &LambdaExpression,
-            ) -> PolarsResult<Series> {
-                Ok(ChunkSort::sort_with_func(&self.0, _options, _lambda).into_series())
             }
         }
     };
