@@ -88,10 +88,10 @@ pub(super) fn group_by_helper(
         sliced_groups = Some(groups.slice(offset, len));
         groups = sliced_groups.as_deref().unwrap();
     }
-    #[cfg(feature = "tracy")]
+    #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
     tracy_gizmos::zone!("polars waits for pool");
     let (mut columns, agg_columns) = POOL.install(|| {
-        #[cfg(feature = "tracy")]
+        #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
         tracy_gizmos::zone!("inside polars pool");
 
         let get_columns = || gb.keys_sliced(slice);
