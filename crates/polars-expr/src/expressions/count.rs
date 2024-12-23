@@ -27,7 +27,7 @@ impl PhysicalExpr for CountExpr {
             [df.height() as IdxSize],
         ))
     }
-    
+
     fn evaluate_on_groups<'a>(
         &self,
         _df: &DataFrame,
