@@ -242,10 +242,6 @@ where
     }
 }
 impl IntoGroupsProxy for BooleanChunked {
-    #[cfg_attr(
-        all(feature = "tracy", not(feature = "tracy-no-instrument")),
-        tracy_gizmos::instrument
-    )]
     fn group_tuples(&self, mut multithreaded: bool, sorted: bool) -> PolarsResult<GroupsProxy> {
         multithreaded &= POOL.current_num_threads() > 1;
 
@@ -270,10 +266,6 @@ impl IntoGroupsProxy for BooleanChunked {
 
 impl IntoGroupsProxy for StringChunked {
     #[allow(clippy::needless_lifetimes)]
-    #[cfg_attr(
-        all(feature = "tracy", not(feature = "tracy-no-instrument")),
-        tracy_gizmos::instrument
-    )]
     fn group_tuples<'a>(&'a self, multithreaded: bool, sorted: bool) -> PolarsResult<GroupsProxy> {
         self.as_binary().group_tuples(multithreaded, sorted)
     }
@@ -281,10 +273,6 @@ impl IntoGroupsProxy for StringChunked {
 
 impl IntoGroupsProxy for BinaryChunked {
     #[allow(clippy::needless_lifetimes)]
-    #[cfg_attr(
-        all(feature = "tracy", not(feature = "tracy-no-instrument")),
-        tracy_gizmos::instrument
-    )]
     fn group_tuples<'a>(
         &'a self,
         mut multithreaded: bool,
@@ -334,10 +322,6 @@ impl IntoGroupsProxy for BinaryOffsetChunked {
 impl IntoGroupsProxy for ListChunked {
     #[allow(clippy::needless_lifetimes)]
     #[allow(unused_variables)]
-    #[cfg_attr(
-        all(feature = "tracy", not(feature = "tracy-no-instrument")),
-        tracy_gizmos::instrument
-    )]
     fn group_tuples<'a>(
         &'a self,
         mut multithreaded: bool,
@@ -359,10 +343,6 @@ impl IntoGroupsProxy for ListChunked {
 impl IntoGroupsProxy for ArrayChunked {
     #[allow(clippy::needless_lifetimes)]
     #[allow(unused_variables)]
-    #[cfg_attr(
-        all(feature = "tracy", not(feature = "tracy-no-instrument")),
-        tracy_gizmos::instrument
-    )]
     fn group_tuples<'a>(
         &'a self,
         _multithreaded: bool,
