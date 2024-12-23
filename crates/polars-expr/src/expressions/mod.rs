@@ -431,10 +431,6 @@ impl<'a> AggregationContext<'a> {
     }
 
     /// Get the final aggregated version of the series.
-    #[cfg_attr(
-        all(feature = "tracy", not(feature = "tracy-no-instrument")),
-        tracy_gizmos::instrument
-    )]
     pub fn finalize(&mut self) -> Series {
         // we clone, because we only want to call `self.groups()` if needed.
         // self groups may instantiate new groups and thus can be expensive.
