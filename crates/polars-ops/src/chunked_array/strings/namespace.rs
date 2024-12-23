@@ -7,6 +7,9 @@ use base64::Engine as _;
 #[cfg(feature = "string_to_integer")]
 use polars_core::export::num::Num;
 use polars_core::prelude::arity::*;
+#[cfg(feature = "dtype-struct")]
+use polars_core::prelude::flarion_funcs::flarion_split_helper;
+use polars_core::prelude::flarion_funcs::{flarion_instr_helper, flarion_slice_helper};
 use polars_utils::cache::FastFixedCache;
 use regex::{escape, RegexBuilder};
 

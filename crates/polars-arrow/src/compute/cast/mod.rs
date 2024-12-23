@@ -332,12 +332,14 @@ pub fn cast(
         )
         .map(|x| x.boxed()),
         (BinaryView, _) => match to_type {
-            Utf8View => array
-                .as_any()
-                .downcast_ref::<BinaryViewArray>()
-                .unwrap()
-                .to_utf8view()
-                .map(|arr| arr.boxed()),
+            Utf8View => unsafe {
+                Ok(array
+                    .as_any()
+                    .downcast_ref::<BinaryViewArray>()
+                    .unwrap()
+                    .to_utf8view_unchecked()
+                    .boxed())
+            },
             LargeBinary => Ok(binview_to::view_to_binary::<i64>(
                 array.as_any().downcast_ref().unwrap(),
             )
@@ -482,7 +484,7 @@ pub fn cast(
                 "casting from {from_type:?} to {to_type:?} not supported",
             ),
         },
-        (_, BinaryView) => from_to_binview(array, from_type, to_type).map(|arr| arr.boxed()),
+        (_, BinaryView) => from_to_binview(array, from_type, to_type, true).map(|arr| arr.boxed()),
         (_, Utf8View) => match from_type {
             LargeUtf8 => Ok(utf8_to_utf8view(
                 array.as_any().downcast_ref::<Utf8Array<i64>>().unwrap(),
@@ -493,7 +495,7 @@ pub fn cast(
             ),
             #[cfg(feature = "dtype-decimal")]
             Decimal(_, _) => Ok(decimal_to_utf8view_dyn(array).boxed()),
-            _ => from_to_binview(array, from_type, to_type)
+            _ => from_to_binview(array, from_type, to_type, false)
                 .map(|arr| unsafe { arr.to_utf8view_unchecked() }.boxed()),
         },
         (Utf8, _) => match to_type {
@@ -811,19 +813,20 @@ fn from_to_binview(
     array: &dyn Array,
     from_type: &ArrowDataType,
     to_type: &ArrowDataType,
+    to_real_binary: bool,
 ) -> PolarsResult<BinaryViewArray> {
     use ArrowDataType::*;
     let binview = match from_type {
-        UInt8 => primitive_to_binview_dyn::<u8>(array),
-        UInt16 => primitive_to_binview_dyn::<u16>(array),
-        UInt32 => primitive_to_binview_dyn::<u32>(array),
-        UInt64 => primitive_to_binview_dyn::<u64>(array),
-        Int8 => primitive_to_binview_dyn::<i8>(array),
-        Int16 => primitive_to_binview_dyn::<i16>(array),
-        Int32 => primitive_to_binview_dyn::<i32>(array),
-        Int64 => primitive_to_binview_dyn::<i64>(array),
-        Float32 => primitive_to_binview_dyn::<f32>(array),
-        Float64 => primitive_to_binview_dyn::<f64>(array),
+        UInt8 => primitive_to_binview_dyn::<u8>(array, to_real_binary),
+        UInt16 => primitive_to_binview_dyn::<u16>(array, to_real_binary),
+        UInt32 => primitive_to_binview_dyn::<u32>(array, to_real_binary),
+        UInt64 => primitive_to_binview_dyn::<u64>(array, to_real_binary),
+        Int8 => primitive_to_binview_dyn::<i8>(array, to_real_binary),
+        Int16 => primitive_to_binview_dyn::<i16>(array, to_real_binary),
+        Int32 => primitive_to_binview_dyn::<i32>(array, to_real_binary),
+        Int64 => primitive_to_binview_dyn::<i64>(array, to_real_binary),
+        Float32 => primitive_to_binview_dyn::<f32>(array, to_real_binary),
+        Float64 => primitive_to_binview_dyn::<f64>(array, to_real_binary),
         Binary => binary_to_binview::<i32>(array.as_any().downcast_ref().unwrap()),
         FixedSizeBinary(_) => fixed_size_binary_to_binview(array.as_any().downcast_ref().unwrap()),
         LargeBinary => binary_to_binview::<i64>(array.as_any().downcast_ref().unwrap()),

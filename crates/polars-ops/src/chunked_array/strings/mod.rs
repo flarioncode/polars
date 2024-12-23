@@ -6,12 +6,6 @@ mod concat;
 mod extract;
 #[cfg(feature = "find_many")]
 mod find_many;
-#[cfg(feature = "strings")]
-mod flarion_instr;
-#[cfg(feature = "strings")]
-mod flarion_slice;
-#[cfg(all(feature = "strings", feature = "dtype-struct"))]
-mod flarion_split;
 #[cfg(feature = "extract_jsonpath")]
 mod json_path;
 #[cfg(feature = "strings")]
@@ -34,12 +28,6 @@ mod unicode_internals;
 pub use concat::*;
 #[cfg(feature = "find_many")]
 pub use find_many::*;
-#[cfg(feature = "strings")]
-pub use flarion_instr::*;
-#[cfg(feature = "strings")]
-pub use flarion_slice::*;
-#[cfg(all(feature = "strings", feature = "dtype-struct"))]
-pub use flarion_split::*;
 #[cfg(feature = "extract_jsonpath")]
 pub use json_path::*;
 #[cfg(feature = "strings")]

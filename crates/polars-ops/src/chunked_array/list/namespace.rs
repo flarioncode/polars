@@ -265,75 +265,25 @@ pub trait ListNameSpaceImpl: AsList {
         let filtered = ca.try_apply_amortized(|s| {
             // Convert AmortizedSeries to Series reference
             let s_ref = s.as_ref();
-
-            let filtered_inner: PolarsResult<Series> = match s_ref.dtype() {
-                #[cfg(feature = "dtype-i8")]
-                DataType::Int8 => {
-                    let ca = s_ref.i8()?;
-                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-
-                    Ok(filtered_ca.into_series())
-                },
-                #[cfg(feature = "dtype-i16")]
-                DataType::Int16 => {
-                    let ca = s_ref.i16()?;
-                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
-                },
-                DataType::Int32 => {
-                    let ca = s_ref.i32()?;
-                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
-                },
-                DataType::Int64 => {
-                    let ca = s_ref.i64()?;
-                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
-                },
-                DataType::Float32 => {
-                    let ca = s_ref.f32()?;
-                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
-                },
-                DataType::Float64 => {
-                    let ca = s_ref.f64()?;
-                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
-                },
-                DataType::String => {
-                    let ca = s_ref.str()?;
-                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
-                },
-                DataType::List(_) => {
-                    let ca = s_ref.list()?;
-                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
-                },
-                DataType::Binary => {
-                    let ca = s_ref.binary()?;
-                    let filtered_ca = ca.filter_with_func(&lambda_expressions)?;
-                    Ok(filtered_ca.into_series())
-                },
-                _ => {
-                    polars_bail!(
-                        ComputeError: "filter_with_func not implemented for type: {:?}",
-                        s_ref.dtype()
-                    );
-                },
-            };
-            filtered_inner
+            let index_series = Series::from_iter(1i32..=s_ref.len() as i32);
+            s_ref.filter(
+                lambda_expressions
+                    .eval(s_ref, &index_series, true)?
+                    .bool()?,
+            )
         })?;
 
         Ok(filtered)
     }
 
-    fn lst_transform(
-        &self,
-        lambda_expressions: Arc<LambdaExpression>,
-    ) -> PolarsResult<ListChunked> {
+    fn lst_transform(&self, lambda_expression: Arc<LambdaExpression>) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
-        ca.try_apply_amortized(|s| s.as_ref().transform(&lambda_expressions))
+        ca.try_apply_amortized(|s| {
+            // Convert AmortizedSeries to Series reference
+            let s_ref = s.as_ref();
+            let index_series = Series::from_iter(1i32..=s_ref.len() as i32);
+            lambda_expression.eval(s.as_ref(), &index_series, true)
+        })
     }
 
     fn lst_sort(&self, options: SortOptions) -> PolarsResult<ListChunked> {
@@ -344,13 +294,24 @@ pub trait ListNameSpaceImpl: AsList {
 
     fn lst_sort_by_func(
         &self,
-        options: SortOptions,
+        _options: SortOptions,
         lambda_expressions: Arc<LambdaExpression>,
     ) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
-        let out =
-            ca.try_apply_amortized(|s| s.as_ref().sort_with_func(options, &lambda_expressions))?;
-        Ok(self.same_type(out))
+        ca.try_apply_amortized(|s| {
+            let mut vals = s.as_ref().iter().collect::<Vec<_>>();
+            vals.sort_by(
+                |curr, next| {
+                    lambda_expressions
+                        .eval_window(curr, next)
+                        .expect("Could not run lambda expression")
+                        .try_into()
+                        .unwrap()
+                }, // Conversion already has some error handling
+            );
+
+            Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vals, ca.inner_dtype(), true)
+        })
     }
 
     #[must_use]

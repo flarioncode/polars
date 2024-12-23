@@ -598,23 +598,30 @@ pub fn f16_to_f32(from: &PrimitiveArray<f16>) -> PrimitiveArray<f32> {
 /// Returns a [`Utf8Array`] where every element is the utf8 representation of the number.
 pub(super) fn primitive_to_binview<T: NativeType + SerPrimitive>(
     from: &PrimitiveArray<T>,
+    to_real_binary: bool,
 ) -> BinaryViewArray {
     let mut mutable = MutableBinaryViewArray::with_capacity(from.len());
 
-    let mut scratch = vec![];
-    for &x in from.values().iter() {
-        unsafe { scratch.set_len(0) };
-        T::write(&mut scratch, x);
-        mutable.push_value_ignore_validity(&scratch)
+    if to_real_binary {
+        for &x in from.values().iter() {
+            mutable.push_value_ignore_validity(x.to_be_bytes().as_ref())
+        }
+    } else {
+        let mut scratch = vec![];
+        for &x in from.values().iter() {
+            unsafe { scratch.set_len(0) };
+            T::write(&mut scratch, x);
+            mutable.push_value_ignore_validity(&scratch)
+        }
     }
 
     mutable.freeze().with_validity(from.validity().cloned())
 }
 
-pub(super) fn primitive_to_binview_dyn<T>(from: &dyn Array) -> BinaryViewArray
+pub(super) fn primitive_to_binview_dyn<T>(from: &dyn Array, to_real_binary: bool) -> BinaryViewArray
 where
     T: NativeType + SerPrimitive,
 {
     let from = from.as_any().downcast_ref().unwrap();
-    primitive_to_binview::<T>(from)
+    primitive_to_binview::<T>(from, to_real_binary)
 }
