@@ -36,32 +36,27 @@ impl<T> Deref for Wrap<T> {
 }
 
 // This is giant trust me bro
-#[repr(transparent)]
 #[derive(Debug)]
-pub struct RegexWrap<T>(pub T);
+pub struct RegexWrap<T>(pub String, pub T);
 
 impl<T> AsRef<T> for RegexWrap<T> {
     fn as_ref(&self) -> &T {
-        &self.0
-    }
-}
-
-impl<T> Default for RegexWrap<T> {
-    fn default() -> Self {
-        unreachable!()
+        &self.1
     }
 }
 
 impl<T> PartialEq for RegexWrap<T> {
-    fn eq(&self, _other: &Self) -> bool {
-        unreachable!()
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 
 impl<T> Eq for RegexWrap<T> {}
 
 impl<T> std::hash::Hash for RegexWrap<T> {
-    fn hash<H: std::hash::Hasher>(&self, _state: &mut H) {}
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
 }
 
 #[inline(always)]
