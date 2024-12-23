@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::iter;
 use std::ops::Add;
@@ -20,6 +21,19 @@ use crate::prelude::{
 };
 use crate::series::Series;
 use crate::utils::dtypes_to_supertype;
+
+impl TryFrom<AnyValue<'_>> for Ordering {
+    type Error = PolarsError;
+
+    fn try_from(value: AnyValue) -> Result<Self, Self::Error> {
+        match value {
+            AnyValue::Int32(1) => Ok(Ordering::Greater),
+            AnyValue::Int32(0) => Ok(Ordering::Equal),
+            AnyValue::Int32(-1) => Ok(Ordering::Less),
+            other => polars_bail!(InvalidOperation: "Expected -1, 0, or 1, found {:?}", other),
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "serde-lazy", derive(Serialize, Deserialize))]
@@ -464,7 +478,7 @@ impl LambdaExpression {
 // Was using these to debug but I see no harm in having more unit tests, in fact we should probably have more here
 #[cfg(test)]
 mod tests {
-    use crate::prelude::{LambdaExpression, Series};
+    use crate::prelude::{AnyValue, LambdaExpression, Series};
 
     #[test]
     fn test_empty_transform() {
@@ -536,5 +550,73 @@ mod tests {
                 "key3==value3whichisverylong"
             );
         }
+    }
+
+    #[test]
+    fn test_array_sort() {
+        // let start_array = Series::from_iter(vec![0i32, 0, 0, 0, 0]);
+        let start_array = Series::from_iter(vec![Some(1i32), None, Some(2), Some(3), None, Some(4), Some(5)]);
+        // CASE
+        // WHEN
+        //     isnull(lambda x_8#28858)
+        // THEN
+        //     CASE
+        //     WHEN
+        //         isnull(lambda y_9#28859)
+        //     THEN
+        //         0
+        //     ELSE
+        //         1
+        //     END
+        // WHEN
+        //     isnull(lambda y_9#28859)
+        // THEN
+        //     -1
+        // WHEN
+        //     (lambda x_8#28858 > lambda y_9#28859)
+        // THEN
+        //     1
+        // WHEN
+        //     (lambda x_8#28858 < lambda y_9#28859)
+        // THEN
+        //     -1
+        // ELSE
+        //     0
+        // END
+        let ascending_lambda =
+            LambdaExpression::CaseWhen(vec![
+                (
+                    LambdaExpression::IsNull(LambdaExpression::Variable(0).into()),
+                    LambdaExpression::CaseWhen(vec![(
+                        LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
+                        LambdaExpression::Int32(0)
+                    )],
+                    LambdaExpression::Int32(1).into()),
+                ),
+                (
+                    LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
+                    LambdaExpression::Int32(-1)
+                ),
+                (
+                    LambdaExpression::GreaterThan(
+                        LambdaExpression::Variable(0).into(),
+                        LambdaExpression::Variable(1).into(),
+                    ),
+                    LambdaExpression::Int32(1)
+                ),
+                (
+                    LambdaExpression::LessThan(
+                        LambdaExpression::Variable(0).into(),
+                        LambdaExpression::Variable(1).into(),
+                    ),
+                    LambdaExpression::Int32(-1)
+                )
+            ],
+           LambdaExpression::Int32(0).into()
+        );
+
+        let mut vals = start_array.iter().collect::<Vec<_>>();
+        vals.sort_by(|curr, next| ascending_lambda.eval_window(curr, next).unwrap().try_into().unwrap());
+        assert_eq!(vals, vec![AnyValue::Int32(1), AnyValue::Int32(2), AnyValue::Int32(3), AnyValue::Int32(4), AnyValue::Int32(5), AnyValue::Null, AnyValue::Null]);
     }
 }

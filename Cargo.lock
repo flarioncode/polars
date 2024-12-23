@@ -3292,7 +3292,6 @@ dependencies = [
  "hashbrown",
  "hex",
  "indexmap",
- "itertools 0.10.5",
  "jsonpath_lib_polars_vendor",
  "memchr",
  "num-traits",

@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::fmt::Write;
 
 use arrow::array::ValueSize;
@@ -292,19 +291,11 @@ pub trait ListNameSpaceImpl: AsList {
         ca.try_apply_amortized(|s| {
             let mut vals = s.as_ref().iter().collect::<Vec<_>>();
             vals.sort_by(
-                |curr, next| match lambda_expressions.eval_window(curr, next) {
-                    Ok(AnyValue::Null) => Ordering::Greater,
-                    Ok(AnyValue::Int32(-1)) => Ordering::Less,
-                    Ok(AnyValue::Int32(0)) => Ordering::Equal,
-                    Ok(AnyValue::Int32(1)) => Ordering::Greater,
-                    other => panic!(
-                        "Expected an Int32 with values -1, 0, or 1, got: {:?}",
-                        other
-                    ),
-                },
+                |curr, next| lambda_expressions.eval_window(curr, next)
+                    .expect("Could not run lambda expression").try_into().unwrap(), // Conversion already has some error handling
             );
 
-            Series::from_any_values(PlSmallStr::EMPTY, &vals, true)
+            Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vals, ca.inner_dtype(),true)
         })
     }
 
