@@ -2,6 +2,10 @@ use rayon::prelude::*;
 
 use super::*;
 
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn evaluate_aggs(
     df: &DataFrame,
     aggs: &[Arc<dyn PhysicalExpr>],
@@ -54,6 +58,10 @@ impl GroupByExec {
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn group_by_helper(
     mut df: DataFrame,
     keys: Vec<Series>,
@@ -80,8 +88,12 @@ pub(super) fn group_by_helper(
         sliced_groups = Some(groups.slice(offset, len));
         groups = sliced_groups.as_deref().unwrap();
     }
-
+    #[cfg(feature = "tracy")]
+    tracy_gizmos::zone!("polars waits for pool");
     let (mut columns, agg_columns) = POOL.install(|| {
+        #[cfg(feature = "tracy")]
+        tracy_gizmos::zone!("inside polars pool");
+
         let get_columns = || gb.keys_sliced(slice);
 
         let get_agg = || evaluate_aggs(&df, aggs, groups, state);
@@ -95,6 +107,10 @@ pub(super) fn group_by_helper(
 }
 
 impl GroupByExec {
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn execute_impl(&mut self, state: &ExecutionState, df: DataFrame) -> PolarsResult<DataFrame> {
         let keys = self
             .keys

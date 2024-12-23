@@ -26,6 +26,10 @@ use crate::prelude::sort::arg_sort_multiple::{
 };
 
 impl DataFrame {
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     pub fn group_by_with_series(
         &self,
         mut by: Vec<Series>,
@@ -245,6 +249,10 @@ impl<'df> GroupBy<'df> {
         std::mem::take(&mut self.groups)
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     pub fn keys_sliced(&self, slice: Option<(i64, usize)>) -> Vec<Series> {
         #[allow(unused_assignments)]
         // needed to keep the lifetimes valid for this scope

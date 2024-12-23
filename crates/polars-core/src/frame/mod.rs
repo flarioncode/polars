@@ -468,6 +468,10 @@ impl DataFrame {
 
     /// Aggregate all the chunks in the DataFrame to a single chunk in parallel.
     /// This may lead to more peak memory consumption.
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     pub fn as_single_chunk_par(&mut self) -> &mut Self {
         self.as_single_chunk();
         // if self.columns.iter().any(|s| s.n_chunks() > 1) {

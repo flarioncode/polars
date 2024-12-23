@@ -272,7 +272,10 @@ pub trait StringNameSpaceImpl: AsString {
     /// Check if strings contain a regex pattern.
     fn contains(&self, pat: &str, strict: bool) -> PolarsResult<BooleanChunked> {
         let ca = self.as_string();
-        let res_reg = RegexBuilder::new(pat).size_limit(30 * 1024 * 1024).build();
+        let res_reg = {
+            tracy_gizmos::zone!("Building expression");
+            RegexBuilder::new(pat).size_limit(30 * 1024 * 1024).build()
+        };
         let opt_reg = if strict { Some(res_reg?) } else { res_reg.ok() };
         let out: BooleanChunked = if let Some(reg) = opt_reg {
             unary_elementwise_values(ca, |s| reg.is_match(s))

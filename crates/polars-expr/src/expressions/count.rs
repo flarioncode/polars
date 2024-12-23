@@ -27,7 +27,10 @@ impl PhysicalExpr for CountExpr {
             [df.height() as IdxSize],
         ))
     }
-
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate_on_groups<'a>(
         &self,
         _df: &DataFrame,

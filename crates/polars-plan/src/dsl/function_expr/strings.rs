@@ -5,13 +5,14 @@ use arrow::legacy::utils::CustomIterTools;
 use once_cell::sync::Lazy;
 #[cfg(feature = "timezones")]
 use polars_core::chunked_array::temporal::validate_time_zone;
-use polars_core::utils::handle_casting_failures;
+use polars_core::prelude::arity::unary_elementwise_values;
+use polars_core::utils::{handle_casting_failures, RegexWrap};
 #[cfg(feature = "dtype-struct")]
 use polars_utils::format_pl_smallstr;
 #[cfg(all(feature = "regex", feature = "timezones"))]
 use regex::Regex;
 #[cfg(feature = "regex")]
-use regex::{escape, RegexBuilder};
+use regex::{escape, RegexBuilder, Regex};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +36,11 @@ pub enum StringFunction {
     ConcatVertical {
         delimiter: PlSmallStr,
         ignore_nulls: bool,
+    },
+    #[cfg(feature = "regex")]
+    ContainsRegex {
+        #[cfg_attr(feature = "serde", serde(skip))]
+        regex: Option<Arc<RegexWrap<Regex>>>,
     },
     #[cfg(feature = "regex")]
     Contains {
@@ -152,6 +158,8 @@ impl StringFunction {
             ConcatVertical { .. } | ConcatHorizontal { .. } => mapper.with_dtype(DataType::String),
             #[cfg(feature = "regex")]
             Contains { .. } => mapper.with_dtype(DataType::Boolean),
+            #[cfg(feature = "regex")]
+            ContainsRegex { .. } => mapper.with_dtype(DataType::Boolean),
             CountMatches(_) => mapper.with_dtype(DataType::UInt32),
             EndsWith | StartsWith => mapper.with_dtype(DataType::Boolean),
             Extract(_) => mapper.with_same_dtype(),
@@ -224,6 +232,8 @@ impl Display for StringFunction {
         let s = match self {
             #[cfg(feature = "regex")]
             Contains { .. } => "contains",
+            #[cfg(feature = "regex")]
+            ContainsRegex { .. } => "contains_regex",
             CountMatches(_) => "count_matches",
             EndsWith { .. } => "ends_with",
             Extract(_) => "extract",
@@ -319,6 +329,8 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
         match func {
             #[cfg(feature = "regex")]
             Contains { literal, strict } => map_as_slice!(strings::contains, literal, strict),
+            #[cfg(feature = "regex")]
+            ContainsRegex { regex } => map_as_slice!(strings::contains_regex, RegexWrap::as_ref(regex.as_ref().unwrap())),
             CountMatches(literal) => {
                 map_as_slice!(strings::count_matches, literal)
             },
@@ -512,6 +524,12 @@ pub(super) fn contains(s: &[Series], literal: bool, strict: bool) -> PolarsResul
     let pat = s[1].str()?;
     ca.contains_chunked(pat, literal, strict)
         .map(|ok| ok.into_series())
+}
+
+pub(super) fn contains_regex(ca: &[Series], regex: &Regex) -> PolarsResult<Series> {
+    let ca = ca[0].str()?;
+    let array: BooleanChunked = unary_elementwise_values(ca, |s| regex.is_match(s));
+    Ok(array.into_series())
 }
 
 #[cfg(feature = "regex")]

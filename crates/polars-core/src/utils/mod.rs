@@ -5,6 +5,7 @@ pub mod flatten;
 pub(crate) mod series;
 mod supertype;
 use std::borrow::Cow;
+use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 mod schema;
 
@@ -32,6 +33,35 @@ impl<T> Deref for Wrap<T> {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
+}
+
+// This is giant trust me bro
+#[repr(transparent)]
+#[derive(Debug)]
+pub struct RegexWrap<T>(pub T);
+
+impl<T> RegexWrap<T> {
+    pub fn as_ref(&self) -> &T {
+        &self.0
+    }
+}
+
+impl<T> Default for RegexWrap<T> {
+    fn default() -> Self {
+        unreachable!()
+    }
+}
+
+impl<T> PartialEq for RegexWrap<T> {
+    fn eq(&self, _other: &Self) -> bool {
+        unreachable!()
+    }
+}
+
+impl<T> Eq for RegexWrap<T> {}
+
+impl<T> std::hash::Hash for RegexWrap<T> {
+    fn hash<H: std::hash::Hasher>(&self, _state: &mut H) {}
 }
 
 #[inline(always)]

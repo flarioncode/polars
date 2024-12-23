@@ -1,4 +1,8 @@
+#[cfg(feature = "regex")]
+use regex::Regex;
+
 use super::*;
+
 /// Specialized expressions for [`Series`] of [`DataType::String`].
 pub struct StringNameSpace(pub(crate) Expr);
 
@@ -27,6 +31,20 @@ impl StringNameSpace {
                 strict,
             }),
             &[pat],
+            false,
+            Some(Default::default()),
+        )
+    }
+
+    #[cfg(feature = "regex")]
+    pub fn contains_regex(self, pat: Regex) -> Expr {
+        use polars_core::utils::RegexWrap;
+
+        self.0.map_many_private(
+            FunctionExpr::StringExpr(StringFunction::ContainsRegex {
+                regex: Some(Arc::new(RegexWrap(pat))),
+            }),
+            &[],
             false,
             Some(Default::default()),
         )
