@@ -265,7 +265,12 @@ pub trait ListNameSpaceImpl: AsList {
         let filtered = ca.try_apply_amortized(|s| {
             // Convert AmortizedSeries to Series reference
             let s_ref = s.as_ref();
-            s_ref.filter(lambda_expressions.eval(s_ref, true)?.bool()?)
+            let index_series = Series::from_iter(1i32..=s_ref.len() as i32);
+            s_ref.filter(
+                lambda_expressions
+                    .eval(s_ref, &index_series, true)?
+                    .bool()?,
+            )
         })?;
 
         Ok(filtered)
@@ -273,7 +278,12 @@ pub trait ListNameSpaceImpl: AsList {
 
     fn lst_transform(&self, lambda_expression: Arc<LambdaExpression>) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
-        ca.try_apply_amortized(|s| lambda_expression.eval(s.as_ref(), true))
+        ca.try_apply_amortized(|s| {
+            // Convert AmortizedSeries to Series reference
+            let s_ref = s.as_ref();
+            let index_series = Series::from_iter(1i32..=s_ref.len() as i32);
+            lambda_expression.eval(s.as_ref(), &index_series, true)
+        })
     }
 
     fn lst_sort(&self, options: SortOptions) -> PolarsResult<ListChunked> {

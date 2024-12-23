@@ -312,7 +312,7 @@ impl LambdaExpression {
         }
     }
 
-    pub fn eval(&self, s: &Series, is_root: bool) -> PolarsResult<Series> {
+    pub fn eval(&self, s: &Series, i: &Series, is_root: bool) -> PolarsResult<Series> {
         let repeat_count = if is_root { s.len() } else { 1 }; // Handle broadcast lambdas expressions if root
         match self {
             LambdaExpression::Null => Ok(Series::new_null(PlSmallStr::EMPTY, 1)),
@@ -333,32 +333,36 @@ impl LambdaExpression {
             LambdaExpression::StaticStr(v) => {
                 Ok(Series::from_iter(iter::repeat_n(v.as_ref(), repeat_count)))
             },
-            LambdaExpression::Variable(_) => Ok(s.clone()),
+            LambdaExpression::Variable(0) => Ok(s.clone()),
+            LambdaExpression::Variable(1) => Ok(i.clone()),
+            LambdaExpression::Variable(_) => {
+                polars_bail!(InvalidOperation: "No 3rd variable exists for eval")
+            },
             LambdaExpression::GreaterThan(left, right) => {
-                let left = left.eval(s, false)?;
-                let right = right.eval(s, false)?;
+                let left = left.eval(s, i, false)?;
+                let right = right.eval(s, i, false)?;
                 Ok(left.gt(&right)?.into_series())
             },
             LambdaExpression::GreaterThanOrEqual(left, right) => {
-                let left = left.eval(s, false)?;
-                let right = right.eval(s, false)?;
+                let left = left.eval(s, i, false)?;
+                let right = right.eval(s, i, false)?;
                 Ok(left.gt_eq(&right)?.into_series())
             },
             LambdaExpression::LessThan(left, right) => {
-                let left = left.eval(s, false)?;
-                let right = right.eval(s, false)?;
+                let left = left.eval(s, i, false)?;
+                let right = right.eval(s, i, false)?;
                 Ok(left.lt(&right)?.into_series())
             },
             LambdaExpression::LessThanOrEqual(left, right) => {
-                let left = left.eval(s, false)?;
-                let right = right.eval(s, false)?;
+                let left = left.eval(s, i, false)?;
+                let right = right.eval(s, i, false)?;
                 Ok(left.lt_eq(&right)?.into_series())
             },
             #[cfg(feature = "zip_with")]
             LambdaExpression::IfThenElse(pred, value, otherwise) => {
-                let pred = pred.eval(s, false)?;
-                let value = value.eval(s, false)?;
-                let otherwise = otherwise.eval(s, false)?;
+                let pred = pred.eval(s, i, false)?;
+                let value = value.eval(s, i, false)?;
+                let otherwise = otherwise.eval(s, i, false)?;
 
                 // I think this is the only place where its valid to use AnyValues, since both series can be absolutely anything
                 value
@@ -366,7 +370,7 @@ impl LambdaExpression {
                     .map(IntoSeries::into_series)
             },
             LambdaExpression::Length(child) => {
-                let s = child.eval(s, false)?;
+                let s = child.eval(s, i, false)?;
                 Ok(match s.dtype() {
                     DataType::Null => Series::new_null(PlSmallStr::EMPTY, s.len()),
                     DataType::Binary => Series::from_iter(
@@ -399,14 +403,16 @@ impl LambdaExpression {
             LambdaExpression::CaseWhen(branches, otherwise) => {
                 let predicates: Vec<Series> = branches
                     .iter()
-                    .map(|(pred, _)| pred.eval(s, false))
+                    .map(|(pred, _)| pred.eval(s, i, false))
                     .collect::<PolarsResult<_>>()?;
                 let branches: Vec<(&BooleanChunked, Series)> = predicates
                     .iter()
                     .zip(branches)
-                    .map(|(predicates, (_, thens))| Ok((predicates.bool()?, thens.eval(s, false)?)))
+                    .map(|(predicates, (_, thens))| {
+                        Ok((predicates.bool()?, thens.eval(s, i, false)?))
+                    })
                     .collect::<PolarsResult<_>>()?;
-                let otherwise: Series = otherwise.eval(s, false)?;
+                let otherwise: Series = otherwise.eval(s, i, false)?;
 
                 // Start with all false mask of appropriate length
                 let mut final_mask =
@@ -431,38 +437,38 @@ impl LambdaExpression {
                 Ok(result)
             },
             LambdaExpression::Substring(child, start, length) => {
-                let child = child.eval(s, false)?;
-                let start = start.eval(s, false)?;
-                let length = length.eval(s, false)?;
+                let child = child.eval(s, i, false)?;
+                let start = start.eval(s, i, false)?;
+                let length = length.eval(s, i, false)?;
 
                 flarion_slice_helper(child.str()?, &start, &length)
             },
             LambdaExpression::Instr(left, right) => {
-                let left = left.eval(s, false)?;
-                let right = right.eval(s, false)?;
+                let left = left.eval(s, i, false)?;
+                let right = right.eval(s, i, false)?;
 
                 flarion_instr_helper(left.str()?, &right)
             },
             LambdaExpression::Add(left, right) => {
-                let left = left.eval(s, false)?;
-                let right = right.eval(s, false)?;
+                let left = left.eval(s, i, false)?;
+                let right = right.eval(s, i, false)?;
                 left.add(right)
             },
             LambdaExpression::IsNull(child) => {
-                let child = child.eval(s, false)?;
+                let child = child.eval(s, i, false)?;
                 Ok(child.is_null().into_series())
             },
             LambdaExpression::IsNotNull(child) => {
-                let child = child.eval(s, false)?;
+                let child = child.eval(s, i, false)?;
                 Ok(child.is_not_null().into_series())
             },
             LambdaExpression::EqualNullSafe(left, right) => {
-                let left = left.eval(s, false)?;
-                let right = right.eval(s, false)?;
+                let left = left.eval(s, i, false)?;
+                let right = right.eval(s, i, false)?;
                 left.equal_missing(&right).map(IntoSeries::into_series)
             },
             LambdaExpression::Cast(child, dtype) => {
-                let s = child.eval(s, false)?;
+                let s = child.eval(s, i, false)?;
                 s.cast_with_options(dtype, CastOptions::Overflowing)
             },
         }
@@ -484,6 +490,7 @@ impl LambdaExpression {
             LambdaExpression::Float64(_) => DataType::Float64,
             LambdaExpression::BinaryBlob(_) => DataType::Binary,
             LambdaExpression::StaticStr(_) => DataType::String,
+            LambdaExpression::Variable(1) => DataType::Int32,
             LambdaExpression::Variable(_) => input_type.clone(),
             LambdaExpression::GreaterThan(_, _) => DataType::Boolean,
             LambdaExpression::GreaterThanOrEqual(_, _) => DataType::Boolean,
@@ -527,9 +534,12 @@ mod tests {
     #[test]
     fn test_empty_transform() {
         let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
+        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
         let empty_lambda = LambdaExpression::StaticStr("meep".into());
 
-        let res = empty_lambda.eval(&start_array, true).unwrap();
+        let res = empty_lambda
+            .eval(&start_array, &index_series, true)
+            .unwrap();
         assert_eq!(res.len(), 2);
 
         assert_eq!(res.str().unwrap().get(0).unwrap(), "meep");
@@ -539,9 +549,12 @@ mod tests {
     #[test]
     fn test_lambda_length() {
         let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
+        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
         let length_lambda = LambdaExpression::Length(Box::new(LambdaExpression::Variable(0)));
 
-        let res = length_lambda.eval(&start_array, true).unwrap();
+        let res = length_lambda
+            .eval(&start_array, &index_series, true)
+            .unwrap();
         unsafe {
             assert_eq!(res.i32().unwrap().value_unchecked(0), 12);
             assert_eq!(res.i32().unwrap().value_unchecked(1), 13);
@@ -551,15 +564,41 @@ mod tests {
     #[test]
     fn test_lambda_substring() {
         let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
+        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
         let substring_lambda = LambdaExpression::Substring(
             Box::new(LambdaExpression::Variable(0)),
             Box::new(LambdaExpression::Int32(4)),
             Box::new(LambdaExpression::Int32(2)),
         );
 
-        let res = substring_lambda.eval(&start_array, true).unwrap();
+        let res = substring_lambda
+            .eval(&start_array, &index_series, true)
+            .unwrap();
+        // Substring should start at the index of the element in the array + 2
         unsafe {
             assert_eq!(res.str().unwrap().value_unchecked(0), "1=");
+            assert_eq!(res.str().unwrap().value_unchecked(1), "2=");
+        }
+    }
+
+    #[test]
+    fn test_lambda_with_index() {
+        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
+        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
+        let substring_lambda = LambdaExpression::Substring(
+            Box::new(LambdaExpression::Variable(0)),
+            Box::new(LambdaExpression::Add(
+                Box::new(LambdaExpression::Variable(1)),
+                Box::new(LambdaExpression::Int32(2)),
+            )),
+            Box::new(LambdaExpression::Int32(2)),
+        );
+
+        let res = substring_lambda
+            .eval(&start_array, &index_series, true)
+            .unwrap();
+        unsafe {
+            assert_eq!(res.str().unwrap().value_unchecked(0), "y1");
             assert_eq!(res.str().unwrap().value_unchecked(1), "2=");
         }
     }
@@ -572,6 +611,7 @@ mod tests {
             "key2===u",
             "key3==value3whichisverylong",
         ]);
+        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
         let casewhen_lambda = LambdaExpression::CaseWhen(
             vec![(
                 LambdaExpression::GreaterThan(
@@ -585,7 +625,9 @@ mod tests {
             Box::new(LambdaExpression::StaticStr("nope".into())),
         );
 
-        let res = casewhen_lambda.eval(&start_array, true).unwrap();
+        let res = casewhen_lambda
+            .eval(&start_array, &index_series, true)
+            .unwrap();
         unsafe {
             assert_eq!(res.str().unwrap().value_unchecked(0), "key1==value1");
             assert_eq!(res.str().unwrap().value_unchecked(1), "nope");
