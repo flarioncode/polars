@@ -552,6 +552,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "zip_with")]
     #[test]
     fn test_array_sort() {
         // let start_array = Series::from_iter(vec![0i32, 0, 0, 0, 0]);
