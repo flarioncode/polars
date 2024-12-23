@@ -40,7 +40,6 @@ impl<T> Deref for Wrap<T> {
 #[derive(Debug)]
 pub struct RegexWrap<T>(pub T);
 
-
 impl<T> AsRef<T> for RegexWrap<T> {
     fn as_ref(&self) -> &T {
         &self.0
