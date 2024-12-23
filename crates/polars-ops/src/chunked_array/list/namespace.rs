@@ -291,11 +291,16 @@ pub trait ListNameSpaceImpl: AsList {
         ca.try_apply_amortized(|s| {
             let mut vals = s.as_ref().iter().collect::<Vec<_>>();
             vals.sort_by(
-                |curr, next| lambda_expressions.eval_window(curr, next)
-                    .expect("Could not run lambda expression").try_into().unwrap(), // Conversion already has some error handling
+                |curr, next| {
+                    lambda_expressions
+                        .eval_window(curr, next)
+                        .expect("Could not run lambda expression")
+                        .try_into()
+                        .unwrap()
+                }, // Conversion already has some error handling
             );
 
-            Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vals, ca.inner_dtype(),true)
+            Series::from_any_values_and_dtype(PlSmallStr::EMPTY, &vals, ca.inner_dtype(), true)
         })
     }
 

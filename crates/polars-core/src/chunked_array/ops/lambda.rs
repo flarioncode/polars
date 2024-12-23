@@ -555,7 +555,15 @@ mod tests {
     #[test]
     fn test_array_sort() {
         // let start_array = Series::from_iter(vec![0i32, 0, 0, 0, 0]);
-        let start_array = Series::from_iter(vec![Some(1i32), None, Some(2), Some(3), None, Some(4), Some(5)]);
+        let start_array = Series::from_iter(vec![
+            Some(1i32),
+            None,
+            Some(2),
+            Some(3),
+            None,
+            Some(4),
+            Some(5),
+        ]);
         // CASE
         // WHEN
         //     isnull(lambda x_8#28858)
@@ -583,40 +591,59 @@ mod tests {
         // ELSE
         //     0
         // END
-        let ascending_lambda =
-            LambdaExpression::CaseWhen(vec![
+        let ascending_lambda = LambdaExpression::CaseWhen(
+            vec![
                 (
                     LambdaExpression::IsNull(LambdaExpression::Variable(0).into()),
-                    LambdaExpression::CaseWhen(vec![(
-                        LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
-                        LambdaExpression::Int32(0)
-                    )],
-                    LambdaExpression::Int32(1).into()),
+                    LambdaExpression::CaseWhen(
+                        vec![(
+                            LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
+                            LambdaExpression::Int32(0),
+                        )],
+                        LambdaExpression::Int32(1).into(),
+                    ),
                 ),
                 (
                     LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
-                    LambdaExpression::Int32(-1)
+                    LambdaExpression::Int32(-1),
                 ),
                 (
                     LambdaExpression::GreaterThan(
                         LambdaExpression::Variable(0).into(),
                         LambdaExpression::Variable(1).into(),
                     ),
-                    LambdaExpression::Int32(1)
+                    LambdaExpression::Int32(1),
                 ),
                 (
                     LambdaExpression::LessThan(
                         LambdaExpression::Variable(0).into(),
                         LambdaExpression::Variable(1).into(),
                     ),
-                    LambdaExpression::Int32(-1)
-                )
+                    LambdaExpression::Int32(-1),
+                ),
             ],
-           LambdaExpression::Int32(0).into()
+            LambdaExpression::Int32(0).into(),
         );
 
         let mut vals = start_array.iter().collect::<Vec<_>>();
-        vals.sort_by(|curr, next| ascending_lambda.eval_window(curr, next).unwrap().try_into().unwrap());
-        assert_eq!(vals, vec![AnyValue::Int32(1), AnyValue::Int32(2), AnyValue::Int32(3), AnyValue::Int32(4), AnyValue::Int32(5), AnyValue::Null, AnyValue::Null]);
+        vals.sort_by(|curr, next| {
+            ascending_lambda
+                .eval_window(curr, next)
+                .unwrap()
+                .try_into()
+                .unwrap()
+        });
+        assert_eq!(
+            vals,
+            vec![
+                AnyValue::Int32(1),
+                AnyValue::Int32(2),
+                AnyValue::Int32(3),
+                AnyValue::Int32(4),
+                AnyValue::Int32(5),
+                AnyValue::Null,
+                AnyValue::Null
+            ]
+        );
     }
 }
