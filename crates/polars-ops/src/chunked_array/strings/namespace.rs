@@ -273,6 +273,7 @@ pub trait StringNameSpaceImpl: AsString {
     fn contains(&self, pat: &str, strict: bool) -> PolarsResult<BooleanChunked> {
         let ca = self.as_string();
         let res_reg = {
+            #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
             tracy_gizmos::zone!("Building expression");
             RegexBuilder::new(pat).size_limit(30 * 1024 * 1024).build()
         };
