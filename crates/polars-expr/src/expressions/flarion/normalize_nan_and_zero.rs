@@ -60,6 +60,10 @@ impl PhysicalExpr for FlarionNormalizeNanAndZeroExpr {
         normalize_series_with_dtype::<false>(&series)
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate_on_groups<'a>(
         &self,
         df: &DataFrame,

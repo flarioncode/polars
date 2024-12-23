@@ -138,6 +138,10 @@ where
     T: PolarsNumericType,
     T::Native: NumCast,
 {
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn group_tuples(&self, multithreaded: bool, sorted: bool) -> PolarsResult<GroupsProxy> {
         // sorted path
         if self.is_sorted_ascending_flag() || self.is_sorted_descending_flag() {
@@ -291,6 +295,10 @@ impl IntoGroupsProxy for BinaryChunked {
 
 impl IntoGroupsProxy for BinaryOffsetChunked {
     #[allow(clippy::needless_lifetimes)]
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn group_tuples<'a>(
         &'a self,
         mut multithreaded: bool,

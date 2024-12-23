@@ -178,6 +178,10 @@ impl PhysicalExpr for AggregationExpr {
         }
     }
     #[allow(clippy::ptr_arg)]
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate_on_groups<'a>(
         &self,
         df: &DataFrame,
@@ -717,6 +721,10 @@ impl PhysicalExpr for AggQuantileExpr {
             .map(|sc| sc.into_series(input.name().clone()))
     }
     #[allow(clippy::ptr_arg)]
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate_on_groups<'a>(
         &self,
         df: &DataFrame,
