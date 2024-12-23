@@ -52,9 +52,9 @@ pub enum LambdaExpression {
     StaticStr(Cow<'static, str>),
     Variable(usize),
     GreaterThan(Box<Self>, Box<Self>),
-    GreaterThanEquals(Box<Self>, Box<Self>),
+    GreaterThanOrEqual(Box<Self>, Box<Self>),
     LessThan(Box<Self>, Box<Self>),
-    LessThanEquals(Box<Self>, Box<Self>),
+    LessThanOrEqual(Box<Self>, Box<Self>),
     #[cfg(feature = "zip_with")]
     IfThenElse(Box<Self>, Box<Self>, Box<Self>),
     Length(Box<Self>),
@@ -92,7 +92,7 @@ impl Hash for LambdaExpression {
                 first.hash(state);
                 second.hash(state);
             },
-            LambdaExpression::GreaterThanEquals(first, second) => {
+            LambdaExpression::GreaterThanOrEqual(first, second) => {
                 first.hash(state);
                 second.hash(state);
             },
@@ -100,7 +100,7 @@ impl Hash for LambdaExpression {
                 first.hash(state);
                 second.hash(state);
             },
-            LambdaExpression::LessThanEquals(first, second) => {
+            LambdaExpression::LessThanOrEqual(first, second) => {
                 first.hash(state);
                 second.hash(state);
             },
@@ -186,7 +186,7 @@ impl LambdaExpression {
                 let right = right.eval_window(curr, next)?;
                 Ok(AnyValue::Boolean(left.gt(&right)))
             },
-            LambdaExpression::GreaterThanEquals(left, right) => {
+            LambdaExpression::GreaterThanOrEqual(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
                 Ok(AnyValue::Boolean(left.ge(&right)))
@@ -196,7 +196,7 @@ impl LambdaExpression {
                 let right = right.eval_window(curr, next)?;
                 Ok(AnyValue::Boolean(left.lt(&right)))
             },
-            LambdaExpression::LessThanEquals(left, right) => {
+            LambdaExpression::LessThanOrEqual(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
                 Ok(AnyValue::Boolean(left.le(&right)))
@@ -339,7 +339,7 @@ impl LambdaExpression {
                 let right = right.eval(s, false)?;
                 Ok(left.gt(&right)?.into_series())
             },
-            LambdaExpression::GreaterThanEquals(left, right) => {
+            LambdaExpression::GreaterThanOrEqual(left, right) => {
                 let left = left.eval(s, false)?;
                 let right = right.eval(s, false)?;
                 Ok(left.gt_eq(&right)?.into_series())
@@ -349,7 +349,7 @@ impl LambdaExpression {
                 let right = right.eval(s, false)?;
                 Ok(left.lt(&right)?.into_series())
             },
-            LambdaExpression::LessThanEquals(left, right) => {
+            LambdaExpression::LessThanOrEqual(left, right) => {
                 let left = left.eval(s, false)?;
                 let right = right.eval(s, false)?;
                 Ok(left.lt_eq(&right)?.into_series())
@@ -486,9 +486,9 @@ impl LambdaExpression {
             LambdaExpression::StaticStr(_) => DataType::String,
             LambdaExpression::Variable(_) => input_type.clone(),
             LambdaExpression::GreaterThan(_, _) => DataType::Boolean,
-            LambdaExpression::GreaterThanEquals(_, _) => DataType::Boolean,
+            LambdaExpression::GreaterThanOrEqual(_, _) => DataType::Boolean,
             LambdaExpression::LessThan(_, _) => DataType::Boolean,
-            LambdaExpression::LessThanEquals(_, _) => DataType::Boolean,
+            LambdaExpression::LessThanOrEqual(_, _) => DataType::Boolean,
             #[cfg(feature = "zip_with")]
             LambdaExpression::IfThenElse(_, then, els) => dtypes_to_supertype([
                 &then.return_type(input_type)?,
