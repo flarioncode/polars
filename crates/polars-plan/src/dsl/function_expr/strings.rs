@@ -38,7 +38,7 @@ pub enum StringFunction {
     #[cfg(feature = "regex")]
     ContainsRegex {
         #[cfg_attr(feature = "serde", serde(skip))]
-        regex: Option<Arc<RegexWrap<Regex>>>,
+        regex: Option<RegexWrap<Arc<Regex>>>,
     },
     #[cfg(feature = "regex")]
     Contains {

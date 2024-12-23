@@ -37,12 +37,12 @@ impl StringNameSpace {
     }
 
     #[cfg(feature = "regex")]
-    pub fn contains_regex(self, s: String, pat: Regex) -> Expr {
+    pub fn contains_regex(self, s: String, pat: Arc<Regex>) -> Expr {
         use polars_core::utils::RegexWrap;
 
         self.0.map_many_private(
             FunctionExpr::StringExpr(StringFunction::ContainsRegex {
-                regex: Some(Arc::new(RegexWrap(s, pat))),
+                regex: Some(RegexWrap(s, pat)),
             }),
             &[],
             false,

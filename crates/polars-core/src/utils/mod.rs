@@ -36,12 +36,12 @@ impl<T> Deref for Wrap<T> {
 }
 
 // This is giant trust me bro
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RegexWrap<T>(pub String, pub T);
 
-impl<T> AsRef<T> for RegexWrap<T> {
+impl<T, U: AsRef<T>> AsRef<T> for RegexWrap<U> {
     fn as_ref(&self) -> &T {
-        &self.1
+        self.1.as_ref()
     }
 }
 
