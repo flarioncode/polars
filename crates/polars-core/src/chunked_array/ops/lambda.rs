@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-use std::iter;
 use std::ops::Add;
+use std::{iter, mem};
 
 use num_traits::ToBytes;
 use polars_error::{polars_bail, PolarsError, PolarsResult};
@@ -62,6 +62,7 @@ pub enum LambdaExpression {
     Instr(Box<Self>, Box<Self>),
     Add(Box<Self>, Box<Self>),
     IsNull(Box<Self>),
+    IsNotNull(Box<Self>),
     EqualNullSafe(Box<Self>, Box<Self>),
     Cast(Box<Self>, DataType),
 }
@@ -70,6 +71,7 @@ impl Eq for LambdaExpression {}
 
 impl Hash for LambdaExpression {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        mem::discriminant(self).hash(state);
         match self {
             LambdaExpression::Null => 0.hash(state),
             LambdaExpression::Boolean(v) => v.hash(state),
@@ -118,6 +120,7 @@ impl Hash for LambdaExpression {
                 second.hash(state);
             },
             LambdaExpression::IsNull(v) => v.hash(state),
+            LambdaExpression::IsNotNull(v) => v.hash(state),
             LambdaExpression::EqualNullSafe(first, second) => {
                 first.hash(state);
                 second.hash(state);
@@ -273,6 +276,10 @@ impl LambdaExpression {
                 let child = child.eval_window(curr, next)?;
                 Ok(AnyValue::Boolean(child.is_null()))
             },
+            LambdaExpression::IsNotNull(child) => {
+                let child = child.eval_window(curr, next)?;
+                Ok(AnyValue::Boolean(!child.is_null()))
+            },
             LambdaExpression::EqualNullSafe(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
@@ -415,6 +422,10 @@ impl LambdaExpression {
                 let child = child.eval(s, false)?;
                 Ok(child.is_null().into_series())
             },
+            LambdaExpression::IsNotNull(child) => {
+                let child = child.eval(s, false)?;
+                Ok(child.is_not_null().into_series())
+            },
             LambdaExpression::EqualNullSafe(left, right) => {
                 let left = left.eval(s, false)?;
                 let right = right.eval(s, false)?;
@@ -469,6 +480,7 @@ impl LambdaExpression {
                 &right.return_type(input_type)?,
             ])?,
             LambdaExpression::IsNull(_) => DataType::Boolean,
+            LambdaExpression::IsNotNull(_) => DataType::Boolean,
             LambdaExpression::EqualNullSafe(_, _) => DataType::Boolean,
             LambdaExpression::Cast(_, data_type) => data_type.clone(),
         })
