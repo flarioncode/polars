@@ -57,11 +57,6 @@ impl GroupByExec {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-#[cfg_attr(
-    all(feature = "tracy", not(feature = "tracy-no-instrument")),
-    tracy_gizmos::instrument
-)]
 pub(super) fn group_by_helper(
     mut df: DataFrame,
     keys: Vec<Series>,

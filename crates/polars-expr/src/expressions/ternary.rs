@@ -104,10 +104,6 @@ impl PhysicalExpr for TernaryExpr {
     }
 
     #[allow(clippy::ptr_arg)]
-    #[cfg_attr(
-        all(feature = "tracy", not(feature = "tracy-no-instrument")),
-        tracy_gizmos::instrument
-    )]
     fn evaluate_on_groups<'a>(
         &self,
         df: &DataFrame,
