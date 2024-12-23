@@ -9,10 +9,8 @@ use polars_core::prelude::arity::unary_elementwise_values;
 use polars_core::utils::{handle_casting_failures, RegexWrap};
 #[cfg(feature = "dtype-struct")]
 use polars_utils::format_pl_smallstr;
-#[cfg(all(feature = "regex", feature = "timezones"))]
-use regex::Regex;
 #[cfg(feature = "regex")]
-use regex::{escape, RegexBuilder, Regex};
+use regex::{escape, Regex, RegexBuilder};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -330,7 +328,10 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             #[cfg(feature = "regex")]
             Contains { literal, strict } => map_as_slice!(strings::contains, literal, strict),
             #[cfg(feature = "regex")]
-            ContainsRegex { regex } => map_as_slice!(strings::contains_regex, RegexWrap::as_ref(regex.as_ref().unwrap())),
+            ContainsRegex { regex } => map_as_slice!(
+                strings::contains_regex,
+                RegexWrap::as_ref(regex.as_ref().unwrap())
+            ),
             CountMatches(literal) => {
                 map_as_slice!(strings::count_matches, literal)
             },
