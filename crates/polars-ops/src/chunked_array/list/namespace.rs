@@ -255,6 +255,33 @@ pub trait ListNameSpaceImpl: AsList {
         }
     }
 
+    fn eval_lambda_on_amort(
+        s_ref: &Series,
+        lambda_expression: Arc<LambdaExpression>,
+        index_data: Option<&mut (MutablePrimitiveArray<i32>, AmortSeries)>,
+    ) -> PolarsResult<Series> {
+        if let Some((index_arr, index_amort)) = index_data {
+            let s_len = s_ref.len() as i32;
+            let index_count = index_arr.len() as i32;
+            if index_count < s_len {
+                index_arr.extend_trusted_len_values(index_count..s_len)
+            } else {
+                index_arr.truncate(s_len as usize);
+            }
+
+            // Create a temporary Box<dyn Array> for this iteration, this is unsafe code but I think should be ok here??
+            let mut temp_box: Box<dyn Array> = unsafe { std::mem::transmute(index_arr.as_box()) };
+
+            unsafe {
+                index_amort.with_array(&mut temp_box, |arr| {
+                    lambda_expression.eval(s_ref, Some(arr.as_ref()))
+                })
+            }
+        } else {
+            lambda_expression.eval(s_ref, None)
+        }
+    }
+
     #[cfg_attr(
         all(feature = "tracy", not(feature = "tracy-no-instrument")),
         tracy_gizmos::instrument
@@ -275,28 +302,8 @@ pub trait ListNameSpaceImpl: AsList {
             let s_ref = s.as_ref();
 
             s_ref.filter(
-                if let Some((index_arr, index_amort)) = &mut index_data {
-                    let s_len = s_ref.len() as i32;
-                    let index_count = index_arr.len() as i32;
-                    if index_count < s_len {
-                        index_arr.extend_trusted_len_values(index_count..s_len)
-                    } else {
-                        index_arr.truncate(s_len as usize);
-                    }
-
-                    // Create a temporary Box<dyn Array> for this iteration, this is unsafe code but I think should be ok here??
-                    let mut temp_box: Box<dyn Array> =
-                        unsafe { std::mem::transmute(index_arr.as_box()) };
-
-                    unsafe {
-                        index_amort.with_array(&mut temp_box, |arr| {
-                            lambda_expression.eval(s_ref, Some(arr.as_ref()), true)
-                        })
-                    }
-                } else {
-                    lambda_expression.eval(s_ref, None, true)
-                }?
-                .bool()?,
+                Self::eval_lambda_on_amort(s_ref, lambda_expression.clone(), index_data.as_mut())?
+                    .bool()?,
             )
         })
     }
@@ -319,28 +326,7 @@ pub trait ListNameSpaceImpl: AsList {
 
         self.as_list().try_apply_amortized(|s| {
             let s_ref = s.as_ref();
-
-            if let Some((index_arr, index_amort)) = &mut index_data {
-                let s_len = s_ref.len() as i32;
-                let index_count = index_arr.len() as i32;
-                if index_count < s_len {
-                    index_arr.extend_trusted_len_values(index_count..s_len)
-                } else {
-                    index_arr.truncate(s_len as usize);
-                }
-
-                // Create a temporary Box<dyn Array> for this iteration, this is unsafe code but I think should be ok here??
-                let mut temp_box: Box<dyn Array> =
-                    unsafe { std::mem::transmute(index_arr.as_box()) };
-
-                unsafe {
-                    index_amort.with_array(&mut temp_box, |arr| {
-                        lambda_expression.eval(s_ref, Some(arr.as_ref()), true)
-                    })
-                }
-            } else {
-                lambda_expression.eval(s_ref, None, true)
-            }
+            Self::eval_lambda_on_amort(s_ref, lambda_expression.clone(), index_data.as_mut())
         })
     }
 
