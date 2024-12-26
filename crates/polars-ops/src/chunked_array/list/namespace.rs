@@ -260,8 +260,8 @@ pub trait ListNameSpaceImpl: AsList {
         lambda_expression: Arc<LambdaExpression>,
         index_data: Option<&mut (MutablePrimitiveArray<i32>, AmortSeries)>,
     ) -> PolarsResult<Series> {
+        let s_len = s_ref.len() as i32;
         if let Some((index_arr, index_amort)) = index_data {
-            let s_len = s_ref.len() as i32;
             let index_count = index_arr.len() as i32;
             if index_count < s_len {
                 index_arr.extend_trusted_len_values(index_count..s_len)
@@ -279,7 +279,18 @@ pub trait ListNameSpaceImpl: AsList {
             }
         } else {
             lambda_expression.eval(s_ref, None)
-        }
+        }.and_then(|eval_result|
+            if eval_result.len() != s_len as usize {
+                if eval_result.len() == 1 {
+                    let literal_val = eval_result.get(0).unwrap();
+                    eval_result.extend_constant(literal_val, (s_len - 1) as usize)
+                } else {
+                    polars_bail!(ShapeMismatch: "lambda function did not return a series of equal length")
+                }
+            } else {
+                Ok(eval_result)
+            }
+        )
     }
 
     #[cfg_attr(
