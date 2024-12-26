@@ -1093,6 +1093,38 @@ fn replace_n<'a>(
     all(feature = "tracy", not(feature = "tracy-no-instrument")),
     tracy_gizmos::instrument
 )]
+fn replace_n_precomputed<'a>(
+    ca: &'a StringChunked,
+    val: &'a StringChunked,
+    n: usize,
+    regex: &Regex,
+) -> PolarsResult<StringChunked> {
+    match val.len() {
+        1 => {
+            let val = val.get(0).ok_or_else(
+                || polars_err!(ComputeError: "value cannot be 'null' in 'replace' expression"),
+            )?;
+
+            Ok(ca.apply_values(|s| regex.replacen(s, n, val)))
+        },
+        len_val => {
+            polars_ensure!(
+                len_val == ca.len(),
+                ComputeError:
+                "replacement value length ({}) does not match string column length ({})",
+                len_val, ca.len(),
+            );
+            let f = |s: &'a str, val: &'a str| regex.replacen(s, n, val);
+            Ok(iter_and_replace(ca, val, f))
+        },
+    }
+}
+
+#[cfg(feature = "regex")]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 fn replace_all<'a>(
     ca: &'a StringChunked,
     pat: &'a StringChunked,
@@ -1144,6 +1176,38 @@ fn replace_all<'a>(
     all(feature = "tracy", not(feature = "tracy-no-instrument")),
     tracy_gizmos::instrument
 )]
+fn replace_all_precomputed<'a>(
+    ca: &'a StringChunked,
+    val: &'a StringChunked,
+    regex: &Regex,
+) -> PolarsResult<StringChunked> {
+    match val.len() {
+        1 => {
+            let val = val.get(0).ok_or_else(
+                || polars_err!(ComputeError: "value cannot be 'null' in 'replace' expression"),
+            )?;
+
+            Ok(ca.apply_values(|s| regex.replace_all(s, val)))
+        },
+        len_val => {
+            polars_ensure!(
+                len_val == ca.len(),
+                ComputeError:
+                "replacement value length ({}) does not match string column length ({})",
+                len_val, ca.len(),
+            );
+
+            let f = |s: &'a str, val: &'a str| regex.replace_all(s, val);
+            Ok(iter_and_replace(ca, val, f))
+        },
+    }
+}
+
+#[cfg(feature = "regex")]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
 pub(super) fn replace(s: &[Series], literal: bool, n: i64) -> PolarsResult<Series> {
     let column = &s[0];
     let pat = &s[1];
@@ -1170,7 +1234,7 @@ pub(super) fn replace(s: &[Series], literal: bool, n: i64) -> PolarsResult<Serie
 pub(super) fn replace_precompiled<'a>(
     s: &'a [Series],
     n: i64,
-    pat: &'a Regex,
+    regex: &'a Regex,
 ) -> PolarsResult<Series> {
     let column = &s[0];
     let val = &s[1];
@@ -1180,11 +1244,9 @@ pub(super) fn replace_precompiled<'a>(
     let val = val.str()?;
 
     if all {
-        let f = |s: &'a str, val: &'a str| pat.replace_all(s, val);
-        Ok(iter_and_replace(column, val, f))
+        replace_all_precomputed(column, val, regex)
     } else {
-        let f = |s: &'a str, val: &'a str| pat.replacen(s, n as usize, val);
-        Ok(iter_and_replace(column, val, f))
+        replace_n_precomputed(column, val, n as usize, regex)
     }
     .map(|ca| ca.into_series())
 }
