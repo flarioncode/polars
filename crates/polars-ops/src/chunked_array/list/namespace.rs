@@ -264,7 +264,7 @@ pub trait ListNameSpaceImpl: AsList {
         (if let Some((index_arr, index_amort)) = index_data {
             let index_count = index_arr.len() as i32;
             if index_count < s_len {
-                index_arr.extend_trusted_len_values(index_count..s_len)
+                index_arr.extend_trusted_len_values(index_count+1..=s_len)
             } else {
                 index_arr.truncate(s_len as usize);
             }
@@ -283,13 +283,12 @@ pub trait ListNameSpaceImpl: AsList {
             let eval_result_len = eval_result.len() as i32;
             if eval_result_len != s_len {
                 if eval_result_len == 1 {
+                    // This will only happen when we return literals, so no need to support unsigned integers
                     Ok(match eval_result.dtype() {
                         DataType::Boolean => Series::from_iter(std::iter::repeat_n(eval_result.bool()?.get(0), s_len as usize)),
-                        DataType::UInt8 => Series::from_iter(std::iter::repeat_n(eval_result.u8()?.get(0), s_len as usize)),
-                        DataType::UInt16 => Series::from_iter(std::iter::repeat_n(eval_result.u16()?.get(0), s_len as usize)),
-                        DataType::UInt32 => Series::from_iter(std::iter::repeat_n(eval_result.u32()?.get(0), s_len as usize)),
-                        DataType::UInt64 => Series::from_iter(std::iter::repeat_n(eval_result.u64()?.get(0), s_len as usize)),
+                        #[cfg(feature = "dtype-i8")]
                         DataType::Int8 => Series::from_iter(std::iter::repeat_n(eval_result.i8()?.get(0), s_len as usize)),
+                        #[cfg(feature = "dtype-i16")]
                         DataType::Int16 => Series::from_iter(std::iter::repeat_n(eval_result.i16()?.get(0), s_len as usize)),
                         DataType::Int32 => Series::from_iter(std::iter::repeat_n(eval_result.i32()?.get(0), s_len as usize)),
                         DataType::Int64 => Series::from_iter(std::iter::repeat_n(eval_result.i64()?.get(0), s_len as usize)),
@@ -1004,9 +1003,7 @@ mod tests {
                 .into_series();
         let empty_lambda = LambdaExpression::StaticStr("meep".into());
 
-        let result = start_array
-            .as_list()
-            .lst_transform(empty_lambda.into(), false)
+        let result = start_array.list().unwrap().lst_transform(empty_lambda.into(), false)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
 
@@ -1023,8 +1020,7 @@ mod tests {
                 .into_series();
         let length_lambda = LambdaExpression::Length(Box::new(LambdaExpression::Variable(0)));
 
-        let result = start_array
-            .as_list()
+        let result = start_array.list().unwrap()
             .lst_transform(length_lambda.into(), false)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
@@ -1034,15 +1030,14 @@ mod tests {
 
     #[test]
     fn test_lambda_substring() {
-        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
+        let start_array = ListChunked::from_iter([Series::from_iter(vec!["key1==value1", "key2===value2"])]).into_series();
         let substring_lambda = LambdaExpression::Substring(
             Box::new(LambdaExpression::Variable(0)),
             Box::new(LambdaExpression::Int32(4)),
             Box::new(LambdaExpression::Int32(2)),
         );
 
-        let result = start_array
-            .as_list()
+        let result = start_array.list().unwrap()
             .lst_transform(substring_lambda.into(), false)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
@@ -1066,8 +1061,7 @@ mod tests {
             Box::new(LambdaExpression::Int32(2)),
         );
 
-        let result = start_array
-            .as_list()
+        let result = start_array.list().unwrap()
             .lst_transform(substring_lambda.into(), true)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
@@ -1098,8 +1092,7 @@ mod tests {
             Box::new(LambdaExpression::StaticStr("nope".into())),
         );
 
-        let result = start_array
-            .as_list()
+        let result = start_array.list().unwrap()
             .lst_transform(casewhen_lambda.into(), false)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
@@ -1159,8 +1152,7 @@ mod tests {
             LambdaExpression::Int32(0).into(),
         );
 
-        let result = start_array
-            .as_list()
+        let result = start_array.list().unwrap()
             .lst_sort_by_func(SortOptions::new().with_nulls_last(true), ascending_lambda.into())
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
