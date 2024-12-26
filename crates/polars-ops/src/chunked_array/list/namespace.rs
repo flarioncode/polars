@@ -979,14 +979,20 @@ fn cast_index(idx: Series, len: usize, null_on_oob: bool) -> PolarsResult<Series
 #[cfg(test)]
 mod tests {
     use polars_core::prelude::{AnyValue, IntoSeries, LambdaExpression, ListChunked, Series};
+
     use crate::chunked_array::ListNameSpaceImpl;
 
     #[test]
     fn test_empty_transform() {
-        let start_array = ListChunked::from_iter([Series::from_iter(["key1==value1", "key2===value2"])]).into_series();
+        let start_array =
+            ListChunked::from_iter([Series::from_iter(["key1==value1", "key2===value2"])])
+                .into_series();
         let empty_lambda = LambdaExpression::StaticStr("meep".into());
 
-        let result = start_array.as_list().lst_transform(empty_lambda.into(), false).expect("Could not evaluate lambda");
+        let result = start_array
+            .as_list()
+            .lst_transform(empty_lambda.into(), false)
+            .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
 
         assert_eq!(res.len(), 2);
@@ -997,10 +1003,15 @@ mod tests {
 
     #[test]
     fn test_lambda_length() {
-        let start_array = ListChunked::from_iter([Series::from_iter(["key1==value1", "key2===value2"])]).into_series();
+        let start_array =
+            ListChunked::from_iter([Series::from_iter(["key1==value1", "key2===value2"])])
+                .into_series();
         let length_lambda = LambdaExpression::Length(Box::new(LambdaExpression::Variable(0)));
 
-        let result = start_array.as_list().lst_transform(length_lambda.into(), false).expect("Could not evaluate lambda");
+        let result = start_array
+            .as_list()
+            .lst_transform(length_lambda.into(), false)
+            .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
         assert_eq!(res.i32().unwrap().get(0).unwrap(), 12);
         assert_eq!(res.i32().unwrap().get(1).unwrap(), 13);
@@ -1015,7 +1026,10 @@ mod tests {
             Box::new(LambdaExpression::Int32(2)),
         );
 
-        let result = start_array.as_list().lst_transform(substring_lambda.into(), false).expect("Could not evaluate lambda");
+        let result = start_array
+            .as_list()
+            .lst_transform(substring_lambda.into(), false)
+            .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
 
         // Substring should start at the index of the element in the array + 2
@@ -1025,7 +1039,9 @@ mod tests {
 
     #[test]
     fn test_lambda_with_index() {
-        let start_array = ListChunked::from_iter([Series::from_iter(vec!["key1==value1", "key2===value2"])]).into_series();
+        let start_array =
+            ListChunked::from_iter([Series::from_iter(vec!["key1==value1", "key2===value2"])])
+                .into_series();
         let substring_lambda = LambdaExpression::Substring(
             Box::new(LambdaExpression::Variable(0)),
             Box::new(LambdaExpression::Add(
@@ -1035,7 +1051,10 @@ mod tests {
             Box::new(LambdaExpression::Int32(2)),
         );
 
-        let result = start_array.as_list().lst_transform(substring_lambda.into(), true).expect("Could not evaluate lambda");
+        let result = start_array
+            .as_list()
+            .lst_transform(substring_lambda.into(), true)
+            .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
 
         assert_eq!(res.str().unwrap().get(0).unwrap(), "y1");
@@ -1048,7 +1067,8 @@ mod tests {
             "key1==value1",
             "key2===u",
             "key3==value3whichisverylong",
-        ])]).into_series();
+        ])])
+        .into_series();
 
         let casewhen_lambda = LambdaExpression::CaseWhen(
             vec![(
@@ -1063,7 +1083,10 @@ mod tests {
             Box::new(LambdaExpression::StaticStr("nope".into())),
         );
 
-        let result = start_array.as_list().lst_transform(casewhen_lambda.into(), false).expect("Could not evaluate lambda");
+        let result = start_array
+            .as_list()
+            .lst_transform(casewhen_lambda.into(), false)
+            .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
 
         assert_eq!(res.str().unwrap().get(0).unwrap(), "key1==value1");
@@ -1084,7 +1107,8 @@ mod tests {
             None,
             Some(4),
             Some(5),
-        ])]).into_series();
+        ])])
+        .into_series();
         // CASE
         // WHEN
         //     isnull(lambda x_8#28858)
