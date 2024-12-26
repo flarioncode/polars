@@ -279,8 +279,9 @@ pub trait ListNameSpaceImpl: AsList {
             }
         } else {
             lambda_expression.eval(s_ref, None)
-        }.and_then(|eval_result|
-            if eval_result.len() != s_len as usize {
+        }.and_then(|eval_result| {
+            let eval_result_len = eval_result.len() as i32;
+            if eval_result_len != s_len {
                 if eval_result.len() == 1 {
                     let literal_val = eval_result.get(0).unwrap();
                     eval_result.extend_constant(literal_val, (s_len - 1) as usize)
@@ -290,7 +291,7 @@ pub trait ListNameSpaceImpl: AsList {
             } else {
                 Ok(eval_result)
             }
-        )
+        })
     }
 
     #[cfg_attr(
@@ -974,4 +975,196 @@ fn cast_index(idx: Series, len: usize, null_on_oob: bool) -> PolarsResult<Series
     Ok(out)
 }
 
-// TODO: implement the above for ArrayChunked as well?
+// Was using these to debug but I see no harm in having more unit tests, in fact we should probably have more here
+#[cfg(test)]
+mod tests {
+    use polars_core::prelude::{AnyValue, IntoSeries, LambdaExpression, ListChunked, Series};
+    use crate::chunked_array::ListNameSpaceImpl;
+
+    #[test]
+    fn test_empty_transform() {
+        let start_array = ListChunked::from_iter([Series::from_iter(["key1==value1", "key2===value2"])]).into_series();
+        let empty_lambda = LambdaExpression::StaticStr("meep".into());
+
+        let result = start_array.as_list().lst_transform(empty_lambda.into(), false).expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
+        assert_eq!(res.len(), 2);
+
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "meep");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "meep");
+    }
+
+    #[test]
+    fn test_lambda_length() {
+        let start_array = ListChunked::from_iter([Series::from_iter(["key1==value1", "key2===value2"])]).into_series();
+        let length_lambda = LambdaExpression::Length(Box::new(LambdaExpression::Variable(0)));
+
+        let result = start_array.as_list().lst_transform(length_lambda.into(), false).expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+        assert_eq!(res.i32().unwrap().get(0).unwrap(), 12);
+        assert_eq!(res.i32().unwrap().get(1).unwrap(), 13);
+    }
+
+    #[test]
+    fn test_lambda_substring() {
+        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
+        let substring_lambda = LambdaExpression::Substring(
+            Box::new(LambdaExpression::Variable(0)),
+            Box::new(LambdaExpression::Int32(4)),
+            Box::new(LambdaExpression::Int32(2)),
+        );
+
+        let result = start_array.as_list().lst_transform(substring_lambda.into(), false).expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
+        // Substring should start at the index of the element in the array + 2
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "1=");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "2=");
+    }
+
+    #[test]
+    fn test_lambda_with_index() {
+        let start_array = ListChunked::from_iter([Series::from_iter(vec!["key1==value1", "key2===value2"])]).into_series();
+        let substring_lambda = LambdaExpression::Substring(
+            Box::new(LambdaExpression::Variable(0)),
+            Box::new(LambdaExpression::Add(
+                Box::new(LambdaExpression::Variable(1)),
+                Box::new(LambdaExpression::Int32(2)),
+            )),
+            Box::new(LambdaExpression::Int32(2)),
+        );
+
+        let result = start_array.as_list().lst_transform(substring_lambda.into(), true).expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "y1");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "2=");
+    }
+
+    #[test]
+    fn test_lambda_casewhen() {
+        let start_array = ListChunked::from_iter([Series::from_iter(vec![
+            "key1==value1",
+            "key2===u",
+            "key3==value3whichisverylong",
+        ])]).into_series();
+
+        let casewhen_lambda = LambdaExpression::CaseWhen(
+            vec![(
+                LambdaExpression::GreaterThan(
+                    Box::new(LambdaExpression::Length(Box::new(
+                        LambdaExpression::Variable(0),
+                    ))),
+                    Box::new(LambdaExpression::Int32(10)),
+                ),
+                LambdaExpression::Variable(0),
+            )],
+            Box::new(LambdaExpression::StaticStr("nope".into())),
+        );
+
+        let result = start_array.as_list().lst_transform(casewhen_lambda.into(), false).expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "key1==value1");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "nope");
+        assert_eq!(
+            res.str().unwrap().get(2).unwrap(),
+            "key3==value3whichisverylong"
+        );
+    }
+
+    #[test]
+    fn test_array_sort() {
+        let start_array = ListChunked::from_iter([Series::from_iter(vec![
+            Some(1i32),
+            None,
+            Some(2),
+            Some(3),
+            None,
+            Some(4),
+            Some(5),
+        ])]).into_series();
+        // CASE
+        // WHEN
+        //     isnull(lambda x_8#28858)
+        // THEN
+        //     CASE
+        //     WHEN
+        //         isnull(lambda y_9#28859)
+        //     THEN
+        //         0
+        //     ELSE
+        //         1
+        //     END
+        // WHEN
+        //     isnull(lambda y_9#28859)
+        // THEN
+        //     -1
+        // WHEN
+        //     (lambda x_8#28858 > lambda y_9#28859)
+        // THEN
+        //     1
+        // WHEN
+        //     (lambda x_8#28858 < lambda y_9#28859)
+        // THEN
+        //     -1
+        // ELSE
+        //     0
+        // END
+        let ascending_lambda = LambdaExpression::CaseWhen(
+            vec![
+                (
+                    LambdaExpression::IsNull(LambdaExpression::Variable(0).into()),
+                    LambdaExpression::CaseWhen(
+                        vec![(
+                            LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
+                            LambdaExpression::Int32(0),
+                        )],
+                        LambdaExpression::Int32(1).into(),
+                    ),
+                ),
+                (
+                    LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
+                    LambdaExpression::Int32(-1),
+                ),
+                (
+                    LambdaExpression::GreaterThan(
+                        LambdaExpression::Variable(0).into(),
+                        LambdaExpression::Variable(1).into(),
+                    ),
+                    LambdaExpression::Int32(1),
+                ),
+                (
+                    LambdaExpression::LessThan(
+                        LambdaExpression::Variable(0).into(),
+                        LambdaExpression::Variable(1).into(),
+                    ),
+                    LambdaExpression::Int32(-1),
+                ),
+            ],
+            LambdaExpression::Int32(0).into(),
+        );
+
+        let mut vals = start_array.iter().collect::<Vec<_>>();
+        vals.sort_by(|curr, next| {
+            ascending_lambda
+                .eval_window(curr, next)
+                .unwrap()
+                .try_into()
+                .unwrap()
+        });
+        assert_eq!(
+            vals,
+            vec![
+                AnyValue::Int32(1),
+                AnyValue::Int32(2),
+                AnyValue::Int32(3),
+                AnyValue::Int32(4),
+                AnyValue::Int32(5),
+                AnyValue::Null,
+                AnyValue::Null
+            ]
+        );
+    }
+}

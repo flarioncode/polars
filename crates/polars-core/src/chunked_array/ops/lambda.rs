@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::ops::Add;
 use std::{iter, mem};
@@ -144,43 +143,41 @@ impl Hash for LambdaExpression {
     }
 }
 
-impl Display for LambdaExpression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl LambdaExpression {
+    fn fmt_str(&self) -> &'static str {
         match self {
-            LambdaExpression::Null => write!(f, "literal(null)"),
-            LambdaExpression::Boolean(_) => write!(f, "literal(boolean)"),
+            LambdaExpression::Null => "literal(null)",
+            LambdaExpression::Boolean(_) => "literal(boolean)",
             #[cfg(feature = "dtype-i8")]
-            LambdaExpression::Int8(_) => write!(f, "literal(int8)"),
+            LambdaExpression::Int8(_) => "literal(int8)",
             #[cfg(feature = "dtype-i16")]
-            LambdaExpression::Int16(_) => write!(f, "literal(int16)"),
-            LambdaExpression::Int32(_) => write!(f, "literal(int32)"),
-            LambdaExpression::Int64(_) => write!(f, "literal(int64)"),
-            LambdaExpression::Float32(_) => write!(f, "literal(float32)"),
-            LambdaExpression::Float64(_) => write!(f, "literal(float64)"),
-            LambdaExpression::BinaryBlob(_) => write!(f, "literal(binary)"),
-            LambdaExpression::StaticStr(_) => write!(f, "literal(string)"),
-            LambdaExpression::Variable(v) => write!(f, "variable({})", v),
-            LambdaExpression::GreaterThan(_, _) => write!(f, "greater_than"),
-            LambdaExpression::GreaterThanOrEqual(_, _) => write!(f, "greater_than_or_equal"),
-            LambdaExpression::LessThan(_, _) => write!(f, "less_than"),
-            LambdaExpression::LessThanOrEqual(_, _) => write!(f, "less_than_or_equal"),
+            LambdaExpression::Int16(_) => "literal(int16)",
+            LambdaExpression::Int32(_) => "literal(int32)",
+            LambdaExpression::Int64(_) => "literal(int64)",
+            LambdaExpression::Float32(_) => "literal(float32)",
+            LambdaExpression::Float64(_) => "literal(float64)",
+            LambdaExpression::BinaryBlob(_) => "literal(binary)",
+            LambdaExpression::StaticStr(_) => "literal(string)",
+            LambdaExpression::Variable(_) => "variable({})",
+            LambdaExpression::GreaterThan(_, _) => "greater_than",
+            LambdaExpression::GreaterThanOrEqual(_, _) => "greater_than_or_equal",
+            LambdaExpression::LessThan(_, _) => "less_than",
+            LambdaExpression::LessThanOrEqual(_, _) => "less_than_or_equal",
             #[cfg(feature = "zip_with")]
-            LambdaExpression::IfThenElse(_, _, _) => write!(f, "if_then_else"),
-            LambdaExpression::Length(_) => write!(f, "length"),
+            LambdaExpression::IfThenElse(_, _, _) => "if_then_else",
+            LambdaExpression::Length(_) => "length",
             #[cfg(feature = "zip_with")]
-            LambdaExpression::CaseWhen(_, _) => write!(f, "case_when"),
-            LambdaExpression::Substring(_, _, _) => write!(f, "substring"),
-            LambdaExpression::Instr(_, _) => write!(f, "instr"),
-            LambdaExpression::Add(_, _) => write!(f, "add"),
-            LambdaExpression::IsNull(_) => write!(f, "is_null"),
-            LambdaExpression::IsNotNull(_) => write!(f, "is_not_null"),
-            LambdaExpression::EqualNullSafe(_, _) => write!(f, "equal_null_safe"),
-            LambdaExpression::Cast(_, _) => write!(f, "cast"),
+            LambdaExpression::CaseWhen(_, _) => "case_when",
+            LambdaExpression::Substring(_, _, _) => "substring",
+            LambdaExpression::Instr(_, _) => "instr",
+            LambdaExpression::Add(_, _) => "add",
+            LambdaExpression::IsNull(_) => "is_null",
+            LambdaExpression::IsNotNull(_) => "is_not_null",
+            LambdaExpression::EqualNullSafe(_, _) => "equal_null_safe",
+            LambdaExpression::Cast(_, _) => "cast",
         }
     }
-}
 
-impl LambdaExpression {
     pub fn is_literal(&self) -> bool {
         matches!(
             self,
@@ -203,7 +200,7 @@ impl LambdaExpression {
         #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
         tracy_gizmos::zone!(span, "evaluate");
         #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
-        span.text(self.to_string());
+        span.text(self.fmt_str());
 
         match self {
             LambdaExpression::Null => Ok(AnyValue::Null),
@@ -358,7 +355,7 @@ impl LambdaExpression {
         #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
         tracy_gizmos::zone!(span, "evaluate");
         #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
-        span.text(self.to_string());
+        span.text(self.fmt_str());
 
         match self {
             LambdaExpression::Null => Ok(Series::new_null(PlSmallStr::EMPTY, 1)),
@@ -563,202 +560,5 @@ impl LambdaExpression {
             LambdaExpression::EqualNullSafe(_, _) => DataType::Boolean,
             LambdaExpression::Cast(_, data_type) => data_type.clone(),
         })
-    }
-}
-
-// Was using these to debug but I see no harm in having more unit tests, in fact we should probably have more here
-#[cfg(test)]
-mod tests {
-    use crate::prelude::{AnyValue, LambdaExpression, Series};
-
-    #[test]
-    fn test_empty_transform() {
-        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
-        let empty_lambda = LambdaExpression::StaticStr("meep".into());
-
-        let res = empty_lambda.eval(&start_array, None).unwrap();
-        assert_eq!(res.len(), 2);
-
-        assert_eq!(res.str().unwrap().get(0).unwrap(), "meep");
-        assert_eq!(res.str().unwrap().get(1).unwrap(), "meep");
-    }
-
-    #[test]
-    fn test_lambda_length() {
-        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
-        let length_lambda = LambdaExpression::Length(Box::new(LambdaExpression::Variable(0)));
-
-        let res = length_lambda.eval(&start_array, None).unwrap();
-        unsafe {
-            assert_eq!(res.i32().unwrap().value_unchecked(0), 12);
-            assert_eq!(res.i32().unwrap().value_unchecked(1), 13);
-        }
-    }
-
-    #[test]
-    fn test_lambda_substring() {
-        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
-        let substring_lambda = LambdaExpression::Substring(
-            Box::new(LambdaExpression::Variable(0)),
-            Box::new(LambdaExpression::Int32(4)),
-            Box::new(LambdaExpression::Int32(2)),
-        );
-
-        let res = substring_lambda.eval(&start_array, None).unwrap();
-        // Substring should start at the index of the element in the array + 2
-        unsafe {
-            assert_eq!(res.str().unwrap().value_unchecked(0), "1=");
-            assert_eq!(res.str().unwrap().value_unchecked(1), "2=");
-        }
-    }
-
-    #[test]
-    fn test_lambda_with_index() {
-        let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
-        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
-        let substring_lambda = LambdaExpression::Substring(
-            Box::new(LambdaExpression::Variable(0)),
-            Box::new(LambdaExpression::Add(
-                Box::new(LambdaExpression::Variable(1)),
-                Box::new(LambdaExpression::Int32(2)),
-            )),
-            Box::new(LambdaExpression::Int32(2)),
-        );
-
-        let res = substring_lambda
-            .eval(&start_array, Some(&index_series))
-            .unwrap();
-        unsafe {
-            assert_eq!(res.str().unwrap().value_unchecked(0), "y1");
-            assert_eq!(res.str().unwrap().value_unchecked(1), "2=");
-        }
-    }
-
-    #[cfg(feature = "zip_with")]
-    #[test]
-    fn test_lambda_casewhen() {
-        let start_array = Series::from_iter(vec![
-            "key1==value1",
-            "key2===u",
-            "key3==value3whichisverylong",
-        ]);
-        let casewhen_lambda = LambdaExpression::CaseWhen(
-            vec![(
-                LambdaExpression::GreaterThan(
-                    Box::new(LambdaExpression::Length(Box::new(
-                        LambdaExpression::Variable(0),
-                    ))),
-                    Box::new(LambdaExpression::Int32(10)),
-                ),
-                LambdaExpression::Variable(0),
-            )],
-            Box::new(LambdaExpression::StaticStr("nope".into())),
-        );
-
-        let res = casewhen_lambda.eval(&start_array, None).unwrap();
-        unsafe {
-            assert_eq!(res.str().unwrap().value_unchecked(0), "key1==value1");
-            assert_eq!(res.str().unwrap().value_unchecked(1), "nope");
-            assert_eq!(
-                res.str().unwrap().value_unchecked(2),
-                "key3==value3whichisverylong"
-            );
-        }
-    }
-
-    #[cfg(feature = "zip_with")]
-    #[test]
-    fn test_array_sort() {
-        // let start_array = Series::from_iter(vec![0i32, 0, 0, 0, 0]);
-        let start_array = Series::from_iter(vec![
-            Some(1i32),
-            None,
-            Some(2),
-            Some(3),
-            None,
-            Some(4),
-            Some(5),
-        ]);
-        // CASE
-        // WHEN
-        //     isnull(lambda x_8#28858)
-        // THEN
-        //     CASE
-        //     WHEN
-        //         isnull(lambda y_9#28859)
-        //     THEN
-        //         0
-        //     ELSE
-        //         1
-        //     END
-        // WHEN
-        //     isnull(lambda y_9#28859)
-        // THEN
-        //     -1
-        // WHEN
-        //     (lambda x_8#28858 > lambda y_9#28859)
-        // THEN
-        //     1
-        // WHEN
-        //     (lambda x_8#28858 < lambda y_9#28859)
-        // THEN
-        //     -1
-        // ELSE
-        //     0
-        // END
-        let ascending_lambda = LambdaExpression::CaseWhen(
-            vec![
-                (
-                    LambdaExpression::IsNull(LambdaExpression::Variable(0).into()),
-                    LambdaExpression::CaseWhen(
-                        vec![(
-                            LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
-                            LambdaExpression::Int32(0),
-                        )],
-                        LambdaExpression::Int32(1).into(),
-                    ),
-                ),
-                (
-                    LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
-                    LambdaExpression::Int32(-1),
-                ),
-                (
-                    LambdaExpression::GreaterThan(
-                        LambdaExpression::Variable(0).into(),
-                        LambdaExpression::Variable(1).into(),
-                    ),
-                    LambdaExpression::Int32(1),
-                ),
-                (
-                    LambdaExpression::LessThan(
-                        LambdaExpression::Variable(0).into(),
-                        LambdaExpression::Variable(1).into(),
-                    ),
-                    LambdaExpression::Int32(-1),
-                ),
-            ],
-            LambdaExpression::Int32(0).into(),
-        );
-
-        let mut vals = start_array.iter().collect::<Vec<_>>();
-        vals.sort_by(|curr, next| {
-            ascending_lambda
-                .eval_window(curr, next)
-                .unwrap()
-                .try_into()
-                .unwrap()
-        });
-        assert_eq!(
-            vals,
-            vec![
-                AnyValue::Int32(1),
-                AnyValue::Int32(2),
-                AnyValue::Int32(3),
-                AnyValue::Int32(4),
-                AnyValue::Int32(5),
-                AnyValue::Null,
-                AnyValue::Null
-            ]
-        );
     }
 }
