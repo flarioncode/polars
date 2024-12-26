@@ -144,6 +144,7 @@ impl Hash for LambdaExpression {
 }
 
 impl LambdaExpression {
+    #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
     fn fmt_str(&self) -> &'static str {
         match self {
             LambdaExpression::Null => "literal(null)",
