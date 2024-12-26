@@ -1,3 +1,4 @@
+use polars_core::utils::RegexWrap;
 #[cfg(feature = "regex")]
 use regex::Regex;
 
@@ -40,14 +41,10 @@ impl StringNameSpace {
     pub fn contains_regex(self, s: String, pat: Arc<Regex>) -> Expr {
         use polars_core::utils::RegexWrap;
 
-        self.0.map_many_private(
-            FunctionExpr::StringExpr(StringFunction::ContainsRegex {
+        self.0
+            .map_private(FunctionExpr::StringExpr(StringFunction::ContainsRegex {
                 regex: Some(RegexWrap(s, pat)),
-            }),
-            &[],
-            false,
-            Some(Default::default()),
-        )
+            }))
     }
 
     /// Uses aho-corasick to find many patterns.
@@ -171,6 +168,17 @@ impl StringNameSpace {
             &[pat],
             false,
             Some(Default::default()),
+        )
+    }
+
+    /// Extract a regex pattern from the a string value. If `group_index` is out of bounds, null is returned.
+    pub fn extract_precompiled(self, group_index: usize, s: String, regex: Arc<Regex>) -> Expr {
+        self.0.map_private(
+            StringFunction::ExtractPrecompiled {
+                group_index,
+                regex: Some(RegexWrap(s, regex)),
+            }
+            .into(),
         )
     }
 
@@ -427,10 +435,40 @@ impl StringNameSpace {
 
     #[cfg(feature = "regex")]
     /// Replace values that match a regex `pat` with a `value`.
+    pub fn replace_precompiled(self, value: Expr, s: String, regex: Arc<Regex>) -> Expr {
+        use polars_core::utils::RegexWrap;
+
+        self.0.map_many_private(
+            FunctionExpr::StringExpr(StringFunction::ReplacePrecompiled {
+                n: 1,
+                regex: Some(RegexWrap(s, regex)),
+            }),
+            &[value],
+            false,
+            Some(Default::default()),
+        )
+    }
+
+    #[cfg(feature = "regex")]
+    /// Replace values that match a regex `pat` with a `value`.
     pub fn replace_n(self, pat: Expr, value: Expr, literal: bool, n: i64) -> Expr {
         self.0.map_many_private(
             FunctionExpr::StringExpr(StringFunction::Replace { n, literal }),
             &[pat, value],
+            false,
+            Some(Default::default()),
+        )
+    }
+
+    #[cfg(feature = "regex")]
+    /// Replace values that match a regex `pat` with a `value`.
+    pub fn replace_n_precompiled(self, value: Expr, s: String, regex: Arc<Regex>, n: i64) -> Expr {
+        self.0.map_many_private(
+            FunctionExpr::StringExpr(StringFunction::ReplacePrecompiled {
+                n,
+                regex: Some(RegexWrap(s, regex)),
+            }),
+            &[value],
             false,
             Some(Default::default()),
         )
@@ -442,6 +480,21 @@ impl StringNameSpace {
         self.0.map_many_private(
             FunctionExpr::StringExpr(StringFunction::Replace { n: -1, literal }),
             &[pat, value],
+            false,
+            Some(Default::default()),
+        )
+    }
+
+    #[cfg(feature = "regex")]
+    pub fn replace_all_precompiled(self, value: Expr, s: String, regex: Arc<Regex>) -> Expr {
+        use polars_core::utils::RegexWrap;
+
+        self.0.map_many_private(
+            FunctionExpr::StringExpr(StringFunction::ReplacePrecompiled {
+                n: -1,
+                regex: Some(RegexWrap(s, regex)),
+            }),
+            &[value],
             false,
             Some(Default::default()),
         )
@@ -623,6 +676,22 @@ impl StringNameSpace {
             &[pat],
             false,
             None,
+        )
+    }
+
+    /// Extract each successive non-overlapping match in an individual string as an array
+    pub fn extract_all_with_group_precompiled(
+        self,
+        group_index: usize,
+        s: String,
+        regex: Arc<Regex>,
+    ) -> Expr {
+        self.0.map_private(
+            StringFunction::ExtractAllPrecompiled {
+                group_index,
+                regex: Some(RegexWrap(s, regex)),
+            }
+            .into(),
         )
     }
 

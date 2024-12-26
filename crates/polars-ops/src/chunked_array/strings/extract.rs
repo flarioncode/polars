@@ -74,7 +74,7 @@ pub(super) fn extract_groups(
     Series::try_from((ca.name().clone(), chunks))
 }
 
-fn extract_group_reg_lit(
+pub(crate) fn extract_group_reg_lit(
     arr: &Utf8ViewArray,
     reg: &Regex,
     group_index: usize,

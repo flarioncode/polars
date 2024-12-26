@@ -17,6 +17,7 @@ pub use arrow::trusted_len::TrustMyLength;
 use flatten::*;
 use num_traits::{One, Zero};
 use rayon::prelude::*;
+use regex::Regex;
 pub use schema::*;
 pub use series::*;
 pub use supertype::*;
@@ -36,24 +37,25 @@ impl<T> Deref for Wrap<T> {
 }
 
 // This is giant trust me bro
+// `P` is the type of pointer that holds the regex
 #[derive(Debug, Clone)]
-pub struct RegexWrap<T>(pub String, pub T);
+pub struct RegexWrap<P: AsRef<Regex>>(pub String, pub P);
 
-impl<T, U: AsRef<T>> AsRef<T> for RegexWrap<U> {
-    fn as_ref(&self) -> &T {
+impl<P: AsRef<Regex>> AsRef<Regex> for RegexWrap<P> {
+    fn as_ref(&self) -> &Regex {
         self.1.as_ref()
     }
 }
 
-impl<T> PartialEq for RegexWrap<T> {
+impl<P: AsRef<Regex>> PartialEq for RegexWrap<P> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
-impl<T> Eq for RegexWrap<T> {}
+impl<P: AsRef<Regex>> Eq for RegexWrap<P> {}
 
-impl<T> std::hash::Hash for RegexWrap<T> {
+impl<P: AsRef<Regex>> std::hash::Hash for RegexWrap<P> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.hash(state);
     }

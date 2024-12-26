@@ -48,7 +48,17 @@ pub enum StringFunction {
     CountMatches(bool),
     EndsWith,
     Extract(usize),
+    ExtractPrecompiled {
+        group_index: usize,
+        #[cfg_attr(feature = "serde", serde(skip))]
+        regex: Option<RegexWrap<Arc<Regex>>>,
+    },
     ExtractAll(usize),
+    ExtractAllPrecompiled {
+        group_index: usize,
+        #[cfg_attr(feature = "serde", serde(skip))]
+        regex: Option<RegexWrap<Arc<Regex>>>,
+    },
     #[cfg(feature = "extract_groups")]
     ExtractGroups {
         dtype: DataType,
@@ -77,6 +87,14 @@ pub enum StringFunction {
         // how many matches to replace
         n: i64,
         literal: bool,
+    },
+    #[cfg(feature = "regex")]
+    ReplacePrecompiled {
+        // negative is replace all
+        // how many matches to replace
+        n: i64,
+        #[cfg_attr(feature = "serde", serde(skip))]
+        regex: Option<RegexWrap<Arc<Regex>>>,
     },
     #[cfg(feature = "string_reverse")]
     Reverse,
@@ -161,7 +179,11 @@ impl StringFunction {
             CountMatches(_) => mapper.with_dtype(DataType::UInt32),
             EndsWith | StartsWith => mapper.with_dtype(DataType::Boolean),
             Extract(_) => mapper.with_same_dtype(),
+            ExtractPrecompiled { .. } => mapper.with_same_dtype(),
             ExtractAll(_) => mapper.with_dtype(DataType::List(Box::new(DataType::String))),
+            ExtractAllPrecompiled { .. } => {
+                mapper.with_dtype(DataType::List(Box::new(DataType::String)))
+            },
             #[cfg(feature = "extract_groups")]
             ExtractGroups { dtype, .. } => mapper.with_dtype(dtype.clone()),
             #[cfg(feature = "string_to_integer")]
@@ -176,6 +198,8 @@ impl StringFunction {
             LenChars => mapper.with_dtype(DataType::UInt32),
             #[cfg(feature = "regex")]
             Replace { .. } => mapper.with_same_dtype(),
+            #[cfg(feature = "regex")]
+            ReplacePrecompiled { .. } => mapper.with_same_dtype(),
             #[cfg(feature = "string_reverse")]
             Reverse => mapper.with_same_dtype(),
             #[cfg(feature = "temporal")]
@@ -235,11 +259,13 @@ impl Display for StringFunction {
             CountMatches(_) => "count_matches",
             EndsWith { .. } => "ends_with",
             Extract(_) => "extract",
+            ExtractPrecompiled { .. } => "extract_precompiled",
             #[cfg(feature = "concat_str")]
             ConcatHorizontal { .. } => "concat_horizontal",
             #[cfg(feature = "concat_str")]
             ConcatVertical { .. } => "concat_vertical",
             ExtractAll(_) => "extract_all",
+            ExtractAllPrecompiled { .. } => "extract_all_precompiled",
             #[cfg(feature = "extract_groups")]
             ExtractGroups { .. } => "extract_groups",
             #[cfg(feature = "string_to_integer")]
@@ -261,6 +287,8 @@ impl Display for StringFunction {
             PadStart { .. } => "pad_start",
             #[cfg(feature = "regex")]
             Replace { .. } => "replace",
+            #[cfg(feature = "regex")]
+            ReplacePrecompiled { .. } => "replace_precompiled",
             #[cfg(feature = "string_reverse")]
             Reverse => "reverse",
             #[cfg(feature = "string_encoding")]
@@ -328,7 +356,7 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             #[cfg(feature = "regex")]
             Contains { literal, strict } => map_as_slice!(strings::contains, literal, strict),
             #[cfg(feature = "regex")]
-            ContainsRegex { regex } => map_as_slice!(
+            ContainsRegex { regex } => map!(
                 strings::contains_regex,
                 RegexWrap::as_ref(regex.as_ref().unwrap())
             ),
@@ -338,8 +366,22 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             EndsWith { .. } => map_as_slice!(strings::ends_with),
             StartsWith { .. } => map_as_slice!(strings::starts_with),
             Extract(group_index) => map_as_slice!(strings::extract, group_index),
+            ExtractPrecompiled { group_index, regex } => {
+                map!(
+                    strings::extract_precompiled,
+                    group_index,
+                    RegexWrap::as_ref(regex.as_ref().unwrap())
+                )
+            },
             ExtractAll(group_index) => {
                 map_as_slice!(strings::extract_all, group_index)
+            },
+            ExtractAllPrecompiled { group_index, regex } => {
+                map!(
+                    strings::extract_all_precompiled,
+                    group_index,
+                    RegexWrap::as_ref(regex.as_ref().unwrap())
+                )
             },
             #[cfg(feature = "extract_groups")]
             ExtractGroups { pat, dtype } => {
@@ -385,6 +427,14 @@ impl From<StringFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             } => map_as_slice!(strings::concat_hor, &delimiter, ignore_nulls, force_nulls),
             #[cfg(feature = "regex")]
             Replace { n, literal } => map_as_slice!(strings::replace, literal, n),
+            #[cfg(feature = "regex")]
+            ReplacePrecompiled { n, regex } => {
+                map_as_slice!(
+                    strings::replace_precompiled,
+                    n,
+                    RegexWrap::as_ref(regex.as_ref().unwrap())
+                )
+            },
             #[cfg(feature = "string_reverse")]
             Reverse => map!(strings::reverse),
             Uppercase => map!(uppercase),
@@ -527,8 +577,8 @@ pub(super) fn contains(s: &[Series], literal: bool, strict: bool) -> PolarsResul
         .map(|ok| ok.into_series())
 }
 
-pub(super) fn contains_regex(ca: &[Series], regex: &Regex) -> PolarsResult<Series> {
-    let ca = ca[0].str()?;
+pub(super) fn contains_regex(s: &Series, regex: &Regex) -> PolarsResult<Series> {
+    let ca = s.str()?;
     let array: BooleanChunked = unary_elementwise_values(ca, |s| regex.is_match(s));
     Ok(array.into_series())
 }
@@ -568,6 +618,21 @@ pub(super) fn extract(s: &[Series], group_index: usize) -> PolarsResult<Series> 
     let ca = s[0].str()?;
     let pat = s[1].str()?;
     ca.extract(pat, group_index).map(|ca| ca.into_series())
+}
+
+/// Extract a regex pattern from the a string value.
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
+pub(super) fn extract_precompiled(
+    s: &Series,
+    group_index: usize,
+    regex: &Regex,
+) -> PolarsResult<Series> {
+    let ca = s.str()?;
+    ca.extract_precompiled(group_index, regex)
+        .map(|ca| ca.into_series())
 }
 
 #[cfg(feature = "extract_groups")]
@@ -655,6 +720,21 @@ pub(super) fn extract_all(args: &[Series], group_index: usize) -> PolarsResult<S
     } else {
         ca.extract_all_many(pat).map(|ca| ca.into_series())
     }
+}
+
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
+pub(super) fn extract_all_precompiled(
+    s: &Series,
+    group_index: usize,
+    regex: &Regex,
+) -> PolarsResult<Series> {
+    let ca = s.str()?;
+
+    ca.extract_all_precompiled(group_index, regex)
+        .map(|ca| ca.into_series())
 }
 
 pub(super) fn count_matches(args: &[Series], literal: bool) -> PolarsResult<Series> {
@@ -1078,6 +1158,33 @@ pub(super) fn replace(s: &[Series], literal: bool, n: i64) -> PolarsResult<Serie
         replace_all(column, pat, val, literal)
     } else {
         replace_n(column, pat, val, literal, n as usize)
+    }
+    .map(|ca| ca.into_series())
+}
+
+#[cfg(feature = "regex")]
+#[cfg_attr(
+    all(feature = "tracy", not(feature = "tracy-no-instrument")),
+    tracy_gizmos::instrument
+)]
+pub(super) fn replace_precompiled<'a>(
+    s: &'a [Series],
+    n: i64,
+    pat: &'a Regex,
+) -> PolarsResult<Series> {
+    let column = &s[0];
+    let val = &s[1];
+    let all = n < 0;
+
+    let column = column.str()?;
+    let val = val.str()?;
+
+    if all {
+        let f = |s: &'a str, val: &'a str| pat.replace_all(s, val);
+        Ok(iter_and_replace(column, val, f))
+    } else {
+        let f = |s: &'a str, val: &'a str| pat.replacen(s, n as usize, val);
+        Ok(iter_and_replace(column, val, f))
     }
     .map(|ca| ca.into_series())
 }
