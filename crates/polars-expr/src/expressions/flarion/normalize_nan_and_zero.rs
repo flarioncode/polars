@@ -52,6 +52,10 @@ impl PhysicalExpr for FlarionNormalizeNanAndZeroExpr {
         Some(&self.expr)
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let s_f = || self.input.evaluate(df, state);
 

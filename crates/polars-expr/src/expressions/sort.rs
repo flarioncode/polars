@@ -47,6 +47,7 @@ impl PhysicalExpr for SortExpr {
     fn as_expression(&self) -> Option<&Expr> {
         Some(&self.expr)
     }
+
     #[cfg_attr(
         all(feature = "tracy", not(feature = "tracy-no-instrument")),
         tracy_gizmos::instrument
@@ -56,11 +57,11 @@ impl PhysicalExpr for SortExpr {
         series.sort_with(self.options)
     }
 
-    #[allow(clippy::ptr_arg)]
     #[cfg_attr(
         all(feature = "tracy", not(feature = "tracy-no-instrument")),
         tracy_gizmos::instrument
     )]
+    #[allow(clippy::ptr_arg)]
     fn evaluate_on_groups<'a>(
         &self,
         df: &DataFrame,

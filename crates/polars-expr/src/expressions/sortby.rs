@@ -191,6 +191,7 @@ impl PhysicalExpr for SortByExpr {
     fn as_expression(&self) -> Option<&Expr> {
         Some(&self.expr)
     }
+
     #[cfg_attr(
         all(feature = "tracy", not(feature = "tracy-no-instrument")),
         tracy_gizmos::instrument
@@ -251,11 +252,11 @@ impl PhysicalExpr for SortByExpr {
         unsafe { Ok(series.take_unchecked(&sorted_idx)) }
     }
 
-    #[allow(clippy::ptr_arg)]
     #[cfg_attr(
         all(feature = "tracy", not(feature = "tracy-no-instrument")),
         tracy_gizmos::instrument
     )]
+    #[allow(clippy::ptr_arg)]
     fn evaluate_on_groups<'a>(
         &self,
         df: &DataFrame,

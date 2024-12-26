@@ -282,6 +282,20 @@ impl<T: NativeType> MutablePrimitiveArray<T> {
         }
     }
 
+    /// Truncates the values to the specified len
+    pub fn truncate(&mut self, len: usize) {
+        if len >= self.len() {
+            return;
+        }
+
+        self.values.truncate(len);
+        if let Some(validity) = &mut self.validity {
+            unsafe {
+                validity.set_len(len);
+            }
+        }
+    }
+
     /// Returns the capacity of this [`MutablePrimitiveArray`].
     pub fn capacity(&self) -> usize {
         self.values.capacity()

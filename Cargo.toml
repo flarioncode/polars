@@ -142,6 +142,11 @@ features = [
 # packed_simd_2 = { git = "https://github.com/rust-lang/packed_simd", rev = "e57c7ba11386147e6d2cbad7c88f376aab4bdc86" }
 # simd-json = { git = "https://github.com/ritchie46/simd-json", branch = "alignment" }
 
+# I use this to compile tests otherwise my computer crashes(I think OOM)
+[profile.dev-no-debug]
+inherits = "dev"
+debug = false
+
 [profile.opt-dev]
 inherits = "dev"
 opt-level = 1

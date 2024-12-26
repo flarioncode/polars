@@ -20,6 +20,11 @@ impl PhysicalExpr for LiteralExpr {
     fn as_expression(&self) -> Option<&Expr> {
         Some(&self.1)
     }
+
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate(&self, _df: &DataFrame, _state: &ExecutionState) -> PolarsResult<Series> {
         use LiteralValue::*;
         let s = match &self.0 {
@@ -106,6 +111,10 @@ impl PhysicalExpr for LiteralExpr {
         Ok(s)
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     #[allow(clippy::ptr_arg)]
     fn evaluate_on_groups<'a>(
         &self,

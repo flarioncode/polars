@@ -1,6 +1,7 @@
+use std::cmp::Ordering;
 use std::fmt::Write;
 
-use arrow::array::ValueSize;
+use arrow::array::{MutableArray, MutablePrimitiveArray, ValueSize};
 use arrow::legacy::kernels::list::{index_is_oob, sublist_get};
 use polars_core::chunked_array::builder::get_list_builder;
 #[cfg(feature = "list_gather")]
@@ -255,34 +256,99 @@ pub trait ListNameSpaceImpl: AsList {
         }
     }
 
-    fn lst_filter_by_func(
-        &self,
-        lambda_expressions: Arc<LambdaExpression>,
-    ) -> PolarsResult<ListChunked> {
-        let ca = self.as_list();
+    fn eval_lambda_on_amort(
+        s_ref: &Series,
+        lambda_expression: Arc<LambdaExpression>,
+        index_data: Option<&mut (MutablePrimitiveArray<i32>, AmortSeries)>,
+    ) -> PolarsResult<Series> {
+        let s_len = s_ref.len() as i32;
+        (if let Some((index_arr, index_amort)) = index_data {
+            let index_count = index_arr.len() as i32;
+            match index_count.cmp(&s_len) {
+                Ordering::Less => index_arr.extend_trusted_len_values(index_count..s_len),
+                Ordering::Greater => index_arr.truncate(s_len as usize),
+                Ordering::Equal => {} // Do nothing
+            }
 
-        // Apply the filter to each inner list while maintaining outer structure
-        let filtered = ca.try_apply_amortized(|s| {
-            // Convert AmortizedSeries to Series reference
-            let s_ref = s.as_ref();
-            let index_series = Series::from_iter(1i32..=s_ref.len() as i32);
-            s_ref.filter(
-                lambda_expressions
-                    .eval(s_ref, &index_series, true)?
-                    .bool()?,
-            )
-        })?;
-
-        Ok(filtered)
+            unsafe {
+                index_amort.with_array(&mut index_arr.as_box(), |arr| {
+                    lambda_expression.eval(s_ref, Some(arr.as_ref()))
+                })
+            }
+        } else {
+            lambda_expression.eval(s_ref, None)
+        }).and_then(|eval_result| {
+            let eval_result_len = eval_result.len() as i32;
+            match eval_result_len {
+                // Equal length, job's a good'n
+                len if len == s_len => Ok(eval_result),
+                // We returned a literal, needs to be repeated to match the length of the input, unlikely case
+                1 => Ok(match eval_result.dtype() {
+                    DataType::Boolean => Series::from_iter(std::iter::repeat_n(eval_result.bool()?.get(0), s_len as usize)),
+                    #[cfg(feature = "dtype-i8")]
+                    DataType::Int8 => Series::from_iter(std::iter::repeat_n(eval_result.i8()?.get(0), s_len as usize)),
+                    #[cfg(feature = "dtype-i16")]
+                    DataType::Int16 => Series::from_iter(std::iter::repeat_n(eval_result.i16()?.get(0), s_len as usize)),
+                    DataType::Int32 => Series::from_iter(std::iter::repeat_n(eval_result.i32()?.get(0), s_len as usize)),
+                    DataType::Int64 => Series::from_iter(std::iter::repeat_n(eval_result.i64()?.get(0), s_len as usize)),
+                    DataType::Float32 => Series::from_iter(std::iter::repeat_n(eval_result.f32()?.get(0), s_len as usize)),
+                    DataType::Float64 => Series::from_iter(std::iter::repeat_n(eval_result.f64()?.get(0), s_len as usize)),
+                    DataType::String => Series::from_iter(std::iter::repeat_n(eval_result.str()?.get(0), s_len as usize)),
+                    DataType::Binary => BinaryChunked::from_iter(std::iter::repeat_n(eval_result.binary()?.get(0), s_len as usize)).into_series(),
+                    DataType::List(_) => ListChunked::from_iter(std::iter::repeat_n(eval_result.list()?.get_as_series(0), s_len as usize)).into_series(),
+                    other => polars_bail!(SchemaMismatch: "invalid dtype for lambda function: {}", other),
+                }),
+                // We returned a series of the wrong length, error
+                _ => polars_bail!(ShapeMismatch: "lambda function did not return a series of equal length")
+            }
+        })
     }
 
-    fn lst_transform(&self, lambda_expression: Arc<LambdaExpression>) -> PolarsResult<ListChunked> {
-        let ca = self.as_list();
-        ca.try_apply_amortized(|s| {
-            // Convert AmortizedSeries to Series reference
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
+    fn lst_filter_by_func(
+        &self,
+        lambda_expression: Arc<LambdaExpression>,
+        with_index: bool,
+    ) -> PolarsResult<ListChunked> {
+        let mut index_data = with_index.then(|| {
+            (
+                MutablePrimitiveArray::<i32>::with_capacity(8),
+                AmortSeries::new(Series::new_empty(PlSmallStr::EMPTY, &DataType::Int32).into()),
+            )
+        });
+
+        self.as_list().try_apply_amortized(|s| {
             let s_ref = s.as_ref();
-            let index_series = Series::from_iter(1i32..=s_ref.len() as i32);
-            lambda_expression.eval(s.as_ref(), &index_series, true)
+
+            s_ref.filter(
+                Self::eval_lambda_on_amort(s_ref, lambda_expression.clone(), index_data.as_mut())?
+                    .bool()?,
+            )
+        })
+    }
+
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
+    fn lst_transform(
+        &self,
+        lambda_expression: Arc<LambdaExpression>,
+        with_index: bool,
+    ) -> PolarsResult<ListChunked> {
+        let mut index_data = with_index.then(|| {
+            (
+                MutablePrimitiveArray::<i32>::with_capacity(8),
+                AmortSeries::new(Series::new_empty(PlSmallStr::EMPTY, &DataType::Int32).into()),
+            )
+        });
+
+        self.as_list().try_apply_amortized(|s| {
+            let s_ref = s.as_ref();
+            Self::eval_lambda_on_amort(s_ref, lambda_expression.clone(), index_data.as_mut())
         })
     }
 
@@ -919,4 +985,204 @@ fn cast_index(idx: Series, len: usize, null_on_oob: bool) -> PolarsResult<Series
     Ok(out)
 }
 
-// TODO: implement the above for ArrayChunked as well?
+// Was using these to debug but I see no harm in having more unit tests, in fact we should probably have more here
+#[cfg(test)]
+mod tests {
+    use polars_core::prelude::{IntoSeries, LambdaExpression, ListChunked, Series, SortOptions};
+
+    use crate::chunked_array::ListNameSpaceImpl;
+
+    #[test]
+    fn test_empty_transform() {
+        let start_array =
+            ListChunked::from_iter([Series::from_iter(["key1==value1", "key2===value2"])])
+                .into_series();
+        let empty_lambda = LambdaExpression::StaticStr("meep".into());
+
+        let result = start_array
+            .list()
+            .unwrap()
+            .lst_transform(empty_lambda.into(), false)
+            .expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
+        assert_eq!(res.len(), 2);
+
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "meep");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "meep");
+    }
+
+    #[test]
+    fn test_lambda_length() {
+        let start_array =
+            ListChunked::from_iter([Series::from_iter(["key1==value1", "key2===value2"])])
+                .into_series();
+        let length_lambda = LambdaExpression::Length(Box::new(LambdaExpression::Variable(0)));
+
+        let result = start_array
+            .list()
+            .unwrap()
+            .lst_transform(length_lambda.into(), false)
+            .expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+        assert_eq!(res.i32().unwrap().get(0).unwrap(), 12);
+        assert_eq!(res.i32().unwrap().get(1).unwrap(), 13);
+    }
+
+    #[test]
+    fn test_lambda_substring() {
+        let start_array =
+            ListChunked::from_iter([Series::from_iter(vec!["key1==value1", "key2===value2"])])
+                .into_series();
+        let substring_lambda = LambdaExpression::Substring(
+            Box::new(LambdaExpression::Variable(0)),
+            Box::new(LambdaExpression::Int32(4)),
+            Box::new(LambdaExpression::Int32(2)),
+        );
+
+        let result = start_array
+            .list()
+            .unwrap()
+            .lst_transform(substring_lambda.into(), false)
+            .expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
+        // Substring should start at the index of the element in the array + 2
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "1=");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "2=");
+    }
+
+    #[test]
+    fn test_lambda_with_index() {
+        let start_array =
+            ListChunked::from_iter([Series::from_iter(vec!["key1==value1", "key2===value2"])])
+                .into_series();
+        let substring_lambda = LambdaExpression::Substring(
+            Box::new(LambdaExpression::Variable(0)),
+            Box::new(LambdaExpression::Add(
+                Box::new(LambdaExpression::Variable(1)),
+                Box::new(LambdaExpression::Int32(2)),
+            )),
+            Box::new(LambdaExpression::Int32(2)),
+        );
+
+        let result = start_array
+            .list()
+            .unwrap()
+            .lst_transform(substring_lambda.into(), true)
+            .expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
+        // Apparently this should be 0 indexed, not 1 as I thought
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "ey");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "y2");
+    }
+
+    #[test]
+    fn test_lambda_casewhen() {
+        let start_array = ListChunked::from_iter([Series::from_iter(vec![
+            "key1==value1",
+            "key2===u",
+            "key3==value3whichisverylong",
+        ])])
+        .into_series();
+
+        let casewhen_lambda = LambdaExpression::CaseWhen(
+            vec![(
+                LambdaExpression::GreaterThan(
+                    Box::new(LambdaExpression::Length(Box::new(
+                        LambdaExpression::Variable(0),
+                    ))),
+                    Box::new(LambdaExpression::Int32(10)),
+                ),
+                LambdaExpression::Variable(0),
+            )],
+            Box::new(LambdaExpression::StaticStr("nope".into())),
+        );
+
+        let result = start_array
+            .list()
+            .unwrap()
+            .lst_transform(casewhen_lambda.into(), false)
+            .expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "key1==value1");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "nope");
+        assert_eq!(
+            res.str().unwrap().get(2).unwrap(),
+            "key3==value3whichisverylong"
+        );
+    }
+
+    #[test]
+    fn test_array_sort() {
+        let start_array = ListChunked::from_iter([Series::from_iter(vec![
+            Some(1i32),
+            None,
+            Some(2),
+            Some(3),
+            None,
+            Some(4),
+            Some(5),
+        ])])
+        .into_series();
+
+        let ascending_lambda = LambdaExpression::CaseWhen(
+            vec![
+                (
+                    LambdaExpression::IsNull(LambdaExpression::Variable(0).into()),
+                    LambdaExpression::CaseWhen(
+                        vec![(
+                            LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
+                            LambdaExpression::Int32(0),
+                        )],
+                        LambdaExpression::Int32(1).into(),
+                    ),
+                ),
+                (
+                    LambdaExpression::IsNull(LambdaExpression::Variable(1).into()),
+                    LambdaExpression::Int32(-1),
+                ),
+                (
+                    LambdaExpression::GreaterThan(
+                        LambdaExpression::Variable(0).into(),
+                        LambdaExpression::Variable(1).into(),
+                    ),
+                    LambdaExpression::Int32(1),
+                ),
+                (
+                    LambdaExpression::LessThan(
+                        LambdaExpression::Variable(0).into(),
+                        LambdaExpression::Variable(1).into(),
+                    ),
+                    LambdaExpression::Int32(-1),
+                ),
+            ],
+            LambdaExpression::Int32(0).into(),
+        );
+
+        let result = start_array
+            .list()
+            .unwrap()
+            .lst_sort_by_func(
+                SortOptions::new().with_nulls_last(true),
+                ascending_lambda.into(),
+            )
+            .expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
+        assert_eq!(
+            res,
+            Series::from_iter(vec![
+                Some(1i32),
+                Some(2),
+                Some(3),
+                Some(4),
+                Some(5),
+                None,
+                None
+            ])
+        );
+    }
+}

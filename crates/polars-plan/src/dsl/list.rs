@@ -35,6 +35,7 @@ impl ListNameSpace {
     pub fn drop_nulls(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::DropNulls))
+            .with_fmt("lst_drop_nulls")
     }
 
     #[cfg(feature = "list_sample")]
@@ -85,63 +86,78 @@ impl ListNameSpace {
     pub fn len(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Length))
+            .with_fmt("lst_len")
     }
 
     /// Compute the maximum of the items in every sublist.
     pub fn max(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Max))
+            .with_fmt("lst_max")
     }
 
     /// Compute the minimum of the items in every sublist.
     pub fn min(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Min))
+            .with_fmt("lst_min")
     }
 
     /// Compute the sum the items in every sublist.
     pub fn sum(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Sum))
+            .with_fmt("lst_sum")
     }
 
     /// Compute the mean of every sublist and return a `Series` of dtype `Float64`
     pub fn mean(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Mean))
+            .with_fmt("lst_mean")
     }
 
     pub fn median(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Median))
+            .with_fmt("lst_median")
     }
 
     pub fn std(self, ddof: u8) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Std(ddof)))
+            .with_fmt("lst_std")
     }
 
     pub fn var(self, ddof: u8) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Var(ddof)))
+            .with_fmt("lst_var")
     }
 
-    pub fn filter_by_func(self, func: LambdaExpression) -> Expr {
+    pub fn filter_by_func(self, func: LambdaExpression, with_index: bool) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::FilterByFunc(
                 func.into(),
+                with_index,
             )))
+            .with_fmt("lst_filter_by_func")
     }
 
-    pub fn transform(self, func: LambdaExpression) -> Expr {
+    pub fn transform(self, func: LambdaExpression, with_index: bool) -> Expr {
         self.0
-            .map_private(FunctionExpr::ListExpr(ListFunction::Transform(func.into())))
+            .map_private(FunctionExpr::ListExpr(ListFunction::Transform(
+                func.into(),
+                with_index,
+            )))
+            .with_fmt("lst_transform")
     }
 
     /// Sort every sublist.
     pub fn sort(self, options: SortOptions) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Sort(options)))
+            .with_fmt("lst_sort")
     }
 
     pub fn sort_by_func(self, options: SortOptions, func: LambdaExpression) -> Expr {
@@ -150,24 +166,28 @@ impl ListNameSpace {
                 options,
                 func.into(),
             )))
+            .with_fmt("lst_sort_by_func")
     }
 
     /// Reverse every sublist
     pub fn reverse(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Reverse))
+            .with_fmt("lst_rev")
     }
 
     /// Keep only the unique values in every sublist.
     pub fn unique(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Unique(false)))
+            .with_fmt("lst_unique")
     }
 
     /// Keep only the unique values in every sublist.
     pub fn unique_stable(self) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::Unique(true)))
+            .with_fmt("lst_stable_unique")
     }
 
     pub fn n_unique(self) -> Expr {
