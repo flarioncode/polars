@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt::Write;
 
-use arrow::array::{Array, MutableArray, MutablePrimitiveArray, ValueSize};
+use arrow::array::{MutableArray, MutablePrimitiveArray, ValueSize};
 use arrow::legacy::kernels::list::{index_is_oob, sublist_get};
 use polars_core::chunked_array::builder::get_list_builder;
 #[cfg(feature = "list_gather")]
@@ -270,11 +270,8 @@ pub trait ListNameSpaceImpl: AsList {
                 Ordering::Equal => {} // Do nothing
             }
 
-            // Create a temporary Box<dyn Array> for this iteration, this is unsafe code but I think should be ok here??
-            let mut temp_box: Box<dyn Array> = unsafe { std::mem::transmute(index_arr.as_box()) };
-
             unsafe {
-                index_amort.with_array(&mut temp_box, |arr| {
+                index_amort.with_array(&mut index_arr.as_box(), |arr| {
                     lambda_expression.eval(s_ref, Some(arr.as_ref()))
                 })
             }
