@@ -17,6 +17,7 @@ pub use arrow::trusted_len::TrustMyLength;
 use flatten::*;
 use num_traits::{One, Zero};
 use rayon::prelude::*;
+#[cfg(feature = "regex")]
 use regex::Regex;
 pub use schema::*;
 pub use series::*;
@@ -36,25 +37,30 @@ impl<T> Deref for Wrap<T> {
     }
 }
 
-// This is giant trust me bro
-// `P` is the type of pointer that holds the regex
+// This is giant `trust me bro`
+// `P` is the type of pointer that holds the regex, currently only Arc is used tbh
+#[cfg(feature = "regex")]
 #[derive(Debug, Clone)]
 pub struct RegexWrap<P: AsRef<Regex>>(pub String, pub P);
 
+#[cfg(feature = "regex")]
 impl<P: AsRef<Regex>> AsRef<Regex> for RegexWrap<P> {
     fn as_ref(&self) -> &Regex {
         self.1.as_ref()
     }
 }
 
+#[cfg(feature = "regex")]
 impl<P: AsRef<Regex>> PartialEq for RegexWrap<P> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
+#[cfg(feature = "regex")]
 impl<P: AsRef<Regex>> Eq for RegexWrap<P> {}
 
+#[cfg(feature = "regex")]
 impl<P: AsRef<Regex>> std::hash::Hash for RegexWrap<P> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.hash(state);
