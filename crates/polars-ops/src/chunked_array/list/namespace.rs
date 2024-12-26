@@ -281,29 +281,27 @@ pub trait ListNameSpaceImpl: AsList {
             lambda_expression.eval(s_ref, None)
         }).and_then(|eval_result| {
             let eval_result_len = eval_result.len() as i32;
-            if eval_result_len != s_len {
-                if eval_result_len == 1 {
-                    // This will only happen when we return literals, so no need to support unsigned integers
-                    Ok(match eval_result.dtype() {
-                        DataType::Boolean => Series::from_iter(std::iter::repeat_n(eval_result.bool()?.get(0), s_len as usize)),
-                        #[cfg(feature = "dtype-i8")]
-                        DataType::Int8 => Series::from_iter(std::iter::repeat_n(eval_result.i8()?.get(0), s_len as usize)),
-                        #[cfg(feature = "dtype-i16")]
-                        DataType::Int16 => Series::from_iter(std::iter::repeat_n(eval_result.i16()?.get(0), s_len as usize)),
-                        DataType::Int32 => Series::from_iter(std::iter::repeat_n(eval_result.i32()?.get(0), s_len as usize)),
-                        DataType::Int64 => Series::from_iter(std::iter::repeat_n(eval_result.i64()?.get(0), s_len as usize)),
-                        DataType::Float32 => Series::from_iter(std::iter::repeat_n(eval_result.f32()?.get(0), s_len as usize)),
-                        DataType::Float64 => Series::from_iter(std::iter::repeat_n(eval_result.f64()?.get(0), s_len as usize)),
-                        DataType::String => Series::from_iter(std::iter::repeat_n(eval_result.str()?.get(0), s_len as usize)),
-                        DataType::Binary => BinaryChunked::from_iter(std::iter::repeat_n(eval_result.binary()?.get(0), s_len as usize)).into_series(),
-                        DataType::List(_) => ListChunked::from_iter(std::iter::repeat_n(eval_result.list()?.get_as_series(0), s_len as usize)).into_series(),
-                        other => polars_bail!(SchemaMismatch: "invalid dtype for lambda function: {}", other),
-                    })
-                } else {
-                    polars_bail!(ShapeMismatch: "lambda function did not return a series of equal length")
-                }
-            } else {
-                Ok(eval_result)
+            match eval_result_len {
+                // Equal length, job's a good'n
+                len if len == s_len => Ok(eval_result),
+                // We returned a literal, needs to be repeated to match the length of the input, unlikely case
+                1 => Ok(match eval_result.dtype() {
+                    DataType::Boolean => Series::from_iter(std::iter::repeat_n(eval_result.bool()?.get(0), s_len as usize)),
+                    #[cfg(feature = "dtype-i8")]
+                    DataType::Int8 => Series::from_iter(std::iter::repeat_n(eval_result.i8()?.get(0), s_len as usize)),
+                    #[cfg(feature = "dtype-i16")]
+                    DataType::Int16 => Series::from_iter(std::iter::repeat_n(eval_result.i16()?.get(0), s_len as usize)),
+                    DataType::Int32 => Series::from_iter(std::iter::repeat_n(eval_result.i32()?.get(0), s_len as usize)),
+                    DataType::Int64 => Series::from_iter(std::iter::repeat_n(eval_result.i64()?.get(0), s_len as usize)),
+                    DataType::Float32 => Series::from_iter(std::iter::repeat_n(eval_result.f32()?.get(0), s_len as usize)),
+                    DataType::Float64 => Series::from_iter(std::iter::repeat_n(eval_result.f64()?.get(0), s_len as usize)),
+                    DataType::String => Series::from_iter(std::iter::repeat_n(eval_result.str()?.get(0), s_len as usize)),
+                    DataType::Binary => BinaryChunked::from_iter(std::iter::repeat_n(eval_result.binary()?.get(0), s_len as usize)).into_series(),
+                    DataType::List(_) => ListChunked::from_iter(std::iter::repeat_n(eval_result.list()?.get_as_series(0), s_len as usize)).into_series(),
+                    other => polars_bail!(SchemaMismatch: "invalid dtype for lambda function: {}", other),
+                }),
+                // We returned a series of the wrong length, error
+                _ => polars_bail!(ShapeMismatch: "lambda function did not return a series of equal length")
             }
         })
     }
@@ -1003,7 +1001,10 @@ mod tests {
                 .into_series();
         let empty_lambda = LambdaExpression::StaticStr("meep".into());
 
-        let result = start_array.list().unwrap().lst_transform(empty_lambda.into(), false)
+        let result = start_array
+            .list()
+            .unwrap()
+            .lst_transform(empty_lambda.into(), false)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
 
@@ -1020,7 +1021,9 @@ mod tests {
                 .into_series();
         let length_lambda = LambdaExpression::Length(Box::new(LambdaExpression::Variable(0)));
 
-        let result = start_array.list().unwrap()
+        let result = start_array
+            .list()
+            .unwrap()
             .lst_transform(length_lambda.into(), false)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
@@ -1030,14 +1033,18 @@ mod tests {
 
     #[test]
     fn test_lambda_substring() {
-        let start_array = ListChunked::from_iter([Series::from_iter(vec!["key1==value1", "key2===value2"])]).into_series();
+        let start_array =
+            ListChunked::from_iter([Series::from_iter(vec!["key1==value1", "key2===value2"])])
+                .into_series();
         let substring_lambda = LambdaExpression::Substring(
             Box::new(LambdaExpression::Variable(0)),
             Box::new(LambdaExpression::Int32(4)),
             Box::new(LambdaExpression::Int32(2)),
         );
 
-        let result = start_array.list().unwrap()
+        let result = start_array
+            .list()
+            .unwrap()
             .lst_transform(substring_lambda.into(), false)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
@@ -1061,7 +1068,9 @@ mod tests {
             Box::new(LambdaExpression::Int32(2)),
         );
 
-        let result = start_array.list().unwrap()
+        let result = start_array
+            .list()
+            .unwrap()
             .lst_transform(substring_lambda.into(), true)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
@@ -1092,7 +1101,9 @@ mod tests {
             Box::new(LambdaExpression::StaticStr("nope".into())),
         );
 
-        let result = start_array.list().unwrap()
+        let result = start_array
+            .list()
+            .unwrap()
             .lst_transform(casewhen_lambda.into(), false)
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
@@ -1152,8 +1163,13 @@ mod tests {
             LambdaExpression::Int32(0).into(),
         );
 
-        let result = start_array.list().unwrap()
-            .lst_sort_by_func(SortOptions::new().with_nulls_last(true), ascending_lambda.into())
+        let result = start_array
+            .list()
+            .unwrap()
+            .lst_sort_by_func(
+                SortOptions::new().with_nulls_last(true),
+                ascending_lambda.into(),
+            )
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
 
