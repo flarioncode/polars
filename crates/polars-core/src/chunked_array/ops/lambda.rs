@@ -158,6 +158,10 @@ impl LambdaExpression {
         )
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     pub fn eval_window<'a>(
         &'a self,
         curr: &AnyValue<'a>,
@@ -312,7 +316,11 @@ impl LambdaExpression {
         }
     }
 
-    pub fn eval(&self, s: &Series, i: &Series, is_root: bool) -> PolarsResult<Series> {
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
+    pub fn eval(&self, s: &Series, i: Option<&Series>, is_root: bool) -> PolarsResult<Series> {
         let repeat_count = if is_root { s.len() } else { 1 }; // Handle broadcast lambdas expressions if root
         match self {
             LambdaExpression::Null => Ok(Series::new_null(PlSmallStr::EMPTY, 1)),
@@ -334,7 +342,7 @@ impl LambdaExpression {
                 Ok(Series::from_iter(iter::repeat_n(v.as_ref(), repeat_count)))
             },
             LambdaExpression::Variable(0) => Ok(s.clone()),
-            LambdaExpression::Variable(1) => Ok(i.clone()),
+            LambdaExpression::Variable(1) => Ok(i.unwrap().clone()),
             LambdaExpression::Variable(_) => {
                 polars_bail!(InvalidOperation: "No 3rd variable exists for eval")
             },
@@ -534,12 +542,9 @@ mod tests {
     #[test]
     fn test_empty_transform() {
         let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
-        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
         let empty_lambda = LambdaExpression::StaticStr("meep".into());
 
-        let res = empty_lambda
-            .eval(&start_array, &index_series, true)
-            .unwrap();
+        let res = empty_lambda.eval(&start_array, None, true).unwrap();
         assert_eq!(res.len(), 2);
 
         assert_eq!(res.str().unwrap().get(0).unwrap(), "meep");
@@ -549,12 +554,9 @@ mod tests {
     #[test]
     fn test_lambda_length() {
         let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
-        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
         let length_lambda = LambdaExpression::Length(Box::new(LambdaExpression::Variable(0)));
 
-        let res = length_lambda
-            .eval(&start_array, &index_series, true)
-            .unwrap();
+        let res = length_lambda.eval(&start_array, None, true).unwrap();
         unsafe {
             assert_eq!(res.i32().unwrap().value_unchecked(0), 12);
             assert_eq!(res.i32().unwrap().value_unchecked(1), 13);
@@ -564,16 +566,13 @@ mod tests {
     #[test]
     fn test_lambda_substring() {
         let start_array = Series::from_iter(vec!["key1==value1", "key2===value2"]);
-        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
         let substring_lambda = LambdaExpression::Substring(
             Box::new(LambdaExpression::Variable(0)),
             Box::new(LambdaExpression::Int32(4)),
             Box::new(LambdaExpression::Int32(2)),
         );
 
-        let res = substring_lambda
-            .eval(&start_array, &index_series, true)
-            .unwrap();
+        let res = substring_lambda.eval(&start_array, None, true).unwrap();
         // Substring should start at the index of the element in the array + 2
         unsafe {
             assert_eq!(res.str().unwrap().value_unchecked(0), "1=");
@@ -595,7 +594,7 @@ mod tests {
         );
 
         let res = substring_lambda
-            .eval(&start_array, &index_series, true)
+            .eval(&start_array, Some(&index_series), true)
             .unwrap();
         unsafe {
             assert_eq!(res.str().unwrap().value_unchecked(0), "y1");
@@ -611,7 +610,6 @@ mod tests {
             "key2===u",
             "key3==value3whichisverylong",
         ]);
-        let index_series = Series::from_iter(1i32..=start_array.len() as i32);
         let casewhen_lambda = LambdaExpression::CaseWhen(
             vec![(
                 LambdaExpression::GreaterThan(
@@ -625,9 +623,7 @@ mod tests {
             Box::new(LambdaExpression::StaticStr("nope".into())),
         );
 
-        let res = casewhen_lambda
-            .eval(&start_array, &index_series, true)
-            .unwrap();
+        let res = casewhen_lambda.eval(&start_array, None, true).unwrap();
         unsafe {
             assert_eq!(res.str().unwrap().value_unchecked(0), "key1==value1");
             assert_eq!(res.str().unwrap().value_unchecked(1), "nope");

@@ -99,6 +99,7 @@ impl ExprNameNameSpace {
             .map_private(FunctionExpr::StructExpr(StructFunction::PrefixFields(
                 PlSmallStr::from_str(prefix),
             )))
+            .with_fmt("prefix_fields")
     }
 
     #[cfg(feature = "dtype-struct")]
@@ -107,6 +108,7 @@ impl ExprNameNameSpace {
             .map_private(FunctionExpr::StructExpr(StructFunction::SuffixFields(
                 PlSmallStr::from_str(suffix),
             )))
+            .with_fmt("suffix_fields")
     }
 }
 

@@ -14,6 +14,7 @@ impl StructNameSpace {
                 options.flags |= FunctionFlags::ALLOW_RENAME;
                 options
             })
+            .with_fmt("field_by_index")
     }
 
     /// Retrieve one or multiple of the fields of this [`StructChunked`] as a new Series.
@@ -35,6 +36,7 @@ impl StructNameSpace {
                 options.flags |= FunctionFlags::ALLOW_RENAME;
                 options
             })
+            .with_fmt("multiple_fields")
     }
 
     /// Retrieve one of the fields of this [`StructChunked`] as a new Series.
@@ -51,6 +53,7 @@ impl StructNameSpace {
                 options.flags |= FunctionFlags::ALLOW_RENAME;
                 options
             })
+            .with_fmt("field_by_name")
     }
 
     /// Rename the fields of the [`StructChunked`].
@@ -67,12 +70,14 @@ impl StructNameSpace {
             .map_private(FunctionExpr::StructExpr(StructFunction::RenameFields(
                 names,
             )))
+            .with_fmt("rename_fields")
     }
 
     #[cfg(feature = "json")]
     pub fn json_encode(self) -> Expr {
         self.0
             .map_private(FunctionExpr::StructExpr(StructFunction::JsonEncode))
+            .with_fmt("json_encode")
     }
 
     pub fn with_fields(self, fields: Vec<Expr>) -> PolarsResult<Expr> {

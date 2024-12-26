@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use arrow::array::ValueSize;
+use arrow::array::{Array, MutableArray, MutablePrimitiveArray, ValueSize};
 use arrow::legacy::kernels::list::{index_is_oob, sublist_get};
 use polars_core::chunked_array::builder::get_list_builder;
 #[cfg(feature = "list_gather")]
@@ -255,34 +255,92 @@ pub trait ListNameSpaceImpl: AsList {
         }
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn lst_filter_by_func(
         &self,
-        lambda_expressions: Arc<LambdaExpression>,
+        lambda_expression: Arc<LambdaExpression>,
+        with_index: bool,
     ) -> PolarsResult<ListChunked> {
-        let ca = self.as_list();
-
-        // Apply the filter to each inner list while maintaining outer structure
-        let filtered = ca.try_apply_amortized(|s| {
-            // Convert AmortizedSeries to Series reference
-            let s_ref = s.as_ref();
-            let index_series = Series::from_iter(1i32..=s_ref.len() as i32);
-            s_ref.filter(
-                lambda_expressions
-                    .eval(s_ref, &index_series, true)?
-                    .bool()?,
+        let mut index_data = with_index.then(|| {
+            (
+                MutablePrimitiveArray::<i32>::with_capacity(8),
+                AmortSeries::new(Series::new_empty(PlSmallStr::EMPTY, &DataType::Int32).into()),
             )
-        })?;
+        });
 
-        Ok(filtered)
+        self.as_list().try_apply_amortized(|s| {
+            let s_ref = s.as_ref();
+
+            s_ref.filter(
+                if let Some((index_arr, index_amort)) = &mut index_data {
+                    let s_len = s_ref.len() as i32;
+                    let index_count = index_arr.len() as i32;
+                    if index_count < s_len {
+                        index_arr.extend_trusted_len_values(index_count..s_len)
+                    } else {
+                        index_arr.truncate(s_len as usize);
+                    }
+
+                    // Create a temporary Box<dyn Array> for this iteration, this is unsafe code but I think should be ok here??
+                    let mut temp_box: Box<dyn Array> =
+                        unsafe { std::mem::transmute(index_arr.as_box()) };
+
+                    unsafe {
+                        index_amort.with_array(&mut temp_box, |arr| {
+                            lambda_expression.eval(s_ref, Some(arr.as_ref()), true)
+                        })
+                    }
+                } else {
+                    lambda_expression.eval(s_ref, None, true)
+                }?
+                .bool()?,
+            )
+        })
     }
 
-    fn lst_transform(&self, lambda_expression: Arc<LambdaExpression>) -> PolarsResult<ListChunked> {
-        let ca = self.as_list();
-        ca.try_apply_amortized(|s| {
-            // Convert AmortizedSeries to Series reference
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
+    fn lst_transform(
+        &self,
+        lambda_expression: Arc<LambdaExpression>,
+        with_index: bool,
+    ) -> PolarsResult<ListChunked> {
+        let mut index_data = with_index.then(|| {
+            (
+                MutablePrimitiveArray::<i32>::with_capacity(8),
+                AmortSeries::new(Series::new_empty(PlSmallStr::EMPTY, &DataType::Int32).into()),
+            )
+        });
+
+        self.as_list().try_apply_amortized(|s| {
             let s_ref = s.as_ref();
-            let index_series = Series::from_iter(1i32..=s_ref.len() as i32);
-            lambda_expression.eval(s.as_ref(), &index_series, true)
+
+            if let Some((index_arr, index_amort)) = &mut index_data {
+                let s_len = s_ref.len() as i32;
+                let index_count = index_arr.len() as i32;
+                if index_count < s_len {
+                    index_arr.extend_trusted_len_values(index_count..s_len)
+                } else {
+                    index_arr.truncate(s_len as usize);
+                }
+
+                // Create a temporary Box<dyn Array> for this iteration, this is unsafe code but I think should be ok here??
+                let mut temp_box: Box<dyn Array> =
+                    unsafe { std::mem::transmute(index_arr.as_box()) };
+
+                unsafe {
+                    index_amort.with_array(&mut temp_box, |arr| {
+                        lambda_expression.eval(s_ref, Some(arr.as_ref()), true)
+                    })
+                }
+            } else {
+                lambda_expression.eval(s_ref, None, true)
+            }
         })
     }
 

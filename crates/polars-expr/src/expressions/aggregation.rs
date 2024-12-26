@@ -50,6 +50,10 @@ impl PhysicalExpr for AggregationExpr {
         None
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let s = self.input.evaluate(df, state)?;
 
@@ -177,6 +181,7 @@ impl PhysicalExpr for AggregationExpr {
             GroupByMethod::Quantile(_, _) => unimplemented!(),
         }
     }
+
     #[allow(clippy::ptr_arg)]
     #[cfg_attr(
         all(feature = "tracy", not(feature = "tracy-no-instrument")),
@@ -713,6 +718,10 @@ impl PhysicalExpr for AggQuantileExpr {
         None
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
         let input = self.input.evaluate(df, state)?;
         let quantile = self.get_quantile(df, state)?;
@@ -720,6 +729,7 @@ impl PhysicalExpr for AggQuantileExpr {
             .quantile_reduce(quantile, self.interpol)
             .map(|sc| sc.into_series(input.name().clone()))
     }
+
     #[allow(clippy::ptr_arg)]
     #[cfg_attr(
         all(feature = "tracy", not(feature = "tracy-no-instrument")),

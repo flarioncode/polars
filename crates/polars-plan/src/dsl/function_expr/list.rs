@@ -57,9 +57,9 @@ pub enum ListFunction {
     #[cfg(feature = "dtype-array")]
     ToArray(usize),
     // Flarion functions
-    FilterByFunc(Arc<LambdaExpression>),
+    FilterByFunc(Arc<LambdaExpression>, bool),
     SortByFunc(SortOptions, Arc<LambdaExpression>),
-    Transform(Arc<LambdaExpression>),
+    Transform(Arc<LambdaExpression>, bool),
     FlarionSlice,
 }
 
@@ -109,9 +109,9 @@ impl ListFunction {
             ToArray(width) => mapper.try_map_dtype(|dt| map_list_dtype_to_array_dtype(dt, *width)),
             NUnique => mapper.with_dtype(IDX_DTYPE),
             // Flarion functions
-            FilterByFunc(_) => mapper.with_same_dtype(),
+            FilterByFunc(_, _) => mapper.with_same_dtype(),
             SortByFunc(_, _) => mapper.with_same_dtype(),
-            Transform(lambda) => mapper.map_dtype(|dt| match dt {
+            Transform(lambda, _) => mapper.map_dtype(|dt| match dt {
                 DataType::List(dt) => DataType::List(lambda.return_type(dt).unwrap().into()),
                 _ => lambda.return_type(dt).unwrap(),
             }),
@@ -188,9 +188,9 @@ impl Display for ListFunction {
             #[cfg(feature = "dtype-array")]
             ToArray(_) => "to_array",
             // Flarion functions
-            FilterByFunc(_) => "filter_by_func",
+            FilterByFunc(_, _) => "filter_by_func",
             SortByFunc(_, _) => "sort_by_func",
-            Transform(_) => "transform",
+            Transform(_, _) => "transform",
             FlarionSlice => "flarion_slice",
         };
         write!(f, "list.{name}")
@@ -254,9 +254,9 @@ impl From<ListFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             ToArray(width) => map!(to_array, width),
             NUnique => map!(n_unique),
             // Flarion functions
-            FilterByFunc(lambda) => map!(filter_by_func, lambda.clone()),
+            FilterByFunc(lambda, with_index) => map!(filter_by_func, lambda.clone(), with_index),
             SortByFunc(options, lambda) => map!(sort_by_func, options, lambda.clone()),
-            Transform(lambda) => map!(transform, lambda.clone()),
+            Transform(lambda, with_index) => map!(transform, lambda.clone(), with_index),
             FlarionSlice => wrap!(flarion_slice),
         }
     }
@@ -703,12 +703,22 @@ pub(super) fn diff(s: &Series, n: i64, null_behavior: NullBehavior) -> PolarsRes
     Ok(s.list()?.lst_diff(n, null_behavior)?.into_series())
 }
 
-pub(super) fn filter_by_func(s: &Series, lambda: Arc<LambdaExpression>) -> PolarsResult<Series> {
-    Ok(s.list()?.lst_filter_by_func(lambda)?.into_series())
+pub(super) fn filter_by_func(
+    s: &Series,
+    lambda: Arc<LambdaExpression>,
+    with_index: bool,
+) -> PolarsResult<Series> {
+    Ok(s.list()?
+        .lst_filter_by_func(lambda, with_index)?
+        .into_series())
 }
 
-pub(super) fn transform(s: &Series, lambda: Arc<LambdaExpression>) -> PolarsResult<Series> {
-    Ok(s.list()?.lst_transform(lambda)?.into_series())
+pub(super) fn transform(
+    s: &Series,
+    lambda: Arc<LambdaExpression>,
+    with_index: bool,
+) -> PolarsResult<Series> {
+    Ok(s.list()?.lst_transform(lambda, with_index)?.into_series())
 }
 
 pub(super) fn sort(s: &Series, options: SortOptions) -> PolarsResult<Series> {

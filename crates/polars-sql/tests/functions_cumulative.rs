@@ -3,11 +3,11 @@ use polars_lazy::prelude::*;
 use polars_sql::*;
 
 fn create_df() -> LazyFrame {
-    df! {
+    df! [
       "Year" => [2018, 2018, 2019, 2019, 2020, 2020],
       "Country" => ["US", "UK", "US", "UK", "US", "UK"],
       "Sales" => [1000, 2000, 3000, 4000, 5000, 6000]
-    }
+    ]
     .unwrap()
     .lazy()
 }

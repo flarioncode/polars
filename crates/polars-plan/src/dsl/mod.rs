@@ -167,6 +167,7 @@ impl Expr {
     #[allow(clippy::should_implement_trait)]
     pub fn not(self) -> Expr {
         self.map_private(BooleanFunction::Not.into())
+            .with_fmt("not")
     }
 
     /// Rename Column.
@@ -181,12 +182,14 @@ impl Expr {
     #[allow(clippy::wrong_self_convention)]
     pub fn is_null(self) -> Self {
         self.map_private(BooleanFunction::IsNull.into())
+            .with_fmt("is_null")
     }
 
     /// Run is_not_null operation on `Expr`.
     #[allow(clippy::wrong_self_convention)]
     pub fn is_not_null(self) -> Self {
         self.map_private(BooleanFunction::IsNotNull.into())
+            .with_fmt("is_not_null")
     }
 
     /// Drop null values.
@@ -756,27 +759,32 @@ impl Expr {
     #[allow(clippy::wrong_self_convention)]
     pub fn is_finite(self) -> Self {
         self.map_private(BooleanFunction::IsFinite.into())
+            .with_fmt("is_finite")
     }
 
     /// Get mask of infinite values if dtype is Float.
     #[allow(clippy::wrong_self_convention)]
     pub fn is_infinite(self) -> Self {
         self.map_private(BooleanFunction::IsInfinite.into())
+            .with_fmt("is_infinite")
     }
 
     /// Get mask of NaN values if dtype is Float.
     pub fn is_nan(self) -> Self {
         self.map_private(BooleanFunction::IsNan.into())
+            .with_fmt("is_nan")
     }
 
     /// Get inverse mask of NaN values if dtype is Float.
     pub fn is_not_nan(self) -> Self {
         self.map_private(BooleanFunction::IsNotNan.into())
+            .with_fmt("is_not_nan")
     }
 
     /// Shift the values in the array by some period. See [the eager implementation](polars_core::series::SeriesTrait::shift).
     pub fn shift(self, n: Expr) -> Self {
         self.apply_many_private(FunctionExpr::Shift, &[n], false, false)
+            .with_fmt("shift")
     }
 
     /// Shift the values in the array by some period and fill the resulting empty values.
@@ -787,6 +795,7 @@ impl Expr {
             false,
             false,
         )
+        .with_fmt("shift_and_fill")
     }
 
     /// Cumulatively count values from 0 to len.
@@ -859,12 +868,14 @@ impl Expr {
     #[cfg(feature = "round_series")]
     pub fn round(self, decimals: u32) -> Self {
         self.map_private(FunctionExpr::Round { decimals })
+            .with_fmt("round_series")
     }
 
     /// Round to a number of significant figures.
     #[cfg(feature = "round_series")]
     pub fn round_sig_figs(self, digits: i32) -> Self {
         self.map_private(FunctionExpr::RoundSF { digits })
+            .with_fmt("round_sig_figs")
     }
 
     /// Floor underlying floating point array to the lowest integers smaller or equal to the float value.

@@ -47,7 +47,7 @@ impl Neg for Expr {
     type Output = Expr;
 
     fn neg(self) -> Self::Output {
-        self.map_private(FunctionExpr::Negate)
+        self.map_private(FunctionExpr::Negate).with_fmt("neg")
     }
 }
 
@@ -70,107 +70,125 @@ impl Expr {
     /// Compute the square root of the given expression
     pub fn sqrt(self) -> Self {
         self.map_private(FunctionExpr::Pow(PowFunction::Sqrt))
+            .with_fmt("sqrt")
     }
 
     /// Compute the cube root of the given expression
     pub fn cbrt(self) -> Self {
         self.map_private(FunctionExpr::Pow(PowFunction::Cbrt))
+            .with_fmt("cbrt")
     }
 
     /// Compute the cosine of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn cos(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::Cos))
+            .with_fmt("cos")
     }
 
     /// Compute the cotangent of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn cot(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::Cot))
+            .with_fmt("cot")
     }
 
     /// Compute the sine of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn sin(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::Sin))
+            .with_fmt("sin")
     }
 
     /// Compute the tangent of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn tan(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::Tan))
+            .with_fmt("tan")
     }
 
     /// Compute the inverse cosine of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn arccos(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::ArcCos))
+            .with_fmt("arc_cos")
     }
 
     /// Compute the inverse sine of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn arcsin(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::ArcSin))
+            .with_fmt("arc_sin")
     }
 
     /// Compute the inverse tangent of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn arctan(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::ArcTan))
+            .with_fmt("arc_tan")
     }
 
     /// Compute the inverse tangent of the given expression, with the angle expressed as the argument of a complex number
     #[cfg(feature = "trigonometry")]
     pub fn arctan2(self, x: Self) -> Self {
         self.map_many_private(FunctionExpr::Atan2, &[x], false, None)
+            .with_fmt("atan2")
     }
 
     /// Compute the hyperbolic cosine of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn cosh(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::Cosh))
+            .with_fmt("cosh")
     }
 
     /// Compute the hyperbolic sine of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn sinh(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::Sinh))
+            .with_fmt("sinh")
     }
 
     /// Compute the hyperbolic tangent of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn tanh(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::Tanh))
+            .with_fmt("tanh")
     }
 
     /// Compute the inverse hyperbolic cosine of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn arccosh(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::ArcCosh))
+            .with_fmt("arc_cosh")
     }
 
     /// Compute the inverse hyperbolic sine of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn arcsinh(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::ArcSinh))
+            .with_fmt("arc_sinh")
     }
 
     /// Compute the inverse hyperbolic tangent of the given expression
     #[cfg(feature = "trigonometry")]
     pub fn arctanh(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::ArcTanh))
+            .with_fmt("arc_tanh")
     }
 
     /// Convert from radians to degrees
     #[cfg(feature = "trigonometry")]
     pub fn degrees(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::Degrees))
+            .with_fmt("deg")
     }
 
     /// Convert from degrees to radians
     #[cfg(feature = "trigonometry")]
     pub fn radians(self) -> Self {
         self.map_private(FunctionExpr::Trigonometry(TrigonometricFunction::Radians))
+            .with_fmt("rad")
     }
 
     /// Compute the sign of the given expression

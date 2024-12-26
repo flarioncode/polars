@@ -37,18 +37,21 @@ impl BinaryNameSpace {
     pub fn size_bytes(self) -> Expr {
         self.0
             .map_private(FunctionExpr::BinaryExpr(BinaryFunction::Size))
+            .with_fmt("size_bytes")
     }
 
     #[cfg(feature = "binary_encoding")]
     pub fn hex_decode(self, strict: bool) -> Expr {
         self.0
             .map_private(FunctionExpr::BinaryExpr(BinaryFunction::HexDecode(strict)))
+            .with_fmt("hex_decode")
     }
 
     #[cfg(feature = "binary_encoding")]
     pub fn hex_encode(self) -> Expr {
         self.0
             .map_private(FunctionExpr::BinaryExpr(BinaryFunction::HexEncode))
+            .with_fmt("hex_encode")
     }
 
     #[cfg(feature = "binary_encoding")]
@@ -57,11 +60,13 @@ impl BinaryNameSpace {
             .map_private(FunctionExpr::BinaryExpr(BinaryFunction::Base64Decode(
                 strict,
             )))
+            .with_fmt("b64_decode")
     }
 
     #[cfg(feature = "binary_encoding")]
     pub fn base64_encode(self) -> Expr {
         self.0
             .map_private(FunctionExpr::BinaryExpr(BinaryFunction::Base64Encode))
+            .with_fmt("b64_encode")
     }
 }

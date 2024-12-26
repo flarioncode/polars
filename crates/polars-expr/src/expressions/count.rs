@@ -21,6 +21,10 @@ impl PhysicalExpr for CountExpr {
         Some(&self.expr)
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate(&self, df: &DataFrame, _state: &ExecutionState) -> PolarsResult<Series> {
         Ok(Series::new(
             PlSmallStr::from_static("len"),
@@ -28,6 +32,10 @@ impl PhysicalExpr for CountExpr {
         ))
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn evaluate_on_groups<'a>(
         &self,
         _df: &DataFrame,

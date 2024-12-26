@@ -27,6 +27,8 @@ pub struct ApplyExpr {
     check_lengths: bool,
     allow_group_aware: bool,
     output_dtype: Option<DataType>,
+    #[allow(dead_code)]
+    fmt_str: &'static str, // Only used in tracy
 }
 
 impl ApplyExpr {
@@ -62,6 +64,7 @@ impl ApplyExpr {
             check_lengths: options.check_lengths(),
             allow_group_aware: options.flags.contains(FunctionFlags::ALLOW_GROUP_AWARE),
             output_dtype,
+            fmt_str: options.fmt_str,
         }
     }
 
@@ -85,6 +88,7 @@ impl ApplyExpr {
             check_lengths: true,
             allow_group_aware: true,
             output_dtype: None,
+            fmt_str: "apply",
         }
     }
 
@@ -320,6 +324,11 @@ impl PhysicalExpr for ApplyExpr {
     }
 
     fn evaluate(&self, df: &DataFrame, state: &ExecutionState) -> PolarsResult<Series> {
+        #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
+        tracy_gizmos::zone!(span, "evaluate");
+        #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
+        span.text(self.fmt_str);
+
         let f = |e: &Arc<dyn PhysicalExpr>| e.evaluate(df, state);
         let mut inputs = if self.allow_threading && self.inputs.len() > 1 {
             POOL.install(|| {
@@ -341,16 +350,17 @@ impl PhysicalExpr for ApplyExpr {
     }
 
     #[allow(clippy::ptr_arg)]
-    #[cfg_attr(
-        all(feature = "tracy", not(feature = "tracy-no-instrument")),
-        tracy_gizmos::instrument
-    )]
     fn evaluate_on_groups<'a>(
         &self,
         df: &DataFrame,
         groups: &'a GroupsProxy,
         state: &ExecutionState,
     ) -> PolarsResult<AggregationContext<'a>> {
+        #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
+        tracy_gizmos::zone!(span, "evaluate_on_groups");
+        #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
+        span.text(self.fmt_str);
+
         polars_ensure!(
             self.allow_group_aware,
             expr = self.expr,

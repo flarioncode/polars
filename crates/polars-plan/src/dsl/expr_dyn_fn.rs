@@ -79,6 +79,10 @@ impl<F> SeriesUdf for F
 where
     F: Fn(&mut [Series]) -> PolarsResult<Option<Series>> + Send + Sync,
 {
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn call_udf(&self, s: &mut [Series]) -> PolarsResult<Option<Series>> {
         self(s)
     }
@@ -99,6 +103,10 @@ impl<F> SeriesBinaryUdf for F
 where
     F: Fn(Series, Series) -> PolarsResult<Series> + Send + Sync,
 {
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     fn call_udf(&self, a: Series, b: Series) -> PolarsResult<Series> {
         self(a, b)
     }
