@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt::Write;
 
 use arrow::array::{Array, MutableArray, MutablePrimitiveArray, ValueSize};
@@ -263,10 +264,10 @@ pub trait ListNameSpaceImpl: AsList {
         let s_len = s_ref.len() as i32;
         (if let Some((index_arr, index_amort)) = index_data {
             let index_count = index_arr.len() as i32;
-            if index_count < s_len {
-                index_arr.extend_trusted_len_values(index_count+1..=s_len)
-            } else {
-                index_arr.truncate(s_len as usize);
+            match index_count.cmp(&s_len) {
+                Ordering::Less => index_arr.extend_trusted_len_values(index_count..s_len),
+                Ordering::Greater => index_arr.truncate(s_len as usize),
+                Ordering::Equal => {} // Do nothing
             }
 
             // Create a temporary Box<dyn Array> for this iteration, this is unsafe code but I think should be ok here??
@@ -1075,8 +1076,9 @@ mod tests {
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
 
-        assert_eq!(res.str().unwrap().get(0).unwrap(), "y1");
-        assert_eq!(res.str().unwrap().get(1).unwrap(), "2=");
+        // Apparently this should be 0 indexed, not 1 as I thought
+        assert_eq!(res.str().unwrap().get(0).unwrap(), "ey");
+        assert_eq!(res.str().unwrap().get(1).unwrap(), "y2");
     }
 
     #[test]
