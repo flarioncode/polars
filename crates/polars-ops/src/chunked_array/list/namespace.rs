@@ -261,7 +261,7 @@ pub trait ListNameSpaceImpl: AsList {
         index_data: Option<&mut (MutablePrimitiveArray<i32>, AmortSeries)>,
     ) -> PolarsResult<Series> {
         let s_len = s_ref.len() as i32;
-        if let Some((index_arr, index_amort)) = index_data {
+        (if let Some((index_arr, index_amort)) = index_data {
             let index_count = index_arr.len() as i32;
             if index_count < s_len {
                 index_arr.extend_trusted_len_values(index_count..s_len)
@@ -279,12 +279,27 @@ pub trait ListNameSpaceImpl: AsList {
             }
         } else {
             lambda_expression.eval(s_ref, None)
-        }.and_then(|eval_result| {
+        }).and_then(|eval_result| {
             let eval_result_len = eval_result.len() as i32;
             if eval_result_len != s_len {
-                if eval_result.len() == 1 {
-                    let literal_val = eval_result.get(0).unwrap();
-                    eval_result.extend_constant(literal_val, (s_len - 1) as usize)
+                if eval_result_len == 1 {
+                    Ok(match eval_result.dtype() {
+                        DataType::Boolean => Series::from_iter(std::iter::repeat_n(eval_result.bool()?.get(0), s_len as usize)),
+                        DataType::UInt8 => Series::from_iter(std::iter::repeat_n(eval_result.u8()?.get(0), s_len as usize)),
+                        DataType::UInt16 => Series::from_iter(std::iter::repeat_n(eval_result.u16()?.get(0), s_len as usize)),
+                        DataType::UInt32 => Series::from_iter(std::iter::repeat_n(eval_result.u32()?.get(0), s_len as usize)),
+                        DataType::UInt64 => Series::from_iter(std::iter::repeat_n(eval_result.u64()?.get(0), s_len as usize)),
+                        DataType::Int8 => Series::from_iter(std::iter::repeat_n(eval_result.i8()?.get(0), s_len as usize)),
+                        DataType::Int16 => Series::from_iter(std::iter::repeat_n(eval_result.i16()?.get(0), s_len as usize)),
+                        DataType::Int32 => Series::from_iter(std::iter::repeat_n(eval_result.i32()?.get(0), s_len as usize)),
+                        DataType::Int64 => Series::from_iter(std::iter::repeat_n(eval_result.i64()?.get(0), s_len as usize)),
+                        DataType::Float32 => Series::from_iter(std::iter::repeat_n(eval_result.f32()?.get(0), s_len as usize)),
+                        DataType::Float64 => Series::from_iter(std::iter::repeat_n(eval_result.f64()?.get(0), s_len as usize)),
+                        DataType::String => Series::from_iter(std::iter::repeat_n(eval_result.str()?.get(0), s_len as usize)),
+                        DataType::Binary => BinaryChunked::from_iter(std::iter::repeat_n(eval_result.binary()?.get(0), s_len as usize)).into_series(),
+                        DataType::List(_) => ListChunked::from_iter(std::iter::repeat_n(eval_result.list()?.get_as_series(0), s_len as usize)).into_series(),
+                        other => polars_bail!(SchemaMismatch: "invalid dtype for lambda function: {}", other),
+                    })
                 } else {
                     polars_bail!(ShapeMismatch: "lambda function did not return a series of equal length")
                 }
@@ -978,7 +993,7 @@ fn cast_index(idx: Series, len: usize, null_on_oob: bool) -> PolarsResult<Series
 // Was using these to debug but I see no harm in having more unit tests, in fact we should probably have more here
 #[cfg(test)]
 mod tests {
-    use polars_core::prelude::{AnyValue, IntoSeries, LambdaExpression, ListChunked, Series};
+    use polars_core::prelude::{IntoSeries, LambdaExpression, ListChunked, Series, SortOptions};
 
     use crate::chunked_array::ListNameSpaceImpl;
 
@@ -1109,33 +1124,7 @@ mod tests {
             Some(5),
         ])])
         .into_series();
-        // CASE
-        // WHEN
-        //     isnull(lambda x_8#28858)
-        // THEN
-        //     CASE
-        //     WHEN
-        //         isnull(lambda y_9#28859)
-        //     THEN
-        //         0
-        //     ELSE
-        //         1
-        //     END
-        // WHEN
-        //     isnull(lambda y_9#28859)
-        // THEN
-        //     -1
-        // WHEN
-        //     (lambda x_8#28858 > lambda y_9#28859)
-        // THEN
-        //     1
-        // WHEN
-        //     (lambda x_8#28858 < lambda y_9#28859)
-        // THEN
-        //     -1
-        // ELSE
-        //     0
-        // END
+
         let ascending_lambda = LambdaExpression::CaseWhen(
             vec![
                 (
@@ -1170,25 +1159,23 @@ mod tests {
             LambdaExpression::Int32(0).into(),
         );
 
-        let mut vals = start_array.iter().collect::<Vec<_>>();
-        vals.sort_by(|curr, next| {
-            ascending_lambda
-                .eval_window(curr, next)
-                .unwrap()
-                .try_into()
-                .unwrap()
-        });
+        let result = start_array
+            .as_list()
+            .lst_sort_by_func(SortOptions::new().with_nulls_last(true), ascending_lambda.into())
+            .expect("Could not evaluate lambda");
+        let res = result.get_as_series(0).unwrap();
+
         assert_eq!(
-            vals,
-            vec![
-                AnyValue::Int32(1),
-                AnyValue::Int32(2),
-                AnyValue::Int32(3),
-                AnyValue::Int32(4),
-                AnyValue::Int32(5),
-                AnyValue::Null,
-                AnyValue::Null
-            ]
+            res,
+            Series::from_iter(vec![
+                Some(1i32),
+                Some(2),
+                Some(3),
+                Some(4),
+                Some(5),
+                None,
+                None
+            ])
         );
     }
 }
