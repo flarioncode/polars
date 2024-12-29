@@ -11,11 +11,12 @@ use polars_core::prelude::arity::*;
 use polars_core::prelude::flarion_funcs::flarion_split_helper;
 use polars_core::prelude::flarion_funcs::{flarion_instr_helper, flarion_slice_helper};
 use polars_utils::cache::FastFixedCache;
-use regex::{escape, RegexBuilder};
+use regex::{escape, Regex, RegexBuilder};
 
 use super::*;
 #[cfg(feature = "binary_encoding")]
 use crate::chunked_array::binary::BinaryNameSpaceImpl;
+use crate::chunked_array::strings::extract::extract_group_reg_lit;
 
 // We need this to infer the right lifetimes for the match closure.
 #[inline(always)]
@@ -415,6 +416,16 @@ pub trait StringNameSpaceImpl: AsString {
         super::extract::extract_group(ca, pat, group_index)
     }
 
+    /// Extract the nth capture group from pattern.
+    fn extract_precompiled(
+        &self,
+        group_index: usize,
+        regex: &Regex,
+    ) -> PolarsResult<StringChunked> {
+        let ca = self.as_string();
+        try_unary_mut_with_options(ca, |arr| extract_group_reg_lit(arr, regex, group_index))
+    }
+
     /// Extract each successive non-overlapping regex match in an individual string as an array.
     fn extract_all(&self, pat: &str, group_index: usize) -> PolarsResult<ListChunked> {
         let ca = self.as_string();
@@ -429,6 +440,33 @@ pub trait StringNameSpaceImpl: AsString {
                 match opt_s {
                     None => builder.append_null(),
                     Some(s) => builder.append_values_iter(reg.captures_iter(s).filter_map(|m| {
+                        if group_index == 0 {
+                            Some(m.get(0).unwrap().as_str())
+                        } else {
+                            m.get(group_index).map(|m| m.as_str())
+                        }
+                    })),
+                }
+            }
+        }
+        Ok(builder.finish())
+    }
+
+    /// Extract each successive non-overlapping regex match in an individual string as an array.
+    fn extract_all_precompiled(
+        &self,
+        group_index: usize,
+        regex: &Regex,
+    ) -> PolarsResult<ListChunked> {
+        let ca = self.as_string();
+
+        let mut builder =
+            ListStringChunkedBuilder::new(ca.name().clone(), ca.len(), ca.get_values_size());
+        for arr in ca.downcast_iter() {
+            for opt_s in arr {
+                match opt_s {
+                    None => builder.append_null(),
+                    Some(s) => builder.append_values_iter(regex.captures_iter(s).filter_map(|m| {
                         if group_index == 0 {
                             Some(m.get(0).unwrap().as_str())
                         } else {
