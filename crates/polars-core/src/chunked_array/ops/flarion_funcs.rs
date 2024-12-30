@@ -227,7 +227,7 @@ pub fn flarion_slice_helper(
             builder.finish()
         },
         _ => {
-            let mut builder = StringChunkedBuilder::new(PlSmallStr::EMPTY.into(), strings.len());
+            let mut builder = StringChunkedBuilder::new(PlSmallStr::EMPTY, strings.len());
             for (s_opt, (from_opt, len_opt)) in strings
                 .into_iter()
                 .zip(from_iter.into_iter().zip(lens_iter))
