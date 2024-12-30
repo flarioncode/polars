@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use arrow::array::ValueSize;
 use polars_error::{PolarsError, PolarsResult};
 use polars_utils::pl_str::PlSmallStr;
@@ -27,18 +28,18 @@ pub fn flarion_get_char_position(haystack: &str, needle: &str) -> i32 {
 }
 
 #[inline]
-pub fn substring_with_null_length(s: &str, from: i32) -> Option<String> {
+pub fn substring_with_null_length(s: &str, from: i32) -> Option<Cow<str>> {
     match from {
-        f if f <= 0 || f == 1 => Some(s.to_string()),
-        f if (f as usize) <= s.len() => Some(s[(f as usize - 1)..].to_string()),
+        f if f <= 0 || f == 1 => Some(Cow::Borrowed(s)),
+        f if (f as usize) <= s.len() => Some(Cow::Borrowed(&s[(f as usize - 1)..])),
         _ => None,
     }
 }
 
 // Core substring function that handles a single string
-pub fn flarion_substring(s: &str, from: i32, len: i32) -> String {
+pub fn flarion_substring(s: &str, from: i32, len: i32) -> Cow<str> {
     if s.is_empty() || len <= 0 {
-        return String::new();
+        return Cow::Borrowed(""); // returns a static empty string
     }
 
     if from >= 0 {
@@ -54,10 +55,10 @@ pub fn flarion_substring(s: &str, from: i32, len: i32) -> String {
         let end_char = iter.nth(len as usize - 1);
 
         match start_char {
-            None => String::new(),
+            None => Cow::Borrowed(""),
             Some((start_idx, _)) => match end_char {
-                None => s[start_idx..].to_string(),
-                Some((end_idx, _)) => s[start_idx..end_idx].to_string(),
+                None => Cow::Borrowed(&s[start_idx..]),
+                Some((end_idx, _)) => Cow::Borrowed(&s[start_idx..end_idx]),
             },
         }
     } else {
@@ -84,8 +85,8 @@ pub fn flarion_substring(s: &str, from: i32, len: i32) -> String {
         }
 
         match found_start {
-            true => s[start_char..end_char].to_string(),
-            false => s[..end_char].to_string(),
+            true => Cow::Borrowed(&s[start_char..end_char]),
+            false => Cow::Borrowed(&s[..end_char]),
         }
     }
 }

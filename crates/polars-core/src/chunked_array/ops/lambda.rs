@@ -292,13 +292,19 @@ impl LambdaExpression {
                 match (child, start, length) {
                     (AnyValue::String(s), AnyValue::Int32(start), AnyValue::Null) => {
                         if let Some(substr) = substring_with_null_length(s, start) {
-                            Ok(AnyValue::StringOwned(substr.into()))
+                            Ok(match substr {
+                                Cow::Borrowed(data) => AnyValue::String(data),
+                                Cow::Owned(data) => AnyValue::StringOwned(data.into())
+                            })
                         } else {
                             Ok(AnyValue::Null)
                         }
                     },
                     (AnyValue::String(s), AnyValue::Int32(start), AnyValue::Int32(length)) => Ok(
-                        AnyValue::StringOwned(flarion_substring(s, start, length).into()),
+                        match flarion_substring(s, start, length) {
+                            Cow::Borrowed(data) => AnyValue::String(data),
+                            Cow::Owned(data) => AnyValue::StringOwned(data.into())
+                        }
                     ),
                     (child, start, length) => {
                         polars_bail!(SchemaMismatch: "Expected (string, int32, int32), Found ({}, {}, {})", child, start, length)
