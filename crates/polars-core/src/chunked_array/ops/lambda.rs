@@ -354,7 +354,7 @@ impl LambdaExpression {
 
     pub fn eval(&self, s: &Series, i: Option<&Series>) -> PolarsResult<Series> {
         #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
-        tracy_gizmos::zone!(span, "evaluate");
+        tracy_gizmos::zone!(span, "eval");
         #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
         span.text(self.fmt_str());
 

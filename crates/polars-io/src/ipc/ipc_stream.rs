@@ -83,6 +83,10 @@ impl<R: Read> IpcStreamBatchedReader<R> {
         self.reader.reader_mut()
     }
 
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     pub fn read_next_batch(&mut self) -> PolarsResult<Option<DataFrame>> {
         match self.reader.next_record_batch()? {
             None => Ok(None),
@@ -266,6 +270,10 @@ pub struct IpcStreamBatchedWriter<W: Write> {
 }
 
 impl<W: Write> IpcStreamBatchedWriter<W> {
+    #[cfg_attr(
+        all(feature = "tracy", not(feature = "tracy-no-instrument")),
+        tracy_gizmos::instrument
+    )]
     pub fn write_batch(&mut self, df: &DataFrame) -> PolarsResult<()> {
         if df.is_empty() {
             return Ok(());
