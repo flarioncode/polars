@@ -265,8 +265,8 @@ pub struct IpcStreamBatchedWriter<W: Write> {
     total_written_bytes: usize,
 }
 
-impl<W: Write + Seek> IpcStreamBatchedWriter<W> {
-    pub fn write_batch(&mut self, df: &mut DataFrame) -> PolarsResult<()> {
+impl<W: Write> IpcStreamBatchedWriter<W> {
+    pub fn write_batch(&mut self, df: &DataFrame) -> PolarsResult<()> {
         if df.is_empty() {
             return Ok(());
         } // Avoid schema errors
@@ -293,18 +293,27 @@ impl<W: Write + Seek> IpcStreamBatchedWriter<W> {
     }
 
     /// WARNING: calling this if you opened the File without read permissions will hang!
-    pub fn finish(mut self, use_stream_position: bool) -> PolarsResult<usize> {
+    pub fn finish(mut self) -> PolarsResult<usize> {
         self.writer
             .finish()
             .map(|continuation_size| self.total_written_bytes += continuation_size)?;
 
-        if use_stream_position {
-            if let Ok(pos) = self.writer.into_inner().stream_position() {
-                return Ok(pos as usize);
-            } else {
-                eprintln!("Could not get stream position, defaulting to estimated size");
-            }
+        Ok(self.total_written_bytes)
+    }
+}
+
+impl<W: Write + Seek> IpcStreamBatchedWriter<W> {
+    pub fn finish_with_stream_position(mut self) -> PolarsResult<usize> {
+        self.writer
+            .finish()
+            .map(|continuation_size| self.total_written_bytes += continuation_size)?;
+
+        if let Ok(pos) = self.writer.into_inner().stream_position() {
+            return Ok(pos as usize);
+        } else {
+            eprintln!("Could not get stream position, defaulting to estimated size");
         }
+
         Ok(self.total_written_bytes)
     }
 }
