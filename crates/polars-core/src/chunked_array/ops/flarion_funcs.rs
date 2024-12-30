@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use arrow::array::ValueSize;
 use polars_error::{PolarsError, PolarsResult};
 use polars_utils::pl_str::PlSmallStr;
@@ -28,18 +27,18 @@ pub fn flarion_get_char_position(haystack: &str, needle: &str) -> i32 {
 }
 
 #[inline]
-pub fn substring_with_null_length(s: &str, from: i32) -> Option<Cow<str>> {
+pub fn substring_with_null_length(s: &str, from: i32) -> Option<&str> {
     match from {
-        f if f <= 0 || f == 1 => Some(Cow::Borrowed(s)),
-        f if (f as usize) <= s.len() => Some(Cow::Borrowed(&s[(f as usize - 1)..])),
+        f if f <= 0 || f == 1 => Some(s),
+        f if (f as usize) <= s.len() => Some(&s[(f as usize - 1)..]),
         _ => None,
     }
 }
 
 // Core substring function that handles a single string
-pub fn flarion_substring(s: &str, from: i32, len: i32) -> Cow<str> {
+pub fn flarion_substring(s: &str, from: i32, len: i32) -> &str {
     if s.is_empty() || len <= 0 {
-        return Cow::Borrowed(""); // returns a static empty string
+        return ""; // returns a static empty string
     }
 
     if from >= 0 {
@@ -55,10 +54,10 @@ pub fn flarion_substring(s: &str, from: i32, len: i32) -> Cow<str> {
         let end_char = iter.nth(len as usize - 1);
 
         match start_char {
-            None => Cow::Borrowed(""),
+            None => "",
             Some((start_idx, _)) => match end_char {
-                None => Cow::Borrowed(&s[start_idx..]),
-                Some((end_idx, _)) => Cow::Borrowed(&s[start_idx..end_idx]),
+                None => &s[start_idx..],
+                Some((end_idx, _)) => &s[start_idx..end_idx],
             },
         }
     } else {
@@ -85,8 +84,8 @@ pub fn flarion_substring(s: &str, from: i32, len: i32) -> Cow<str> {
         }
 
         match found_start {
-            true => Cow::Borrowed(&s[start_char..end_char]),
-            false => Cow::Borrowed(&s[..end_char]),
+            true => &s[start_char..end_char],
+            false => &s[..end_char],
         }
     }
 }
