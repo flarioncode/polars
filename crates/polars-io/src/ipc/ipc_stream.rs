@@ -35,6 +35,7 @@
 //! ```
 use std::io::{Read, Seek, Write};
 use std::path::PathBuf;
+
 use arrow::io::ipc::read::{StreamMetadata, StreamState};
 use arrow::io::ipc::write::WriteOptions;
 use arrow::io::ipc::{read, write};
