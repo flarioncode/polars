@@ -359,6 +359,18 @@ impl<W: Write> IpcStreamWriter<W> {
     }
 }
 
+impl<W: Write + Seek> IpcStreamWriter<W> {
+    pub fn finish_with_stream_position(mut self, df: &mut DataFrame) -> PolarsResult<usize> {
+        self.finish(df)?;
+
+        if let Ok(pos) = self.writer.stream_position() {
+            return Ok(pos as usize);
+        } else {
+            polars_bail!(ComputeError: "Can't get position in writer")
+        }
+    }
+}
+
 impl<W> SerWriter<W> for IpcStreamWriter<W>
 where
     W: Write,
