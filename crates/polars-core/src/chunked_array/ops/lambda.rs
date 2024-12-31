@@ -291,15 +291,13 @@ impl LambdaExpression {
 
                 match (child, start, length) {
                     (AnyValue::String(s), AnyValue::Int32(start), AnyValue::Null) => {
-                        if let Some(substr) = substring_with_null_length(s, start) {
-                            Ok(AnyValue::StringOwned(substr.into()))
-                        } else {
-                            Ok(AnyValue::Null)
-                        }
+                        Ok(substring_with_null_length(s, start)
+                            .map(AnyValue::String)
+                            .unwrap_or(AnyValue::Null))
                     },
-                    (AnyValue::String(s), AnyValue::Int32(start), AnyValue::Int32(length)) => Ok(
-                        AnyValue::StringOwned(flarion_substring(s, start, length).into()),
-                    ),
+                    (AnyValue::String(s), AnyValue::Int32(start), AnyValue::Int32(length)) => {
+                        Ok(AnyValue::String(flarion_substring(s, start, length)))
+                    },
                     (child, start, length) => {
                         polars_bail!(SchemaMismatch: "Expected (string, int32, int32), Found ({}, {}, {})", child, start, length)
                     },
@@ -354,7 +352,7 @@ impl LambdaExpression {
 
     pub fn eval(&self, s: &Series, i: Option<&Series>) -> PolarsResult<Series> {
         #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
-        tracy_gizmos::zone!(span, "evaluate");
+        tracy_gizmos::zone!(span, "eval");
         #[cfg(all(feature = "tracy", not(feature = "tracy-no-instrument")))]
         span.text(self.fmt_str());
 

@@ -27,18 +27,18 @@ pub fn flarion_get_char_position(haystack: &str, needle: &str) -> i32 {
 }
 
 #[inline]
-pub fn substring_with_null_length(s: &str, from: i32) -> Option<String> {
+pub fn substring_with_null_length(s: &str, from: i32) -> Option<&str> {
     match from {
-        f if f <= 0 || f == 1 => Some(s.to_string()),
-        f if (f as usize) <= s.len() => Some(s[(f as usize - 1)..].to_string()),
+        f if f <= 1 => Some(s),
+        f if (f as usize) <= s.len() => Some(&s[(f as usize - 1)..]),
         _ => None,
     }
 }
 
 // Core substring function that handles a single string
-pub fn flarion_substring(s: &str, from: i32, len: i32) -> String {
+pub fn flarion_substring(s: &str, from: i32, len: i32) -> &str {
     if s.is_empty() || len <= 0 {
-        return String::new();
+        return ""; // returns a static empty string
     }
 
     if from >= 0 {
@@ -54,10 +54,10 @@ pub fn flarion_substring(s: &str, from: i32, len: i32) -> String {
         let end_char = iter.nth(len as usize - 1);
 
         match start_char {
-            None => String::new(),
+            None => "",
             Some((start_idx, _)) => match end_char {
-                None => s[start_idx..].to_string(),
-                Some((end_idx, _)) => s[start_idx..end_idx].to_string(),
+                None => &s[start_idx..],
+                Some((end_idx, _)) => &s[start_idx..end_idx],
             },
         }
     } else {
@@ -84,8 +84,8 @@ pub fn flarion_substring(s: &str, from: i32, len: i32) -> String {
         }
 
         match found_start {
-            true => s[start_char..end_char].to_string(),
-            false => s[..end_char].to_string(),
+            true => &s[start_char..end_char],
+            false => &s[..end_char],
         }
     }
 }
@@ -98,11 +98,15 @@ pub fn flarion_instr_helper(
 
     let result = if pattern_series.len() == 1 {
         let pattern = pattern_series.get(0).unwrap_or("");
-        string_series
-            .into_iter()
-            .map(|opt_str| opt_str.map(|s| flarion_get_char_position(s, pattern)))
-            .collect::<Int32Chunked>()
-            .into_series()
+        // Fast path for empty pattern
+        let new_ca: Int32Chunked = if pattern.is_empty() {
+            string_series.apply_nonnull_values_generic(DataType::Int32, |_| 1i32)
+        } else {
+            string_series.apply_nonnull_values_generic(DataType::Int32, |s| {
+                flarion_get_char_position(s, pattern)
+            })
+        };
+        new_ca.into_series()
     } else if string_series.len() == pattern_series.len() {
         string_series
             .into_iter()
@@ -144,36 +148,52 @@ pub fn flarion_slice_helper(
     let first_from = from_iter.get(0);
     let first_len = lens_iter.get(0);
 
-    // Fast path: if from_iter is length 1 and it's null, return all nulls
-    if from_length == 1 && first_from.is_none() {
-        return Ok(Series::full_null(
-            PlSmallStr::EMPTY,
-            strings.len(),
-            &DataType::String,
-        ));
-    }
-
     let result: StringChunked = match (from_length, lens_length) {
         // Commented out because it is already covered in previous check
         // (0, _) | (_, 0) => None,
         (1, 1) => {
             let mut builder = StringChunkedBuilder::new(PlSmallStr::EMPTY, strings.len());
-            for s_opt in strings.into_iter() {
-                let value = match (s_opt, first_from, first_len) {
-                    (Some(s), Some(from), Some(len)) => Some(flarion_substring(s, from, len)),
-                    (Some(s), Some(from), None) => substring_with_null_length(s, from),
-                    _ => None,
-                };
-                builder.append_option(value);
+            match (first_from, first_len) {
+                (Some(from), Some(len)) => {
+                    for s_opt in strings.into_iter() {
+                        builder.append_option(s_opt.map(|s| flarion_substring(s, from, len)));
+                    }
+                },
+                (Some(from), None) => {
+                    for s_opt in strings.into_iter() {
+                        builder
+                            .append_option(s_opt.and_then(|s| substring_with_null_length(s, from)));
+                    }
+                },
+                _ => {
+                    return Ok(Series::full_null(
+                        PlSmallStr::EMPTY,
+                        strings.len(),
+                        &DataType::String,
+                    ));
+                },
             }
+
             builder.finish()
         },
         (1, _) => {
+            // If from is null we can just return a full null series
+            let from = match first_from {
+                Some(from) => from,
+                None => {
+                    return Ok(Series::full_null(
+                        PlSmallStr::EMPTY,
+                        strings.len(),
+                        &DataType::String,
+                    ));
+                },
+            };
+
             let mut builder = StringChunkedBuilder::new(PlSmallStr::EMPTY, strings.len());
             for (s_opt, len_opt) in strings.into_iter().zip(lens_iter) {
-                let value = match (s_opt, first_from, len_opt) {
-                    (Some(s), Some(from), Some(len)) => Some(flarion_substring(s, from, len)),
-                    (Some(s), Some(from), None) => substring_with_null_length(s, from),
+                let value = match (s_opt, len_opt) {
+                    (Some(s), Some(len)) => Some(flarion_substring(s, from, len)),
+                    (Some(s), None) => substring_with_null_length(s, from),
                     _ => None,
                 };
                 builder.append_option(value);
@@ -181,19 +201,33 @@ pub fn flarion_slice_helper(
             builder.finish()
         },
         (_, 1) => {
-            let mut builder = StringChunkedBuilder::new("".into(), strings.len());
-            for (s_opt, from_opt) in strings.into_iter().zip(from_iter) {
-                let value = match (s_opt, from_opt, first_len) {
-                    (Some(s), Some(from), Some(len)) => Some(flarion_substring(s, from, len)),
-                    (Some(s), Some(from), None) => substring_with_null_length(s, from),
-                    _ => None,
-                };
-                builder.append_option(value);
+            let mut builder = StringChunkedBuilder::new(PlSmallStr::EMPTY, strings.len());
+            match first_len {
+                Some(len) => {
+                    for (s_opt, from_opt) in strings.into_iter().zip(from_iter) {
+                        // Reduces an extra opt match by directly appending value when possible
+                        if let (Some(s), Some(from)) = (s_opt, from_opt) {
+                            builder.append_value(flarion_substring(s, from, len));
+                        } else {
+                            builder.append_null();
+                        }
+                    }
+                },
+                None => {
+                    for (s_opt, from_opt) in strings.into_iter().zip(from_iter) {
+                        let value = if let (Some(s), Some(from)) = (s_opt, from_opt) {
+                            substring_with_null_length(s, from)
+                        } else {
+                            None
+                        };
+                        builder.append_option(value);
+                    }
+                },
             }
             builder.finish()
         },
         _ => {
-            let mut builder = StringChunkedBuilder::new("".into(), strings.len());
+            let mut builder = StringChunkedBuilder::new(PlSmallStr::EMPTY, strings.len());
             for (s_opt, (from_opt, len_opt)) in strings
                 .into_iter()
                 .zip(from_iter.into_iter().zip(lens_iter))
