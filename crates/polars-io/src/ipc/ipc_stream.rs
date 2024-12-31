@@ -361,12 +361,26 @@ impl<W: Write> IpcStreamWriter<W> {
 
 impl<W: Write + Seek> IpcStreamWriter<W> {
     pub fn finish_with_stream_position(mut self, df: &mut DataFrame) -> PolarsResult<usize> {
-        self.finish(df)?;
+        let mut ipc_stream_writer = write::StreamWriter::new(
+            &mut self.writer,
+            WriteOptions {
+                compression: self.compression.map(|c| c.into()),
+            },
+        );
+
+        ipc_stream_writer.start(&df.schema().to_arrow(self.compat_level), None)?;
+        let df = chunk_df_for_writing(df, 512 * 512)?;
+        let iter = df.iter_chunks(self.compat_level, true);
+
+        for batch in iter {
+            ipc_stream_writer.write(&batch, None)?;
+        }
+        let total_writen_bytes = ipc_stream_writer.finish()?;
 
         if let Ok(pos) = self.writer.stream_position() {
-            return Ok(pos as usize);
+            Ok(pos as usize)
         } else {
-            polars_bail!(ComputeError: "Can't get position in writer")
+            Ok(total_writen_bytes)
         }
     }
 }
