@@ -375,12 +375,12 @@ impl<W: Write + Seek> IpcStreamWriter<W> {
         for batch in iter {
             ipc_stream_writer.write(&batch, None)?;
         }
-        let total_writen_bytes = ipc_stream_writer.finish()?;
+        let total_written_bytes = ipc_stream_writer.finish()?;
 
         if let Ok(pos) = self.writer.stream_position() {
             Ok(pos as usize)
         } else {
-            Ok(total_writen_bytes)
+            Ok(total_written_bytes)
         }
     }
 }
