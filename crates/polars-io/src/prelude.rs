@@ -1,3 +1,5 @@
+#[cfg(feature = "avro")]
+pub use crate::avro::*;
 pub use crate::cloud;
 #[cfg(feature = "csv")]
 pub use crate::csv::{read::*, write::*};
