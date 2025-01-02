@@ -12,7 +12,7 @@ use polars_parquet::write::{
 };
 use rayon::prelude::*;
 
-pub struct BatchedWriter<W: Write> {
+pub struct ParquetBatchedWriter<W: Write> {
     // A mutex so that streaming engine can get concurrent read access to
     // compress pages.
     pub(super) writer: Mutex<FileWriter<W>>,
@@ -22,7 +22,7 @@ pub struct BatchedWriter<W: Write> {
     pub(super) parallel: bool,
 }
 
-impl<W: Write> BatchedWriter<W> {
+impl<W: Write> ParquetBatchedWriter<W> {
     pub fn encode_and_compress<'a>(
         &'a self,
         df: &'a DataFrame,
