@@ -1,12 +1,13 @@
 use std::io::Write;
 
+use arrow::io::avro::avro_schema::file::CompressedBlock;
 pub use arrow::io::avro::avro_schema::file::Compression;
 use arrow::io::avro::avro_schema::{self};
 use arrow::io::avro::write;
 use polars_core::error::to_compute_err;
 use polars_core::prelude::*;
 pub use Compression as AvroCompression;
-use arrow::io::avro::avro_schema::file::CompressedBlock;
+
 use crate::shared::{schema_to_arrow_checked, SerWriter};
 
 /// Write a [`DataFrame`] to [Apache Avro] format
@@ -52,7 +53,14 @@ where
 }
 
 #[inline]
-fn write_blocks(df: &DataFrame, record: &avro_schema::schema::Record, writer: &mut impl Write, data: &mut Vec<u8>, compressed_block: &mut CompressedBlock, compression: Option<AvroCompression>) -> PolarsResult<()> {
+fn write_blocks(
+    df: &DataFrame,
+    record: &avro_schema::schema::Record,
+    writer: &mut impl Write,
+    data: &mut Vec<u8>,
+    compressed_block: &mut CompressedBlock,
+    compression: Option<AvroCompression>,
+) -> PolarsResult<()> {
     for chunk in df.iter_chunks(CompatLevel::oldest(), true) {
         let mut serializers = chunk
             .iter()
@@ -70,8 +78,7 @@ fn write_blocks(df: &DataFrame, record: &avro_schema::schema::Record, writer: &m
         avro_schema::write::write_metadata(writer, record.clone(), compression)
             .map_err(to_compute_err)?;
 
-        avro_schema::write::write_block(writer, compressed_block)
-            .map_err(to_compute_err)?;
+        avro_schema::write::write_block(writer, compressed_block).map_err(to_compute_err)?;
         // reuse block for next iteration.
         *data = block.data;
         data.clear();
@@ -102,10 +109,16 @@ where
 
         let mut data = vec![];
         let mut compressed_block = CompressedBlock::default();
-        write_blocks(df, &record, &mut self.writer, &mut data, &mut compressed_block, self.compression)
+        write_blocks(
+            df,
+            &record,
+            &mut self.writer,
+            &mut data,
+            &mut compressed_block,
+            self.compression,
+        )
     }
 }
-
 
 pub struct BatchedAvroWriter<W> {
     schema: Option<(ArrowSchema, avro_schema::schema::Record)>,
@@ -148,15 +161,21 @@ where
             Some(schema) => {
                 assert_eq!(new_schema, schema.0);
                 &schema.1
-            }
+            },
             None => {
                 let avro_schema = write::to_record(&new_schema, self.name.clone())?;
                 self.schema = Some((new_schema, avro_schema));
                 &self.schema.as_ref().unwrap().1
-            }
+            },
         };
 
-
-        write_blocks(df, record, &mut self.writer, &mut self.data, &mut self.compressed_block, self.compression)
+        write_blocks(
+            df,
+            record,
+            &mut self.writer,
+            &mut self.data,
+            &mut self.compressed_block,
+            self.compression,
+        )
     }
 }
