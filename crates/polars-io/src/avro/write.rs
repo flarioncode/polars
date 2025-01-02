@@ -120,7 +120,7 @@ where
     }
 }
 
-pub struct BatchedAvroWriter<W> {
+pub struct AvroBatchedWriter<W> {
     schema: Option<(ArrowSchema, avro_schema::schema::Record)>,
     data: Vec<u8>,
     compressed_block: CompressedBlock,
@@ -129,7 +129,7 @@ pub struct BatchedAvroWriter<W> {
     name: String,
 }
 
-impl<W> BatchedAvroWriter<W>
+impl<W> AvroBatchedWriter<W>
 where
     W: Write,
 {
