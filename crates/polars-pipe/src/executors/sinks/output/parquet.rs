@@ -5,7 +5,7 @@ use std::thread::JoinHandle;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use polars_core::prelude::*;
 use polars_io::parquet::write::{
-    BatchedWriter, ParquetWriteOptions, ParquetWriter, RowGroupIterColumns,
+    ParquetBatchedWriter, ParquetWriteOptions, ParquetWriter, RowGroupIterColumns,
 };
 
 use crate::executors::sinks::output::file_sink::{init_writer_thread, FilesSink, SinkWriter};
@@ -16,7 +16,7 @@ type RowGroups = Vec<RowGroupIterColumns<'static, PolarsError>>;
 
 pub(super) fn init_row_group_writer_thread(
     receiver: Receiver<Option<(IdxSize, RowGroups)>>,
-    writer: Arc<BatchedWriter<std::fs::File>>,
+    writer: Arc<ParquetBatchedWriter<std::fs::File>>,
     // this is used to determine when a batch of chunks should be written to disk
     // all chunks per push should be collected to determine in which order they should
     // be written
@@ -53,7 +53,7 @@ pub(super) fn init_row_group_writer_thread(
 
 #[derive(Clone)]
 pub struct ParquetSink {
-    writer: Arc<BatchedWriter<std::fs::File>>,
+    writer: Arc<ParquetBatchedWriter<std::fs::File>>,
     io_thread_handle: Arc<Option<JoinHandle<()>>>,
     sender: Sender<Option<(IdxSize, RowGroups)>>,
 }
@@ -183,7 +183,7 @@ impl ParquetCloudSink {
     }
 }
 
-impl<W: std::io::Write> SinkWriter for polars_io::parquet::write::BatchedWriter<W> {
+impl<W: std::io::Write> SinkWriter for ParquetBatchedWriter<W> {
     fn _write_batch(&mut self, df: &DataFrame) -> PolarsResult<()> {
         self.write_batch(df)
     }

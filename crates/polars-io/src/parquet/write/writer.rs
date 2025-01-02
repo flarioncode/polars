@@ -8,10 +8,9 @@ use polars_parquet::write::{
     Version, WriteOptions,
 };
 
-use super::batched_writer::BatchedWriter;
 use super::options::ParquetCompression;
 use super::ParquetWriteOptions;
-use crate::prelude::chunk_df_for_writing;
+use crate::prelude::{chunk_df_for_writing, ParquetBatchedWriter};
 use crate::shared::schema_to_arrow_checked;
 
 impl ParquetWriteOptions {
@@ -96,14 +95,14 @@ where
         self
     }
 
-    pub fn batched(self, schema: &Schema) -> PolarsResult<BatchedWriter<W>> {
+    pub fn batched(self, schema: &Schema) -> PolarsResult<ParquetBatchedWriter<W>> {
         let schema = schema_to_arrow_checked(schema, CompatLevel::newest(), "parquet")?;
         let parquet_schema = to_parquet_schema(&schema)?;
         let encodings = get_encodings(&schema);
         let options = self.materialize_options();
         let writer = Mutex::new(FileWriter::try_new(self.writer, schema, options)?);
 
-        Ok(BatchedWriter {
+        Ok(ParquetBatchedWriter {
             writer,
             parquet_schema,
             encodings,
