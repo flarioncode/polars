@@ -527,6 +527,10 @@ impl<'a> AnyValue<'a> {
     /// Cast `AnyValue` to the provided data type and return a new `AnyValue` with type `dtype`,
     /// if possible.
     pub fn strict_cast(&self, dtype: &'a DataType) -> Option<AnyValue<'a>> {
+        if self.dtype() == *dtype {
+            return Some(self.clone());
+        }
+
         let new_av = match (self, dtype) {
             // to numeric
             (av, DataType::UInt8) => AnyValue::UInt8(av.extract::<u8>()?),
@@ -552,15 +556,14 @@ impl<'a> AnyValue<'a> {
             (AnyValue::Float32(v), DataType::Boolean) => AnyValue::Boolean(*v != f32::default()),
             (AnyValue::Float64(v), DataType::Boolean) => AnyValue::Boolean(*v != f64::default()),
 
-            // to string
-            (av, DataType::String) => {
-                if av.is_unsigned_integer() {
-                    AnyValue::StringOwned(format_pl_smallstr!("{}", av.extract::<u64>()?))
-                } else if av.is_float() {
-                    AnyValue::StringOwned(format_pl_smallstr!("{}", av.extract::<f64>()?))
-                } else {
-                    AnyValue::StringOwned(format_pl_smallstr!("{}", av.extract::<i64>()?))
-                }
+            (av, DataType::String) if av.is_unsigned_integer() => {
+                AnyValue::StringOwned(format_pl_smallstr!("{}", av.extract::<u64>()?))
+            },
+            (av, DataType::String) if av.is_float() => {
+                AnyValue::StringOwned(format_pl_smallstr!("{}", av.extract::<f64>()?))
+            },
+            (av, DataType::String) if av.is_numeric() => {
+                AnyValue::StringOwned(format_pl_smallstr!("{}", av.extract::<i64>()?))
             },
 
             // to binary
