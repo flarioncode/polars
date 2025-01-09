@@ -491,6 +491,72 @@ impl ChunkAggSeries for StringChunked {
     }
 }
 
+impl ListChunked {
+    fn max_list(&self) -> Option<Box<dyn Array>> {
+        if self.is_empty() {
+            return None;
+        }
+        match self.is_sorted_flag() {
+            IsSorted::Ascending => {
+                self.last_non_null().and_then(|idx| {
+                    // SAFETY: last_non_null returns in bound index
+                    unsafe { self.get_unchecked(idx) }
+                })
+            },
+            IsSorted::Descending => {
+                self.first_non_null().and_then(|idx| {
+                    // SAFETY: first_non_null returns in bound index
+                    unsafe { self.get_unchecked(idx) }
+                })
+            },
+            IsSorted::Not => self
+                .downcast_iter()
+                .filter_map(MinMaxKernel::max_ignore_nan_kernel)
+                .reduce(MinMax::max_ignore_nan),
+        }
+    }
+
+    fn min_list(&self) -> Option<Box<dyn Array>> {
+        if self.is_empty() {
+            return None;
+        }
+        match self.is_sorted_flag() {
+            IsSorted::Ascending => {
+                self.first_non_null().and_then(|idx| {
+                    // SAFETY: first_non_null returns in bound index
+                    unsafe { self.get_unchecked(idx) }
+                })
+            },
+            IsSorted::Descending => {
+                self.last_non_null().and_then(|idx| {
+                    // SAFETY: last_non_null returns in bound index
+                    unsafe { self.get_unchecked(idx) }
+                })
+            },
+            IsSorted::Not => self
+                .downcast_iter()
+                .filter_map(MinMaxKernel::min_ignore_nan_kernel)
+                .reduce(MinMax::min_ignore_nan),
+        }
+    }
+}
+
+impl ChunkAggSeries for ListChunked {
+    fn max_reduce(&self) -> Scalar {
+        let av = self.max_list().map_or(AnyValue::Null, |array| {
+            AnyValue::List(Series::from_arrow(PlSmallStr::EMPTY, array).unwrap())
+        });
+        Scalar::new(self.dtype().clone(), av)
+    }
+
+    fn min_reduce(&self) -> Scalar {
+        let av = self.min_list().map_or(AnyValue::Null, |array| {
+            AnyValue::List(Series::from_arrow(PlSmallStr::EMPTY, array).unwrap())
+        });
+        Scalar::new(self.dtype().clone(), av)
+    }
+}
+
 #[cfg(feature = "dtype-categorical")]
 impl CategoricalChunked {
     fn min_categorical(&self) -> Option<&str> {

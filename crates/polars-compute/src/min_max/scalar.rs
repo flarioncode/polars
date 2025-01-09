@@ -1,5 +1,6 @@
 use arrow::array::{
-    Array, BinaryArray, BinaryViewArray, BooleanArray, PrimitiveArray, Utf8Array, Utf8ViewArray,
+    Array, BinaryArray, BinaryViewArray, BooleanArray, ListArray, PrimitiveArray, Utf8Array,
+    Utf8ViewArray,
 };
 use arrow::types::{NativeType, Offset};
 use polars_utils::min_max::MinMax;
@@ -257,6 +258,34 @@ impl<O: Offset> MinMaxKernel for Utf8Array<O> {
     }
 
     #[inline(always)]
+    fn max_propagate_nan_kernel(&self) -> Option<Self::Scalar<'_>> {
+        self.max_ignore_nan_kernel()
+    }
+}
+
+impl<O: Offset> MinMaxKernel for ListArray<O> {
+    type Scalar<'a> = Box<dyn Array>;
+
+    fn min_ignore_nan_kernel(&self) -> Option<Self::Scalar<'_>> {
+        if self.null_count() == 0 {
+            self.values_iter().reduce(MinMax::min_ignore_nan)
+        } else {
+            self.non_null_values_iter().reduce(MinMax::min_ignore_nan)
+        }
+    }
+
+    fn max_ignore_nan_kernel(&self) -> Option<Self::Scalar<'_>> {
+        if self.null_count() == 0 {
+            self.values_iter().reduce(MinMax::max_ignore_nan)
+        } else {
+            self.non_null_values_iter().reduce(MinMax::max_ignore_nan)
+        }
+    }
+
+    fn min_propagate_nan_kernel(&self) -> Option<Self::Scalar<'_>> {
+        self.min_ignore_nan_kernel()
+    }
+
     fn max_propagate_nan_kernel(&self) -> Option<Self::Scalar<'_>> {
         self.max_ignore_nan_kernel()
     }
