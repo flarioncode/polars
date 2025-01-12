@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::Add;
+use std::ops::BitAnd;
 use std::{iter, mem};
 
 use num_traits::ToBytes;
@@ -67,6 +68,7 @@ pub enum LambdaExpression {
     IsNotNull(Box<Self>),
     EqualNullSafe(Box<Self>, Box<Self>),
     Cast(Box<Self>, DataType),
+    And(Box<Self>, Box<Self>),
 }
 
 impl Eq for LambdaExpression {}
@@ -139,6 +141,10 @@ impl Hash for LambdaExpression {
                 v.hash(state);
                 data_type.hash(state);
             },
+            LambdaExpression::And(first, second) => {
+                first.hash(state);
+                second.hash(state);
+            },
         }
     }
 }
@@ -176,6 +182,7 @@ impl LambdaExpression {
             LambdaExpression::IsNotNull(_) => "is_not_null",
             LambdaExpression::EqualNullSafe(_, _) => "equal_null_safe",
             LambdaExpression::Cast(_, _) => "cast",
+            LambdaExpression::And(_, _) => "and",
         }
     }
 
@@ -371,6 +378,14 @@ impl LambdaExpression {
                 let s = child.eval_window(curr, next)?;
                 Ok(s.cast(dtype).to_owned())
             },
+            LambdaExpression::And(left, right) => {
+                let left = left.eval_window(curr, next)?;
+                let right = right.eval_window(curr, next)?;
+                match (left, right) {
+                    (AnyValue::Boolean(left), AnyValue::Boolean(right)) => Ok(AnyValue::Boolean(left && right)),
+                    (left, right) => polars_bail!(SchemaMismatch: "Expected (boolean, boolean), found ({}, {})", left, right),
+                }
+            }
         }
     }
 
@@ -531,6 +546,11 @@ impl LambdaExpression {
                 let s = child.eval(s, i)?;
                 s.cast_with_options(dtype, CastOptions::Overflowing)
             },
+            LambdaExpression::And(left, right) => {
+                let left = left.eval(s, i)?;
+                let right = right.eval(s, i)?;
+                Ok(left.bool()?.bitand(right.bool()?).into_series())
+            }
         }
     }
 
@@ -582,6 +602,7 @@ impl LambdaExpression {
             LambdaExpression::IsNotNull(_) => DataType::Boolean,
             LambdaExpression::EqualNullSafe(_, _) => DataType::Boolean,
             LambdaExpression::Cast(_, data_type) => data_type.clone(),
+            LambdaExpression::And(_, _) => DataType::Boolean,
         })
     }
 }
