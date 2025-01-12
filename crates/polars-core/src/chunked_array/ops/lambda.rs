@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-use std::ops::Add;
-use std::ops::BitAnd;
+use std::ops::{Add, BitAnd};
 use std::{iter, mem};
 
 use num_traits::ToBytes;
@@ -382,10 +381,14 @@ impl LambdaExpression {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
                 match (left, right) {
-                    (AnyValue::Boolean(left), AnyValue::Boolean(right)) => Ok(AnyValue::Boolean(left && right)),
-                    (left, right) => polars_bail!(SchemaMismatch: "Expected (boolean, boolean), found ({}, {})", left, right),
+                    (AnyValue::Boolean(left), AnyValue::Boolean(right)) => {
+                        Ok(AnyValue::Boolean(left && right))
+                    },
+                    (left, right) => {
+                        polars_bail!(SchemaMismatch: "Expected (boolean, boolean), found ({}, {})", left, right)
+                    },
                 }
-            }
+            },
         }
     }
 
@@ -550,7 +553,7 @@ impl LambdaExpression {
                 let left = left.eval(s, i)?;
                 let right = right.eval(s, i)?;
                 Ok(left.bool()?.bitand(right.bool()?).into_series())
-            }
+            },
         }
     }
 
