@@ -58,7 +58,7 @@ pub enum ListFunction {
     ToArray(usize),
     // Flarion functions
     FilterByFunc(Arc<LambdaExpression>, bool),
-    SortByFunc(SortOptions, Arc<LambdaExpression>),
+    SortByFunc(Arc<LambdaExpression>),
     Transform(Arc<LambdaExpression>, bool),
     FlarionSlice,
 }
@@ -110,7 +110,7 @@ impl ListFunction {
             NUnique => mapper.with_dtype(IDX_DTYPE),
             // Flarion functions
             FilterByFunc(_, _) => mapper.with_same_dtype(),
-            SortByFunc(_, _) => mapper.with_same_dtype(),
+            SortByFunc(_) => mapper.with_same_dtype(),
             Transform(lambda, _) => mapper.map_dtype(|dt| match dt {
                 DataType::List(dt) => DataType::List(lambda.return_type(dt).unwrap().into()),
                 _ => lambda.return_type(dt).unwrap(),
@@ -189,7 +189,7 @@ impl Display for ListFunction {
             ToArray(_) => "to_array",
             // Flarion functions
             FilterByFunc(_, _) => "filter_by_func",
-            SortByFunc(_, _) => "sort_by_func",
+            SortByFunc(_) => "sort_by_func",
             Transform(_, _) => "transform",
             FlarionSlice => "flarion_slice",
         };
@@ -255,7 +255,7 @@ impl From<ListFunction> for SpecialEq<Arc<dyn SeriesUdf>> {
             NUnique => map!(n_unique),
             // Flarion functions
             FilterByFunc(lambda, with_index) => map!(filter_by_func, lambda.clone(), with_index),
-            SortByFunc(options, lambda) => map!(sort_by_func, options, lambda.clone()),
+            SortByFunc(lambda) => map!(sort_by_func, lambda.clone()),
             Transform(lambda, with_index) => map!(transform, lambda.clone(), with_index),
             FlarionSlice => wrap!(flarion_slice),
         }
@@ -725,12 +725,8 @@ pub(super) fn sort(s: &Series, options: SortOptions) -> PolarsResult<Series> {
     Ok(s.list()?.lst_sort(options)?.into_series())
 }
 
-pub(super) fn sort_by_func(
-    s: &Series,
-    options: SortOptions,
-    lambda: Arc<LambdaExpression>,
-) -> PolarsResult<Series> {
-    Ok(s.list()?.lst_sort_by_func(options, lambda)?.into_series())
+pub(super) fn sort_by_func(s: &Series, lambda: Arc<LambdaExpression>) -> PolarsResult<Series> {
+    Ok(s.list()?.lst_sort_by_func(lambda)?.into_series())
 }
 
 pub(super) fn reverse(s: &Series) -> PolarsResult<Series> {

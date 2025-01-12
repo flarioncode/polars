@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-use std::ops::Add;
+use std::ops::{Add, BitAnd};
 use std::{iter, mem};
 
 use num_traits::ToBytes;
@@ -27,10 +27,10 @@ impl TryFrom<AnyValue<'_>> for Ordering {
 
     fn try_from(value: AnyValue) -> Result<Self, Self::Error> {
         match value {
-            AnyValue::Int32(1) => Ok(Ordering::Greater),
             AnyValue::Int32(0) => Ok(Ordering::Equal),
-            AnyValue::Int32(-1) => Ok(Ordering::Less),
-            other => polars_bail!(InvalidOperation: "Expected -1, 0, or 1, found {:?}", other),
+            AnyValue::Int32(v) if v.is_positive() => Ok(Ordering::Greater),
+            AnyValue::Int32(v) if v.is_negative() => Ok(Ordering::Less),
+            _ => unreachable!("Expected int32 value"),
         }
     }
 }
@@ -67,6 +67,7 @@ pub enum LambdaExpression {
     IsNotNull(Box<Self>),
     EqualNullSafe(Box<Self>, Box<Self>),
     Cast(Box<Self>, DataType),
+    And(Box<Self>, Box<Self>),
 }
 
 impl Eq for LambdaExpression {}
@@ -139,6 +140,10 @@ impl Hash for LambdaExpression {
                 v.hash(state);
                 data_type.hash(state);
             },
+            LambdaExpression::And(first, second) => {
+                first.hash(state);
+                second.hash(state);
+            },
         }
     }
 }
@@ -176,6 +181,7 @@ impl LambdaExpression {
             LambdaExpression::IsNotNull(_) => "is_not_null",
             LambdaExpression::EqualNullSafe(_, _) => "equal_null_safe",
             LambdaExpression::Cast(_, _) => "cast",
+            LambdaExpression::And(_, _) => "and",
         }
     }
 
@@ -224,22 +230,46 @@ impl LambdaExpression {
             LambdaExpression::GreaterThan(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
-                Ok(AnyValue::Boolean(left.gt(&right)))
+
+                // Override the comparison function for array_sort
+                match (left.is_null(), right.is_null()) {
+                    (true, false) => Ok(AnyValue::Boolean(true)),
+                    (false, true) => Ok(AnyValue::Boolean(false)),
+                    _ => Ok(AnyValue::Boolean(left.gt(&right))),
+                }
             },
             LambdaExpression::GreaterThanOrEqual(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
-                Ok(AnyValue::Boolean(left.ge(&right)))
+
+                // Override the comparison function for array_sort
+                match (left.is_null(), right.is_null()) {
+                    (true, false) => Ok(AnyValue::Boolean(true)),
+                    (false, true) => Ok(AnyValue::Boolean(false)),
+                    _ => Ok(AnyValue::Boolean(left.ge(&right))),
+                }
             },
             LambdaExpression::LessThan(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
-                Ok(AnyValue::Boolean(left.lt(&right)))
+
+                // Override the comparison function for array_sort
+                match (left.is_null(), right.is_null()) {
+                    (true, false) => Ok(AnyValue::Boolean(false)),
+                    (false, true) => Ok(AnyValue::Boolean(true)),
+                    _ => Ok(AnyValue::Boolean(left.lt(&right))),
+                }
             },
             LambdaExpression::LessThanOrEqual(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
-                Ok(AnyValue::Boolean(left.le(&right)))
+
+                // Override the comparison function for array_sort
+                match (left.is_null(), right.is_null()) {
+                    (true, false) => Ok(AnyValue::Boolean(false)),
+                    (false, true) => Ok(AnyValue::Boolean(true)),
+                    _ => Ok(AnyValue::Boolean(left.le(&right))),
+                }
             },
             #[cfg(feature = "zip_with")]
             LambdaExpression::IfThenElse(pred, value, otherwise) => {
@@ -346,6 +376,18 @@ impl LambdaExpression {
             LambdaExpression::Cast(child, dtype) => {
                 let s = child.eval_window(curr, next)?;
                 Ok(s.cast(dtype).to_owned())
+            },
+            LambdaExpression::And(left, right) => {
+                let left = left.eval_window(curr, next)?;
+                let right = right.eval_window(curr, next)?;
+                match (left, right) {
+                    (AnyValue::Boolean(left), AnyValue::Boolean(right)) => {
+                        Ok(AnyValue::Boolean(left && right))
+                    },
+                    (left, right) => {
+                        polars_bail!(SchemaMismatch: "Expected (boolean, boolean), found ({}, {})", left, right)
+                    },
+                }
             },
         }
     }
@@ -507,6 +549,11 @@ impl LambdaExpression {
                 let s = child.eval(s, i)?;
                 s.cast_with_options(dtype, CastOptions::Overflowing)
             },
+            LambdaExpression::And(left, right) => {
+                let left = left.eval(s, i)?;
+                let right = right.eval(s, i)?;
+                Ok(left.bool()?.bitand(right.bool()?).into_series())
+            },
         }
     }
 
@@ -558,6 +605,7 @@ impl LambdaExpression {
             LambdaExpression::IsNotNull(_) => DataType::Boolean,
             LambdaExpression::EqualNullSafe(_, _) => DataType::Boolean,
             LambdaExpression::Cast(_, data_type) => data_type.clone(),
+            LambdaExpression::And(_, _) => DataType::Boolean,
         })
     }
 }

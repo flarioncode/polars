@@ -160,10 +160,9 @@ impl ListNameSpace {
             .with_fmt("lst_sort")
     }
 
-    pub fn sort_by_func(self, options: SortOptions, func: LambdaExpression) -> Expr {
+    pub fn sort_by_func(self, func: LambdaExpression) -> Expr {
         self.0
             .map_private(FunctionExpr::ListExpr(ListFunction::SortByFunc(
-                options,
                 func.into(),
             )))
             .with_fmt("lst_sort_by_func")
