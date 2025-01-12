@@ -360,7 +360,6 @@ pub trait ListNameSpaceImpl: AsList {
 
     fn lst_sort_by_func(
         &self,
-        _options: SortOptions,
         lambda_expressions: Arc<LambdaExpression>,
     ) -> PolarsResult<ListChunked> {
         let ca = self.as_list();
@@ -988,7 +987,7 @@ fn cast_index(idx: Series, len: usize, null_on_oob: bool) -> PolarsResult<Series
 // Was using these to debug but I see no harm in having more unit tests, in fact we should probably have more here
 #[cfg(test)]
 mod tests {
-    use polars_core::prelude::{IntoSeries, LambdaExpression, ListChunked, Series, SortOptions};
+    use polars_core::prelude::{IntoSeries, LambdaExpression, ListChunked, Series};
 
     use crate::chunked_array::ListNameSpaceImpl;
 
@@ -1165,10 +1164,7 @@ mod tests {
         let result = start_array
             .list()
             .unwrap()
-            .lst_sort_by_func(
-                SortOptions::new().with_nulls_last(true),
-                ascending_lambda.into(),
-            )
+            .lst_sort_by_func(ascending_lambda.into())
             .expect("Could not evaluate lambda");
         let res = result.get_as_series(0).unwrap();
 

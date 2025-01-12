@@ -27,10 +27,10 @@ impl TryFrom<AnyValue<'_>> for Ordering {
 
     fn try_from(value: AnyValue) -> Result<Self, Self::Error> {
         match value {
-            AnyValue::Int32(1) => Ok(Ordering::Greater),
             AnyValue::Int32(0) => Ok(Ordering::Equal),
-            AnyValue::Int32(-1) => Ok(Ordering::Less),
-            other => polars_bail!(InvalidOperation: "Expected -1, 0, or 1, found {:?}", other),
+            AnyValue::Int32(v) if v.is_positive() => Ok(Ordering::Greater),
+            AnyValue::Int32(v) if v.is_negative() => Ok(Ordering::Less),
+            _ => unreachable!("Expected int32 value"),
         }
     }
 }
@@ -224,22 +224,46 @@ impl LambdaExpression {
             LambdaExpression::GreaterThan(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
-                Ok(AnyValue::Boolean(left.gt(&right)))
+
+                // Override the comparison function for array_sort
+                match (left.is_null(), right.is_null()) {
+                    (true, false) => Ok(AnyValue::Boolean(true)),
+                    (false, true) => Ok(AnyValue::Boolean(false)),
+                    _ => Ok(AnyValue::Boolean(left.gt(&right))),
+                }
             },
             LambdaExpression::GreaterThanOrEqual(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
-                Ok(AnyValue::Boolean(left.ge(&right)))
+
+                // Override the comparison function for array_sort
+                match (left.is_null(), right.is_null()) {
+                    (true, false) => Ok(AnyValue::Boolean(true)),
+                    (false, true) => Ok(AnyValue::Boolean(false)),
+                    _ => Ok(AnyValue::Boolean(left.ge(&right))),
+                }
             },
             LambdaExpression::LessThan(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
-                Ok(AnyValue::Boolean(left.lt(&right)))
+
+                // Override the comparison function for array_sort
+                match (left.is_null(), right.is_null()) {
+                    (true, false) => Ok(AnyValue::Boolean(false)),
+                    (false, true) => Ok(AnyValue::Boolean(true)),
+                    _ => Ok(AnyValue::Boolean(left.lt(&right))),
+                }
             },
             LambdaExpression::LessThanOrEqual(left, right) => {
                 let left = left.eval_window(curr, next)?;
                 let right = right.eval_window(curr, next)?;
-                Ok(AnyValue::Boolean(left.le(&right)))
+
+                // Override the comparison function for array_sort
+                match (left.is_null(), right.is_null()) {
+                    (true, false) => Ok(AnyValue::Boolean(false)),
+                    (false, true) => Ok(AnyValue::Boolean(true)),
+                    _ => Ok(AnyValue::Boolean(left.le(&right))),
+                }
             },
             #[cfg(feature = "zip_with")]
             LambdaExpression::IfThenElse(pred, value, otherwise) => {
