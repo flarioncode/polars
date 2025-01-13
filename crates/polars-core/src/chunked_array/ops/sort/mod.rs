@@ -708,6 +708,58 @@ impl ChunkSort<BooleanType> for BooleanChunked {
     }
 }
 
+impl ChunkSort<ListType> for ListChunked {
+    fn sort_with(&self, mut options: SortOptions) -> ChunkedArray<ListType> {
+        options.multithreaded &= POOL.current_num_threads() > 1;
+        let idx = self.arg_sort(options);
+        unsafe { self.take_unchecked(&idx) }
+    }
+
+    fn sort(&self, descending: bool) -> ChunkedArray<ListType> {
+        self.sort_with(SortOptions::default().with_order_descending(descending))
+    }
+
+    fn arg_sort(&self, options: SortOptions) -> IdxCa {
+        if self.null_count() == 0 {
+            arg_sort::arg_sort_no_nulls(
+                self.name().clone(),
+                self.downcast_iter().map(|arr| arr.values_iter()),
+                options,
+                self.len(),
+            )
+        } else {
+            arg_sort::arg_sort(
+                self.name().clone(),
+                self.downcast_iter().map(|arr| arr.iter()),
+                options,
+                self.null_count(),
+                self.len(),
+            )
+        }
+    }
+
+    fn arg_sort_multiple(
+        &self,
+        by: &[Series],
+        options: &SortMultipleOptions,
+    ) -> PolarsResult<IdxCa> {
+        args_validate(self, by, &options.descending, "descending")?;
+        args_validate(self, by, &options.nulls_last, "nulls_last")?;
+        let mut count: IdxSize = 0;
+
+        let mut vals = Vec::with_capacity(self.len());
+        for arr in self.downcast_iter() {
+            for v in arr {
+                let i = count;
+                count += 1;
+                vals.push((i, v))
+            }
+        }
+
+        arg_sort_multiple_impl(vals, by, options)
+    }
+}
+
 pub(crate) fn convert_sort_column_multi_sort(s: &Series) -> PolarsResult<Series> {
     use DataType::*;
     let out = match s.dtype() {

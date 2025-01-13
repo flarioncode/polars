@@ -43,6 +43,14 @@ impl private::PrivateSeries for SeriesWrap<ListChunked> {
     fn into_total_eq_inner<'a>(&'a self) -> Box<dyn TotalEqInner + 'a> {
         (&self.0).into_total_eq_inner()
     }
+
+    fn arg_sort_multiple(
+        &self,
+        by: &[Series],
+        options: &SortMultipleOptions,
+    ) -> PolarsResult<IdxCa> {
+        self.0.arg_sort_multiple(by, options)
+    }
 }
 
 impl SeriesTrait for SeriesWrap<ListChunked> {
@@ -224,5 +232,21 @@ impl SeriesTrait for SeriesWrap<ListChunked> {
     /// Only implemented for ObjectType
     fn as_any_mut(&mut self) -> &mut dyn Any {
         &mut self.0
+    }
+
+    fn sort_with(&self, options: SortOptions) -> PolarsResult<Series> {
+        Ok(self.0.sort_with(options).into_series())
+    }
+
+    fn arg_sort(&self, options: SortOptions) -> IdxCa {
+        self.0.arg_sort(options)
+    }
+
+    fn max_reduce(&self) -> PolarsResult<Scalar> {
+        Ok(self.0.max_reduce())
+    }
+
+    fn min_reduce(&self) -> PolarsResult<Scalar> {
+        Ok(self.0.min_reduce())
     }
 }

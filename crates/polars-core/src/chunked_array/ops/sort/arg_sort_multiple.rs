@@ -23,7 +23,7 @@ pub(crate) fn args_validate<T: PolarsDataType>(
     Ok(())
 }
 
-pub(crate) fn arg_sort_multiple_impl<T: NullOrderCmp + Send + Copy>(
+pub(crate) fn arg_sort_multiple_impl<T: NullOrderCmp + Send>(
     mut vals: Vec<(IdxSize, T)>,
     by: &[Series],
     options: &SortMultipleOptions,

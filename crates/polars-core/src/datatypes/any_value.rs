@@ -1257,8 +1257,39 @@ impl PartialOrd for AnyValue<'_> {
             (Enum(..), Enum(..)) => {
                 unimplemented!("can't order enums as AnyValues, dtype for ordering is needed")
             },
-            (List(_), List(_)) => {
-                unimplemented!("ordering for List dtype is not supported")
+            (List(l), List(r)) => {
+                let mut l_chunks = l.chunks().iter();
+                let mut r_chunks = r.chunks().iter();
+                let mut prev_l_chunk = None;
+                let mut prev_r_chunk = None;
+                loop {
+                    let l_chunk = prev_l_chunk.take().or_else(|| l_chunks.next().cloned());
+                    let r_chunk = prev_r_chunk.take().or_else(|| r_chunks.next().cloned());
+                    match (l_chunk, r_chunk) {
+                        (Some(mut l_chunk), Some(mut r_chunk)) => {
+                            let min_len = l_chunk.len().min(r_chunk.len());
+                            if min_len < l_chunk.len() {
+                                prev_l_chunk =
+                                    Some(l_chunk.sliced(min_len, l_chunk.len() - min_len));
+                                l_chunk.slice(0, min_len);
+                            }
+
+                            if min_len < r_chunk.len() {
+                                prev_r_chunk =
+                                    Some(r_chunk.sliced(min_len, r_chunk.len() - min_len));
+                                r_chunk.slice(0, min_len);
+                            }
+
+                            match l_chunk.tot_cmp(&r_chunk) {
+                                Ordering::Equal => continue,
+                                other => return Some(other),
+                            }
+                        },
+                        (Some(_), None) => return Some(Ordering::Greater),
+                        (None, Some(_)) => return Some(Ordering::Less),
+                        (None, None) => return Some(Ordering::Equal),
+                    }
+                }
             },
             #[cfg(feature = "dtype-array")]
             (Array(..), Array(..)) => {
