@@ -210,6 +210,11 @@ impl Expr {
         self.apply_private(FunctionExpr::DropNans)
     }
 
+    /// Get a list of the unique values in the groups(exclude NULLs).
+    pub fn agg_unique(self) -> Self {
+        AggExpr::Unique(Arc::new(self)).into()
+    }
+
     /// Get the number of unique values in the groups.
     pub fn n_unique(self) -> Self {
         AggExpr::NUnique(Arc::new(self)).into()
