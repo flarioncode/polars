@@ -16,6 +16,7 @@ pub mod pivot;
     feature = "json"
 ))]
 use std::path::Path;
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
 pub use anonymous_scan::*;
@@ -31,6 +32,7 @@ pub use ndjson::*;
 #[cfg(feature = "parquet")]
 pub use parquet::*;
 use polars_core::prelude::*;
+use polars_core::utils::{ChannelType, ChannelWrap};
 use polars_expr::{create_physical_expr, ExpressionConversionState};
 use polars_io::RowIndex;
 use polars_mem_engine::{create_physical_plan, Executor};
@@ -797,6 +799,20 @@ impl LazyFrame {
 
         // Fix https://github.com/pola-rs/polars/issues/19983
         (out, timer_df)
+    }
+
+    /// Stream a query result into a channel
+    pub fn sink_channel(
+        self,
+        partition_id: i32,
+        flarion_channel_tx: mpsc::Sender<FlarionChannelMessage>,
+    ) -> PolarsResult<()> {
+        self.sink(
+            SinkType::Channel {
+                flarion_channel_tx: ChannelWrap(partition_id, ChannelType::Sender, Some(flarion_channel_tx)),
+            },
+            "sink_channel()",
+        )
     }
 
     /// Stream a query result into a parquet file. This is useful if the final result doesn't fit

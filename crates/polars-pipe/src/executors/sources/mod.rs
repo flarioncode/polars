@@ -1,3 +1,4 @@
+mod anonymous;
 #[cfg(feature = "csv")]
 mod csv;
 mod frame;
@@ -9,6 +10,7 @@ mod union;
 
 use std::sync::atomic::{AtomicU32, Ordering};
 
+pub(crate) use anonymous::*;
 #[cfg(feature = "csv")]
 pub(crate) use csv::CsvSource;
 pub(crate) use frame::*;

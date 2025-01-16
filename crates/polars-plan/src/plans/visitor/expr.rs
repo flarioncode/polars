@@ -62,6 +62,7 @@ impl TreeWalker for Expr {
                 Min { input, propagate_nans } => Min { input: am(input, f)?, propagate_nans },
                 Max { input, propagate_nans } => Max { input: am(input, f)?, propagate_nans },
                 Median(x) => Median(am(x, f)?),
+                Unique(x) => Unique(am(x, f)?),
                 NUnique(x) => NUnique(am(x, f)?),
                 First(x) => First(am(x, f)?),
                 Last(x) => Last(am(x, f)?),

@@ -371,6 +371,7 @@ impl<'a> IRDisplay<'a> {
             Sink { input, payload, .. } => {
                 let name = match payload {
                     SinkType::Memory => "SINK (memory)",
+                    SinkType::Channel { .. } => "SINK (channel)",
                     SinkType::File { .. } => "SINK (file)",
                     #[cfg(feature = "cloud")]
                     SinkType::Cloud { .. } => "SINK (cloud)",
@@ -588,6 +589,7 @@ impl<'a> Display for ExprIRDisplay<'a> {
                     First(expr) => write!(f, "{}.first()", self.with_root(expr)),
                     Last(expr) => write!(f, "{}.last()", self.with_root(expr)),
                     Implode(expr) => write!(f, "{}.list()", self.with_root(expr)),
+                    Unique(expr) => write!(f, "{}.unique()", self.with_root(expr)),
                     NUnique(expr) => write!(f, "{}.n_unique()", self.with_root(expr)),
                     Sum(expr) => write!(f, "{}.sum()", self.with_root(expr)),
                     AggGroups(expr) => write!(f, "{}.groups()", self.with_root(expr)),

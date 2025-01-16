@@ -181,7 +181,7 @@ impl AExpr {
                     },
                     Implode(expr) => {
                         let mut field = arena.get(*expr).to_field_impl(schema, arena, nested)?;
-                        field.coerce(DataType::List(field.dtype().clone().into()));
+                        field.coerce(List(field.dtype().clone().into()));
                         Ok(field)
                     },
                     Std(expr, _) => {
@@ -196,6 +196,12 @@ impl AExpr {
                         float_type(&mut field);
                         Ok(field)
                     },
+                    Unique(expr) => {
+                        *nested = 0;
+                        let mut field = arena.get(*expr).to_field_impl(schema, arena, nested)?;
+                        field.coerce(List(field.dtype().clone().into()));
+                        Ok(field)
+                    }
                     NUnique(expr) => {
                         *nested = 0;
                         let mut field = arena.get(*expr).to_field_impl(schema, arena, nested)?;
@@ -242,7 +248,7 @@ impl AExpr {
                     .get(*falsy)
                     .to_field_impl(schema, arena, &mut nested_falsy)?;
 
-                let st = if let DataType::Null = *truthy.dtype() {
+                let st = if let Null = *truthy.dtype() {
                     falsy.dtype().clone()
                 } else {
                     try_get_supertype(truthy.dtype(), falsy.dtype())?

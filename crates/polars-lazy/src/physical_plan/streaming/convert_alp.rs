@@ -397,7 +397,14 @@ pub(crate) fn insert_streaming_nodes(
                 let valid_types = || {
                     output_schema
                         .iter_values()
-                        .all(|dt| allowed_dtype(dt, string_cache))
+                        .all(|dt| {
+                            if !allowed_dtype(dt, string_cache) {
+                                eprintln!("Disabling streaming engine due to unsupported dtype: {} string_cache: {}", dt, string_cache);
+                                return false;
+                            }
+
+                            true
+                        })
                 };
 
                 if can_stream && valid_agg() && valid_key() && valid_types() {

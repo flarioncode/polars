@@ -1,10 +1,11 @@
 #[cfg(feature = "json")]
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
+use std::sync::mpsc;
 
 use bitflags::bitflags;
 use polars_core::prelude::*;
-use polars_core::utils::SuperTypeOptions;
+use polars_core::utils::{ChannelWrap, SuperTypeOptions};
 #[cfg(feature = "csv")]
 use polars_io::csv::write::CsvWriterOptions;
 #[cfg(feature = "ipc")]
@@ -293,10 +294,19 @@ pub struct AnonymousScanOptions {
     pub fmt_str: &'static str,
 }
 
+pub enum FlarionChannelMessage {
+    Depleted,
+    DataReady(DataFrame)
+}
+
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SinkType {
     Memory,
+    Channel {
+        #[cfg_attr(feature = "serde", serde(skip))]
+        flarion_channel_tx: ChannelWrap<mpsc::Sender<FlarionChannelMessage>>,
+    },
     File {
         path: Arc<PathBuf>,
         file_type: FileType,

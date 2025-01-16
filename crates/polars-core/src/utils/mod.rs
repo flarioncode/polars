@@ -6,6 +6,7 @@ pub(crate) mod series;
 mod supertype;
 use std::borrow::Cow;
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 mod schema;
 
@@ -34,6 +35,37 @@ impl<T> Deref for Wrap<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ChannelType {
+    Unknown,
+    Sender,
+    Receiver
+}
+
+// The first element is a partition_id, so we can use the EQ on it 
+#[derive(Clone, Debug)]
+pub struct ChannelWrap<T>(pub i32, pub ChannelType, pub Option<T>);
+
+impl<T> Default for ChannelWrap<T> {
+    fn default() -> Self {
+        ChannelWrap(-1, ChannelType::Unknown, None)
+    }
+}
+
+impl<T> PartialEq for ChannelWrap<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<T> Eq for ChannelWrap<T> {}
+
+impl<T> Hash for ChannelWrap<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
     }
 }
 

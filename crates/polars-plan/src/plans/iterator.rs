@@ -47,6 +47,7 @@ macro_rules! push_expr {
                     Min { input, .. } => $push($c, input),
                     Mean(e) => $push($c, e),
                     Median(e) => $push($c, e),
+                    Unique(e) => $push($c, e),
                     NUnique(e) => $push($c, e),
                     First(e) => $push($c, e),
                     Last(e) => $push($c, e),
