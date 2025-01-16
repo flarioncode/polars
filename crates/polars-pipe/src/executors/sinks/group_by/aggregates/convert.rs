@@ -70,7 +70,8 @@ pub fn can_convert_to_hash_agg(
                 | AExpr::BinaryExpr { .. }
                 | AExpr::Ternary { .. }
                 | AExpr::Alias(_, _) => {},
-                _ => {
+                other => {
+                    eprintln!("Expression {other:?} cannot be run partitioned");
                     can_run_partitioned = false;
                 },
             }
@@ -95,16 +96,19 @@ pub fn can_convert_to_hash_agg(
                         | IRAggExpr::Last(_)
                         | IRAggExpr::Mean(_)
                         | IRAggExpr::Count(_, false)
-                ) || (matches!(
-                    agg_fn,
-                    IRAggExpr::Max {
-                        propagate_nans: false,
-                        ..
-                    } | IRAggExpr::Min {
-                        propagate_nans: false,
-                        ..
-                    }
-                ) && {
+                        | IRAggExpr::Unique(_)
+                ) || {
+                    matches!(
+                        agg_fn,
+                        IRAggExpr::Max {
+                            propagate_nans: false,
+                            ..
+                        } | IRAggExpr::Min {
+                            propagate_nans: false,
+                            ..
+                        }
+                    )
+                } && {
                     if let Ok(field) = ae.to_field(input_schema, Context::Default, expr_arena) {
                         match field.dtype {
                             DataType::Date => {
@@ -115,9 +119,12 @@ pub fn can_convert_to_hash_agg(
                     } else {
                         false
                     }
-                })
+                }
             },
-            _ => false,
+            other => {
+                eprintln!("Cannot convert to hash agg due to expression: {:?}", other);
+                false
+            },
         }
     } else {
         false

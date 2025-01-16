@@ -318,6 +318,7 @@ impl<'a> IRDotDisplay<'a> {
                 write_label(f, id, |f| {
                     f.write_str(match payload {
                         SinkType::Memory => "SINK (MEMORY)",
+                        SinkType::Channel { .. } => "SINK (CHANNEL)",
                         SinkType::File { .. } => "SINK (FILE)",
                         #[cfg(feature = "cloud")]
                         SinkType::Cloud { .. } => "SINK (CLOUD)",

@@ -38,6 +38,7 @@ impl IR {
             ExtContext { .. } => "ext_context",
             Sink { payload, .. } => match payload {
                 SinkType::Memory => "sink (memory)",
+                SinkType::Channel { .. } => "sink (channel)",
                 SinkType::File { .. } => "sink (file)",
                 #[cfg(feature = "cloud")]
                 SinkType::Cloud { .. } => "sink (cloud)",

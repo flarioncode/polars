@@ -117,6 +117,7 @@ impl fmt::Debug for Expr {
                     First(expr) => write!(f, "{expr:?}.first()"),
                     Last(expr) => write!(f, "{expr:?}.last()"),
                     Implode(expr) => write!(f, "{expr:?}.list()"),
+                    Unique(expr) => write!(f, "{expr:?}.unique()"),
                     NUnique(expr) => write!(f, "{expr:?}.n_unique()"),
                     Sum(expr) => write!(f, "{expr:?}.sum()"),
                     AggGroups(expr) => write!(f, "{expr:?}.groups()"),

@@ -357,6 +357,7 @@ impl<'a> TreeFmtNode<'a> {
                             h,
                             match payload {
                                 SinkType::Memory => "SINK (memory)",
+                                SinkType::Channel { .. } => "SINK (channel)",
                                 SinkType::File { .. } => "SINK (file)",
                                 #[cfg(feature = "cloud")]
                                 SinkType::Cloud { .. } => "SINK (cloud)",

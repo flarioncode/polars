@@ -208,6 +208,11 @@ fn create_physical_plan_impl(
             SinkType::Memory => {
                 polars_bail!(InvalidOperation: "memory sink not supported in the standard engine")
             },
+            SinkType::Channel { .. } => {
+                polars_bail!(InvalidOperation:
+                    "sink_channel not yet supported in standard engine"
+                )
+            },
             SinkType::File { file_type, .. } => {
                 polars_bail!(InvalidOperation:
                     "sink_{file_type:?} not yet supported in standard engine. Use 'collect().write_parquet()'"

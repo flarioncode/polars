@@ -16,7 +16,7 @@ pub mod pivot;
     feature = "json"
 ))]
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 
 pub use anonymous_scan::*;
 #[cfg(feature = "csv")]
@@ -31,6 +31,7 @@ pub use ndjson::*;
 #[cfg(feature = "parquet")]
 pub use parquet::*;
 use polars_core::prelude::*;
+use polars_core::utils::{ChannelType, ChannelWrap};
 use polars_expr::{create_physical_expr, ExpressionConversionState};
 use polars_io::RowIndex;
 use polars_mem_engine::{create_physical_plan, Executor};
@@ -799,6 +800,24 @@ impl LazyFrame {
         (out, timer_df)
     }
 
+    /// Stream a query result into a channel
+    pub fn sink_channel(
+        self,
+        partition_id: i32,
+        flarion_channel_tx: mpsc::Sender<FlarionChannelMessage>,
+    ) -> PolarsResult<()> {
+        self.sink(
+            SinkType::Channel {
+                flarion_channel_tx: ChannelWrap(
+                    partition_id,
+                    ChannelType::Sender,
+                    Some(flarion_channel_tx),
+                ),
+            },
+            "sink_channel()",
+        )
+    }
+
     /// Stream a query result into a parquet file. This is useful if the final result doesn't fit
     /// into memory. This methods will return an error if the query cannot be completely done in a
     /// streaming fashion.
@@ -911,13 +930,6 @@ impl LazyFrame {
         )
     }
 
-    #[cfg(any(
-        feature = "ipc",
-        feature = "parquet",
-        feature = "cloud_write",
-        feature = "csv",
-        feature = "json",
-    ))]
     fn sink(mut self, payload: SinkType, msg_alternative: &str) -> Result<(), PolarsError> {
         self.opt_state |= OptFlags::STREAMING;
         self.logical_plan = DslPlan::Sink {

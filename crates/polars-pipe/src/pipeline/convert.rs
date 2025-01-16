@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use hashbrown::hash_map::Entry;
 use polars_core::prelude::*;
+use polars_core::utils::ChannelType;
 use polars_core::with_match_physical_integer_polars_type;
 #[cfg(feature = "parquet")]
 use polars_io::predicates::{PhysicalIoExpr, StatsEvaluator};
@@ -158,6 +159,10 @@ where
                     )?;
                     Ok(Box::new(src) as Box<dyn Source>)
                 },
+                FileScan::Anonymous { options, function } => {
+                    let src = sources::AnonymousSource::new(options, function);
+                    Ok(Box::new(src) as Box<dyn Source>)
+                },
                 _ => todo!(),
             }
         },
@@ -183,6 +188,11 @@ where
                 SinkType::Memory => {
                     Box::new(OrderedSink::new(input_schema.into_owned())) as Box<dyn SinkTrait>
                 },
+                SinkType::Channel { flarion_channel_tx } => {
+                    assert!(flarion_channel_tx.1 == ChannelType::Sender);
+                    let partition_id = flarion_channel_tx.0;
+                    Box::new(ChannelSink::new(partition_id, flarion_channel_tx.2.as_ref().unwrap().clone()))
+                }
                 #[allow(unused_variables)]
                 SinkType::File {
                     path, file_type, ..

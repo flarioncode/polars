@@ -6,6 +6,7 @@ use polars_core::prelude::*;
 pub use super::options::AnonymousScanOptions;
 use crate::dsl::Expr;
 
+#[derive(Clone)]
 pub struct AnonymousScanArgs {
     pub n_rows: Option<usize>,
     pub with_columns: Option<Arc<[PlSmallStr]>>,
@@ -46,6 +47,10 @@ pub trait AnonymousScan: Send + Sync {
     ///
     /// Defaults to `false`
     fn allows_slice_pushdown(&self) -> bool {
+        false
+    }
+
+    fn is_streamable(&self) -> bool {
         false
     }
 }
