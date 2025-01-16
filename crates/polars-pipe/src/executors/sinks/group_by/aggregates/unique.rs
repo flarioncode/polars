@@ -5,7 +5,7 @@ use polars_core::datatypes::{AnyValue, BinaryChunked, DataType};
 use polars_core::prelude::{IntoSeries, ListChunked, Series};
 use polars_core::utils::Wrap;
 use polars_expr::prelude::NormalizedFloat;
-use polars_utils::aliases::{PlIndexSet};
+use polars_utils::aliases::PlIndexSet;
 use polars_utils::pl_str::PlSmallStr;
 use polars_utils::unwrap::UnwrapUncheckedRelease;
 use polars_utils::IdxSize;
@@ -26,7 +26,7 @@ pub(crate) enum AggregateBufferSet {
     DoubleSet(PlIndexSet<NormalizedFloat<f64>>),
     StringSet(PlIndexSet<String>),
     BinarySet(PlIndexSet<Vec<u8>>),
-    ArraySet(PlIndexSet<Wrap<Series>>)
+    ArraySet(PlIndexSet<Wrap<Series>>),
 }
 
 impl AggregateBufferSet {
@@ -74,9 +74,9 @@ impl AggregateBufferSet {
                     .map(ToOwned::to_owned)
                     .collect(),
             ),
-            DataType::List(_) => Self::ArraySet(
-                s.list()?.into_iter().flatten().map(Wrap).collect()
-            ),
+            DataType::List(_) => {
+                Self::ArraySet(s.list()?.into_iter().flatten().map(Wrap).collect())
+            },
             _ => unreachable!("Unsupported datatype for aggregate buffer set"),
         })
     }
@@ -95,18 +95,15 @@ impl AggregateBufferSet {
             Self::LongSet(val) => Series::from_iter(val),
             Self::FloatSet(val) => {
                 Series::from_iter(val.into_iter().map(NormalizedFloat::into_inner))
-            }
+            },
             Self::DoubleSet(val) => {
                 Series::from_iter(val.into_iter().map(NormalizedFloat::into_inner))
-            }
+            },
             Self::StringSet(val) => Series::from_iter(val),
             Self::BinarySet(val) => BinaryChunked::from_iter(val).into_series(),
             Self::ArraySet(val) => {
-                ListChunked::from_iter(
-                    val.into_iter().map(|x| x.0)
-                )
-                    .into_series()
-            }
+                ListChunked::from_iter(val.into_iter().map(|x| x.0)).into_series()
+            },
         };
 
         if res_ser.dtype() == data_type {
@@ -118,48 +115,62 @@ impl AggregateBufferSet {
 
     fn extend_from(&mut self, other: &Self) {
         match other {
-            AggregateBufferSet::NullSet => {}
-            AggregateBufferSet::BoolSet(_) => {}
-            AggregateBufferSet::ByteSet(_) => {}
-            AggregateBufferSet::ShortSet(_) => {}
-            AggregateBufferSet::IntSet(_) => {}
-            AggregateBufferSet::LongSet(_) => {}
-            AggregateBufferSet::FloatSet(_) => {}
-            AggregateBufferSet::DoubleSet(_) => {}
-            AggregateBufferSet::StringSet(_) => {}
-            AggregateBufferSet::BinarySet(_) => {}
-            AggregateBufferSet::ArraySet(_) => {}
+            AggregateBufferSet::NullSet => {},
+            AggregateBufferSet::BoolSet(_) => {},
+            AggregateBufferSet::ByteSet(_) => {},
+            AggregateBufferSet::ShortSet(_) => {},
+            AggregateBufferSet::IntSet(_) => {},
+            AggregateBufferSet::LongSet(_) => {},
+            AggregateBufferSet::FloatSet(_) => {},
+            AggregateBufferSet::DoubleSet(_) => {},
+            AggregateBufferSet::StringSet(_) => {},
+            AggregateBufferSet::BinarySet(_) => {},
+            AggregateBufferSet::ArraySet(_) => {},
         }
         match (self, other) {
-            (AggregateBufferSet::NullSet, AggregateBufferSet::NullSet) => {}
-            (AggregateBufferSet::BoolSet(lhs), AggregateBufferSet::BoolSet(rhs)) => {lhs.extend(rhs.iter())}
-            (AggregateBufferSet::ByteSet(lhs), AggregateBufferSet::ByteSet(rhs)) => {lhs.extend(rhs.iter())}
-            (AggregateBufferSet::ShortSet(lhs), AggregateBufferSet::ShortSet(rhs)) => {lhs.extend(rhs.iter())}
-            (AggregateBufferSet::IntSet(lhs), AggregateBufferSet::IntSet(rhs)) => {lhs.extend(rhs.iter())}
-            (AggregateBufferSet::LongSet(lhs), AggregateBufferSet::LongSet(rhs)) => {lhs.extend(rhs.iter())}
-            (AggregateBufferSet::FloatSet(lhs), AggregateBufferSet::FloatSet(rhs)) => {lhs.extend(rhs.iter())}
-            (AggregateBufferSet::DoubleSet(lhs), AggregateBufferSet::DoubleSet(rhs)) => {lhs.extend(rhs.iter())}
+            (AggregateBufferSet::NullSet, AggregateBufferSet::NullSet) => {},
+            (AggregateBufferSet::BoolSet(lhs), AggregateBufferSet::BoolSet(rhs)) => {
+                lhs.extend(rhs.iter())
+            },
+            (AggregateBufferSet::ByteSet(lhs), AggregateBufferSet::ByteSet(rhs)) => {
+                lhs.extend(rhs.iter())
+            },
+            (AggregateBufferSet::ShortSet(lhs), AggregateBufferSet::ShortSet(rhs)) => {
+                lhs.extend(rhs.iter())
+            },
+            (AggregateBufferSet::IntSet(lhs), AggregateBufferSet::IntSet(rhs)) => {
+                lhs.extend(rhs.iter())
+            },
+            (AggregateBufferSet::LongSet(lhs), AggregateBufferSet::LongSet(rhs)) => {
+                lhs.extend(rhs.iter())
+            },
+            (AggregateBufferSet::FloatSet(lhs), AggregateBufferSet::FloatSet(rhs)) => {
+                lhs.extend(rhs.iter())
+            },
+            (AggregateBufferSet::DoubleSet(lhs), AggregateBufferSet::DoubleSet(rhs)) => {
+                lhs.extend(rhs.iter())
+            },
             (AggregateBufferSet::StringSet(lhs), AggregateBufferSet::StringSet(rhs)) => {
                 for item in rhs {
                     if !lhs.contains(item) {
                         lhs.insert(item.to_owned());
                     }
                 }
-            }
+            },
             (AggregateBufferSet::BinarySet(lhs), AggregateBufferSet::BinarySet(rhs)) => {
                 for item in rhs {
                     if !lhs.contains(item) {
                         lhs.insert(item.to_owned());
                     }
                 }
-            }
+            },
             (AggregateBufferSet::ArraySet(lhs), AggregateBufferSet::ArraySet(rhs)) => {
                 for item in rhs {
                     if !lhs.contains(item) {
                         lhs.insert(Wrap(item.0.clone()));
                     }
                 }
-            }
+            },
             _ => unreachable!("Mismatched types in AggregateBufferSet::extend_from"),
         };
     }
@@ -200,7 +211,9 @@ impl UniqueAgg {
 impl AggregateFn for UniqueAgg {
     fn pre_agg(&mut self, chunk_idx: IdxSize, item: &Series) {
         self.chunk_idx = chunk_idx;
-        self.set = unsafe { AggregateBufferSet::from_series(item, &self.dtype).unwrap_unchecked_release() };
+        self.set = unsafe {
+            AggregateBufferSet::from_series(item, &self.dtype).unwrap_unchecked_release()
+        };
     }
 
     fn pre_agg_ordered(
@@ -212,7 +225,9 @@ impl AggregateFn for UniqueAgg {
     ) {
         self.chunk_idx = chunk_idx;
         let take = values.slice_from_offsets(offset, length);
-        self.set = unsafe { AggregateBufferSet::from_series(&take, &self.dtype).unwrap_unchecked_release() };
+        self.set = unsafe {
+            AggregateBufferSet::from_series(&take, &self.dtype).unwrap_unchecked_release()
+        };
     }
 
     fn dtype(&self) -> DataType {

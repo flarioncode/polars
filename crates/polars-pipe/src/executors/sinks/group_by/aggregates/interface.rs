@@ -11,8 +11,8 @@ use crate::executors::sinks::group_by::aggregates::last::LastAgg;
 use crate::executors::sinks::group_by::aggregates::mean::MeanAgg;
 use crate::executors::sinks::group_by::aggregates::min_max::MinMaxAgg;
 use crate::executors::sinks::group_by::aggregates::null::NullAgg;
-use crate::executors::sinks::group_by::aggregates::SumAgg;
 use crate::executors::sinks::group_by::aggregates::unique::UniqueAgg;
+use crate::executors::sinks::group_by::aggregates::SumAgg;
 use crate::operators::IdxSize;
 
 #[enum_dispatch(AggregateFunction)]
