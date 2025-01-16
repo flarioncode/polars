@@ -3,6 +3,7 @@ use std::sync::mpsc;
 
 use arrow::legacy::error::PolarsResult;
 use polars_plan::prelude::FlarionChannelMessage;
+
 use crate::operators::{DataChunk, FinalizedSink, PExecutionContext, Sink, SinkResult};
 
 // Currently ignore the index in the DataChunk
@@ -14,9 +15,7 @@ pub struct ChannelSink {
 }
 
 impl ChannelSink {
-    pub fn new(partition_id: i32,
-               flarion_channel_tx: mpsc::Sender<FlarionChannelMessage>,
-    ) -> Self {
+    pub fn new(partition_id: i32, flarion_channel_tx: mpsc::Sender<FlarionChannelMessage>) -> Self {
         Self {
             partition_id,
             flarion_channel_tx,
@@ -28,7 +27,10 @@ impl Sink for ChannelSink {
     fn sink(&mut self, _context: &PExecutionContext, chunk: DataChunk) -> PolarsResult<SinkResult> {
         // don't add empty dataframes
         if chunk.data.height() > 0 {
-            if let Err(err) = self.flarion_channel_tx.send(FlarionChannelMessage::DataReady(chunk.data)) {
+            if let Err(err) = self
+                .flarion_channel_tx
+                .send(FlarionChannelMessage::DataReady(chunk.data))
+            {
                 panic!("Failed to send data to channel: {}", err);
             }
         };
@@ -45,7 +47,9 @@ impl Sink for ChannelSink {
 
     fn finalize(&mut self, _context: &PExecutionContext) -> PolarsResult<FinalizedSink> {
         // `Depleted` indicates that we can flush all remaining chunks.
-        self.flarion_channel_tx.send(FlarionChannelMessage::Depleted).unwrap();
+        self.flarion_channel_tx
+            .send(FlarionChannelMessage::Depleted)
+            .unwrap();
 
         // return a dummy dataframe;
         Ok(FinalizedSink::Finished(Default::default()))
