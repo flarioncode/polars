@@ -930,13 +930,6 @@ impl LazyFrame {
         )
     }
 
-    #[cfg(any(
-        feature = "ipc",
-        feature = "parquet",
-        feature = "cloud_write",
-        feature = "csv",
-        feature = "json",
-    ))]
     fn sink(mut self, payload: SinkType, msg_alternative: &str) -> Result<(), PolarsError> {
         self.opt_state |= OptFlags::STREAMING;
         self.logical_plan = DslPlan::Sink {
