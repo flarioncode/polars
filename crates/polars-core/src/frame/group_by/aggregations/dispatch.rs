@@ -2,7 +2,7 @@ use super::*;
 
 // implemented on the series because we don't need types
 impl Series {
-    fn slice_from_offsets(&self, first: IdxSize, len: IdxSize) -> Self {
+    pub fn slice_from_offsets(&self, first: IdxSize, len: IdxSize) -> Self {
         self.slice(first as i64, len as usize)
     }
 

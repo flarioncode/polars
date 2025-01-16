@@ -132,7 +132,7 @@ impl<const FIXED: bool> AggHashTable<FIXED> {
         &mut self,
         hash: u64,
         key: &[u8],
-        agg_iters: &mut [SeriesPhysIter],
+        aggs: &[Series],
         chunk_index: IdxSize,
     ) -> bool {
         let agg_idx = match self.insert_key(hash, key) {
@@ -142,11 +142,11 @@ impl<const FIXED: bool> AggHashTable<FIXED> {
         };
 
         // apply the aggregation
-        for (i, agg_iter) in agg_iters.iter_mut().enumerate() {
+        for (i, agg_series) in aggs.iter().enumerate() {
             let i = agg_idx as usize + i;
             let agg_fn = unsafe { self.running_aggregations.get_unchecked_release_mut(i) };
 
-            agg_fn.pre_agg(chunk_index, agg_iter.as_mut())
+            agg_fn.pre_agg(chunk_index, agg_series)
         }
         // no overflow
         false

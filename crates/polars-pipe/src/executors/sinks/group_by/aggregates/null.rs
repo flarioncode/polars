@@ -14,7 +14,7 @@ impl NullAgg {
 }
 
 impl AggregateFn for NullAgg {
-    fn pre_agg(&mut self, _chunk_idx: IdxSize, _item: &mut dyn ExactSizeIterator<Item = AnyValue>) {
+    fn pre_agg(&mut self, _chunk_idx: IdxSize, _item: &Series) {
         // no-op
     }
     fn pre_agg_ordered(

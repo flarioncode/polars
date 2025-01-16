@@ -137,7 +137,6 @@ impl GlobalTable {
         debug_assert_eq!(hashes.len(), keys.len());
 
         // let mut keys_iters = keys.iter().map(|s| s.phys_iter()).collect::<Vec<_>>();
-        let mut agg_cols_iters = agg_cols.iter().map(|s| s.phys_iter()).collect::<Vec<_>>();
 
         // amortize loop counter
         for (i, row) in keys.values_iter().enumerate() {
@@ -146,7 +145,7 @@ impl GlobalTable {
                 let chunk_index = *chunk_indexes.get_unchecked(i);
 
                 // SAFETY: keys_iters and cols_iters are not depleted
-                let overflow = hash_map.insert(hash, row, &mut agg_cols_iters, chunk_index);
+                let overflow = hash_map.insert(hash, row, agg_cols, chunk_index);
                 // should never overflow
                 debug_assert!(!overflow);
             }

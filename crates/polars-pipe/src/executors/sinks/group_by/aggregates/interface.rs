@@ -12,14 +12,15 @@ use crate::executors::sinks::group_by::aggregates::mean::MeanAgg;
 use crate::executors::sinks::group_by::aggregates::min_max::MinMaxAgg;
 use crate::executors::sinks::group_by::aggregates::null::NullAgg;
 use crate::executors::sinks::group_by::aggregates::SumAgg;
+use crate::executors::sinks::group_by::aggregates::unique::UniqueAgg;
 use crate::operators::IdxSize;
 
 #[enum_dispatch(AggregateFunction)]
 pub(crate) trait AggregateFn: Send + Sync {
-    fn has_physical_agg(&self) -> bool {
+    fn has_numeric_agg(&self) -> bool {
         false
     }
-    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &mut dyn ExactSizeIterator<Item = AnyValue>);
+    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &Series);
     fn pre_agg_ordered(
         &mut self,
         _chunk_idx: IdxSize,
@@ -27,7 +28,7 @@ pub(crate) trait AggregateFn: Send + Sync {
         length: IdxSize,
         values: &Series,
     );
-    fn pre_agg_primitive<T: NumCast>(&mut self, _chunk_idx: IdxSize, _item: Option<T>) {
+    fn pre_agg_numeric<T: NumCast>(&mut self, _chunk_idx: IdxSize, _item: Option<T>) {
         unimplemented!()
     }
 
@@ -67,6 +68,7 @@ pub(crate) enum AggregateFunction {
     MinMaxI16(MinMaxAgg<i16, fn(i16, i16) -> i16>),
     MinMaxI32(MinMaxAgg<i32, fn(i32, i32) -> i32>),
     MinMaxI64(MinMaxAgg<i64, fn(i64, i64) -> i64>),
+    Unique(UniqueAgg),
 }
 
 impl AggregateFunction {
@@ -96,6 +98,7 @@ impl AggregateFunction {
             MinMaxI16(inner) => MinMaxI16(inner.split()),
             MinMaxI32(inner) => MinMaxI32(inner.split()),
             MinMaxI64(inner) => MinMaxI64(inner.split()),
+            Unique(inner) => Unique(UniqueAgg::new(inner.dtype.clone())),
         }
     }
 }

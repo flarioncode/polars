@@ -22,6 +22,7 @@ use crate::executors::sinks::group_by::aggregates::mean::MeanAgg;
 use crate::executors::sinks::group_by::aggregates::min_max::{new_max, new_min};
 use crate::executors::sinks::group_by::aggregates::null::NullAgg;
 use crate::executors::sinks::group_by::aggregates::{AggregateFunction, SumAgg};
+use crate::executors::sinks::group_by::aggregates::unique::UniqueAgg;
 use crate::expressions::PhysicalPipedExpr;
 use crate::operators::DataChunk;
 
@@ -304,6 +305,20 @@ where
                     AggregateFunction::Last(LastAgg::new(logical_dtype.to_physical())),
                 )
             },
+            IRAggExpr::Unique(input) => {
+                let phys_expr = to_physical(
+                    &ExprIR::from_node(*input, expr_arena),
+                    expr_arena,
+                    Some(schema),
+                )
+                    .unwrap();
+                let logical_dtype = phys_expr.field(schema).unwrap().dtype;
+                (
+                    logical_dtype.clone(),
+                    phys_expr,
+                    AggregateFunction::Unique(UniqueAgg::new(logical_dtype)),
+                )
+            }
             IRAggExpr::Count(input, _) => {
                 let phys_expr = to_physical(
                     &ExprIR::from_node(*input, expr_arena),

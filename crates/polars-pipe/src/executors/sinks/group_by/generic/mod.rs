@@ -15,7 +15,6 @@ use eval::Eval;
 use hash_table::AggHashTable;
 use hashbrown::hash_map::{RawEntryMut, RawVacantEntryMut};
 use polars_core::frame::row::AnyValueBufferTrusted;
-use polars_core::series::SeriesPhysIter;
 use polars_core::IdBuildHasher;
 use polars_utils::slice::GetSaferUnchecked;
 use polars_utils::unwrap::UnwrapUncheckedRelease;

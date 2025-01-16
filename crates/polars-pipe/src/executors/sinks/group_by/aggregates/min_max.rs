@@ -46,16 +46,16 @@ where
     K: NumericNative,
     PrimitiveArray<K>: for<'a> MinMaxKernel<Scalar<'a> = K>,
 {
-    fn has_physical_agg(&self) -> bool {
+    fn has_numeric_agg(&self) -> bool {
         true
     }
 
-    fn pre_agg(&mut self, chunk_idx: IdxSize, item: &mut dyn ExactSizeIterator<Item = AnyValue>) {
-        let item = unsafe { item.next().unwrap_unchecked_release() };
-        self.pre_agg_primitive(chunk_idx, item.extract::<K>())
+    fn pre_agg(&mut self, chunk_idx: IdxSize, item: &Series) {
+        let item = unsafe { item.phys_iter().next().unwrap_unchecked_release() };
+        self.pre_agg_numeric(chunk_idx, item.extract::<K>())
     }
 
-    fn pre_agg_primitive<T: NumCast>(&mut self, _chunk_idx: IdxSize, item: Option<T>) {
+    fn pre_agg_numeric<T: NumCast>(&mut self, _chunk_idx: IdxSize, item: Option<T>) {
         match (item.map(|v| K::from(v).unwrap()), self.agg) {
             (Some(val), Some(current_agg)) => {
                 self.agg = Some((self.agg_fn)(current_agg, val));
@@ -82,7 +82,7 @@ where
         } else {
             arr.max_ignore_nan_kernel()
         };
-        self.pre_agg_primitive(0, agg)
+        self.pre_agg_numeric(0, agg)
     }
 
     fn dtype(&self) -> DataType {
@@ -91,7 +91,7 @@ where
 
     fn combine(&mut self, other: &dyn Any) {
         let other = unsafe { other.downcast_ref::<Self>().unwrap_unchecked_release() };
-        self.pre_agg_primitive(0, other.agg)
+        self.pre_agg_numeric(0, other.agg)
     }
 
     fn finalize(&mut self) -> AnyValue<'static> {
