@@ -10,14 +10,14 @@ use crate::operators::{DataChunk, FinalizedSink, PExecutionContext, Sink, SinkRe
 // When we add sort support we'll need to ensure we get them in the right order
 #[derive(Clone)]
 pub struct ChannelSink {
-    partition_id: i32,
+    _partition_id: i32,
     flarion_channel_tx: mpsc::Sender<FlarionChannelMessage>,
 }
 
 impl ChannelSink {
     pub fn new(partition_id: i32, flarion_channel_tx: mpsc::Sender<FlarionChannelMessage>) -> Self {
         Self {
-            partition_id,
+            _partition_id: partition_id,
             flarion_channel_tx,
         }
     }

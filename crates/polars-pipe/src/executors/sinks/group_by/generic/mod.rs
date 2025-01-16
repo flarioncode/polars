@@ -23,6 +23,7 @@ pub(crate) use sink::GenericGroupby2;
 use thread_local::ThreadLocalTable;
 
 use super::*;
+use crate::executors::sinks::group_by::aggregates::{AggregateFn, AggregateFunction};
 use crate::executors::sinks::io::IOThread;
 use crate::operators::{DataChunk, FinalizedSink, PExecutionContext, Sink, SinkResult};
 
