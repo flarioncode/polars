@@ -22,7 +22,7 @@ pub trait AnonymousScan: Send + Sync {
     /// Produce the next batch Polars can consume. Implement this method to get proper
     /// streaming support.
     fn next_batch(&self, scan_opts: &AnonymousScanArgs) -> PolarsResult<Option<DataFrame>> {
-        self.scan(&scan_opts).map(Some)
+        self.scan(scan_opts).map(Some)
     }
 
     /// function to supply the schema.

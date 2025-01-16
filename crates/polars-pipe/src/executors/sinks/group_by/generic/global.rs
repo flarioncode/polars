@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use polars_core::utils::accumulate_dataframes_vertical_unchecked;
 use polars_core::POOL;
 use rayon::prelude::*;
-
+use crate::executors::sinks::group_by::aggregates::AggregateFunction;
 use super::*;
 use crate::pipeline::{FORCE_OOC, PARTITION_SIZE};
 
