@@ -135,13 +135,13 @@ impl Executor for AnonymousScanExec {
             (true, Some(predicate)) => state.record(
                 || {
                     args.predicate = predicate.as_expression().cloned();
-                    self.function.scan(&args)
+                    self.function.scan(args)
                 },
                 "anonymous_scan".into(),
             ),
             (false, Some(predicate)) => state.record(
                 || {
-                    let mut df = self.function.scan(&args)?;
+                    let mut df = self.function.scan(args)?;
                     let s = predicate.evaluate(&df, state)?;
                     if self.predicate_has_windows {
                         state.clear_window_expr_cache()
@@ -155,7 +155,7 @@ impl Executor for AnonymousScanExec {
                 },
                 "anonymous_scan".into(),
             ),
-            _ => state.record(|| self.function.scan(&args), "anonymous_scan".into()),
+            _ => state.record(|| self.function.scan(args), "anonymous_scan".into()),
         }
     }
 }

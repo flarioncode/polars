@@ -30,7 +30,7 @@ impl AnonymousSource {
 
 impl Source for AnonymousSource {
     fn get_batches(&mut self, _context: &PExecutionContext) -> PolarsResult<SourceResult> {
-        if let Some(batch) = self.function.next_batch(&self.args)? {
+        if let Some(batch) = self.function.next_batch(self.args.clone())? {
             let res = SourceResult::GotMoreData(vec![DataChunk::new(self.current_idx, batch)]);
             self.current_idx += 1;
             Ok(res)

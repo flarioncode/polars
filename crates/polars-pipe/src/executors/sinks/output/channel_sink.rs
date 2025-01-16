@@ -60,6 +60,6 @@ impl Sink for ChannelSink {
     }
 
     fn fmt(&self) -> &str {
-        "parquet_sink"
+        "channel_sink"
     }
 }

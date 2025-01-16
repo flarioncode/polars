@@ -657,16 +657,15 @@ fn scan_anonymous_fn_with_options() -> PolarsResult<()> {
             self
         }
 
-        fn allows_projection_pushdown(&self) -> bool {
-            true
+        fn scan(&self, scan_opts: AnonymousScanArgs) -> PolarsResult<DataFrame> {
+            assert_eq!(scan_opts.with_columns.as_ref().map(|x| x.len()), Some(2));
+            assert_eq!(scan_opts.n_rows, Some(3));
+            let out = fruits_cars().select(scan_opts.with_columns.unwrap().iter().cloned())?;
+            Ok(out.slice(0, scan_opts.n_rows.unwrap()))
         }
 
-        fn scan(&self, scan_opts: &AnonymousScanArgs) -> PolarsResult<DataFrame> {
-            let with_columns = scan_opts.with_columns.clone().unwrap();
-            assert_eq!(with_columns.len(), 2);
-            assert_eq!(scan_opts.n_rows, Some(3));
-            let out = fruits_cars().select(with_columns.iter().cloned())?;
-            Ok(out.slice(0, scan_opts.n_rows.unwrap()))
+        fn allows_projection_pushdown(&self) -> bool {
+            true
         }
     }
 

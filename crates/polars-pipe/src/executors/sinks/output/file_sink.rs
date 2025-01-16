@@ -116,6 +116,6 @@ impl Sink for FilesSink {
         self
     }
     fn fmt(&self) -> &str {
-        "parquet_sink"
+        "file_sink"
     }
 }
