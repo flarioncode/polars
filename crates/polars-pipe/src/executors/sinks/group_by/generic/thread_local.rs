@@ -97,7 +97,7 @@ impl SpillPartitions {
         hash: u64,
         chunk_idx: IdxSize,
         row: &[u8],
-        aggs: &[Series],
+        agg_iters: &mut [SeriesPhysIter],
     ) -> Option<(usize, SpillPayload)> {
         let partition = hash_to_partition(hash, self.aggs_partitioned.len());
         self.spilled = true;
@@ -114,8 +114,8 @@ impl SpillPartitions {
 
             // amortize the loop counter
             key_builder.push(Some(row));
-            for (i, agg) in aggs.iter().enumerate() {
-                let av = agg.phys_iter().next().unwrap_unchecked_release();
+            for (i, agg) in agg_iters.iter_mut().enumerate() {
+                let av = agg.next().unwrap_unchecked_release();
                 let buf = agg_values.get_unchecked_mut(i);
                 buf.add_unchecked_borrowed_physical(&av);
             }
@@ -267,12 +267,15 @@ impl ThreadLocalTable {
         &mut self,
         hash: u64,
         keys_row: &[u8],
-        aggs: &[Series],
+        agg_iters: &mut [SeriesPhysIter],
         chunk_index: IdxSize,
     ) -> Option<(usize, SpillPayload)> {
-        if self.inner_map.insert(hash, keys_row, aggs, chunk_index) {
+        if self
+            .inner_map
+            .insert(hash, keys_row, agg_iters, chunk_index)
+        {
             self.spill_partitions
-                .insert(hash, chunk_index, keys_row, aggs)
+                .insert(hash, chunk_index, keys_row, agg_iters)
         } else {
             None
         }

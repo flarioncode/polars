@@ -22,15 +22,14 @@ impl<const INCLUDE_NULL: bool> AggregateFn for CountAgg<INCLUDE_NULL> {
         false
     }
 
-    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &Series) {
-        let item = unsafe { item.phys_iter().next().unwrap_unchecked_release() };
+    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &mut dyn ExactSizeIterator<Item = AnyValue>) {
+        let item = unsafe { item.next().unwrap_unchecked_release() };
         if INCLUDE_NULL {
             self.count += 1;
         } else {
             self.count += !matches!(item, AnyValue::Null) as IdxSize;
         }
     }
-
     fn pre_agg_ordered(
         &mut self,
         _chunk_idx: IdxSize,

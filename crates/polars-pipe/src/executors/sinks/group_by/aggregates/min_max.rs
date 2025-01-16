@@ -50,8 +50,8 @@ where
         true
     }
 
-    fn pre_agg(&mut self, chunk_idx: IdxSize, item: &Series) {
-        let item = unsafe { item.phys_iter().next().unwrap_unchecked_release() };
+    fn pre_agg(&mut self, chunk_idx: IdxSize, item: &mut dyn ExactSizeIterator<Item = AnyValue>) {
+        let item = unsafe { item.next().unwrap_unchecked_release() };
         self.pre_agg_numeric(chunk_idx, item.extract::<K>())
     }
 

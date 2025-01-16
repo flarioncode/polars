@@ -20,7 +20,7 @@ pub(crate) trait AggregateFn: Send + Sync {
     fn has_numeric_agg(&self) -> bool {
         false
     }
-    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &Series);
+    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &mut dyn ExactSizeIterator<Item = AnyValue>);
     fn pre_agg_ordered(
         &mut self,
         _chunk_idx: IdxSize,

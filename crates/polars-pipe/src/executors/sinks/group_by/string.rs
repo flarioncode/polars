@@ -568,10 +568,11 @@ pub(super) fn apply_aggregate(
 
         apply_agg!(aggregation_s, dispatch);
     } else {
+        let mut iter = aggregation_s.phys_iter();
         for &agg_idx in agg_idxs.iter() {
             let i = agg_idx as usize + agg_i;
             let agg_fn = unsafe { aggregators.get_unchecked_release_mut(i) };
-            agg_fn.pre_agg(chunk_idx, aggregation_s)
+            agg_fn.pre_agg(chunk_idx, &mut iter)
         }
     }
 }

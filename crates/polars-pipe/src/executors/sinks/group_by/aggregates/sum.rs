@@ -31,8 +31,8 @@ where
         true
     }
 
-    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &Series) {
-        let item = unsafe { item.phys_iter().next().unwrap_unchecked_release() };
+    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &mut dyn ExactSizeIterator<Item = AnyValue>) {
+        let item = unsafe { item.next().unwrap_unchecked_release() };
         self.pre_agg_numeric(0, item.extract::<K>())
     }
     fn pre_agg_numeric<T: NumCast>(&mut self, _chunk_idx: IdxSize, item: Option<T>) {

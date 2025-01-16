@@ -104,10 +104,9 @@ impl Eval {
     pub(super) unsafe fn get_keys_iter(&self) -> BinaryArray<i64> {
         self.rows_encoded.borrow_array()
     }
-    pub(super) unsafe fn get_aggs_series(&self) -> &[Series] {
-        // let aggregation_series = &*self.aggregation_series.get();
-        // aggregation_series.iter().map(|s| s.phys_iter()).collect()
-        &*self.aggregation_series.get()
+    pub(super) unsafe fn get_aggs_iters(&self) -> Vec<SeriesPhysIter> {
+        let aggregation_series = &*self.aggregation_series.get();
+        aggregation_series.iter().map(|s| s.phys_iter()).collect()
     }
 
     pub(super) fn hashes(&self) -> &[u64] {

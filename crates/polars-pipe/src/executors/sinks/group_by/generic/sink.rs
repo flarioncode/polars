@@ -70,7 +70,7 @@ impl Sink for GenericGroupby2 {
         // SAFETY: eval is alive for the duration of keys
         let keys = unsafe { self.eval.get_keys_iter() };
         // SAFETY: we don't hold mutable refs
-        let aggs = unsafe { self.eval.get_aggs_series() };
+        let mut aggs = unsafe { self.eval.get_aggs_iters() };
 
         let chunk_idx = chunk.chunk_index;
         unsafe {
@@ -78,7 +78,8 @@ impl Sink for GenericGroupby2 {
             let table = &mut *self.thread_local_table.get();
 
             for (hash, row) in self.eval.hashes().iter().zip(keys.values_iter()) {
-                if let Some((partition, spill_payload)) = table.insert(*hash, row, aggs, chunk_idx)
+                if let Some((partition, spill_payload)) =
+                    table.insert(*hash, row, &mut aggs, chunk_idx)
                 {
                     self.global_table.spill(partition, spill_payload)
                 }
@@ -87,6 +88,7 @@ impl Sink for GenericGroupby2 {
 
         // clear memory
         unsafe {
+            drop(aggs);
             // SAFETY: we don't hold mutable refs, we just dropped them
             self.eval.clear()
         };

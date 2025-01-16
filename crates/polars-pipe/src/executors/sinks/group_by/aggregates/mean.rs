@@ -50,8 +50,8 @@ where
         }
     }
 
-    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &Series) {
-        let item = unsafe { item.phys_iter().next().unwrap_unchecked_release() };
+    fn pre_agg(&mut self, _chunk_idx: IdxSize, item: &mut dyn ExactSizeIterator<Item = AnyValue>) {
+        let item = unsafe { item.next().unwrap_unchecked_release() };
         match (item.extract::<K>(), self.sum) {
             (Some(val), Some(sum)) => {
                 self.sum = Some(sum + val);

@@ -24,8 +24,8 @@ impl LastAgg {
 }
 
 impl AggregateFn for LastAgg {
-    fn pre_agg(&mut self, chunk_idx: IdxSize, item: &Series) {
-        let item = unsafe { item.phys_iter().next().unwrap_unchecked_release() };
+    fn pre_agg(&mut self, chunk_idx: IdxSize, item: &mut dyn ExactSizeIterator<Item = AnyValue>) {
+        let item = unsafe { item.next().unwrap_unchecked_release() };
         self.chunk_idx = chunk_idx;
         self.last = Some(unsafe { item.into_static().unwrap_unchecked() });
     }
