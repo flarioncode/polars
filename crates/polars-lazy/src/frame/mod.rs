@@ -16,7 +16,8 @@ pub mod pivot;
     feature = "json"
 ))]
 use std::path::Path;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 
 pub use anonymous_scan::*;
 #[cfg(feature = "csv")]
@@ -808,11 +809,7 @@ impl LazyFrame {
     ) -> PolarsResult<()> {
         self.sink(
             SinkType::Channel {
-                flarion_channel_tx: ChannelWrap(
-                    partition_id,
-                    ChannelType::Sender,
-                    Some(flarion_channel_tx),
-                ),
+                flarion_channel_tx: ChannelWrap(partition_id, ChannelType::Sender, Some(flarion_channel_tx)),
             },
             "sink_channel()",
         )
@@ -930,6 +927,13 @@ impl LazyFrame {
         )
     }
 
+    #[cfg(any(
+        feature = "ipc",
+        feature = "parquet",
+        feature = "cloud_write",
+        feature = "csv",
+        feature = "json",
+    ))]
     fn sink(mut self, payload: SinkType, msg_alternative: &str) -> Result<(), PolarsError> {
         self.opt_state |= OptFlags::STREAMING;
         self.logical_plan = DslPlan::Sink {

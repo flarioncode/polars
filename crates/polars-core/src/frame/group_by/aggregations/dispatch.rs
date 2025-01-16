@@ -102,40 +102,28 @@ impl Series {
         };
 
         match groups {
-            GroupsProxy::Idx(groups) => POOL
-                .install(|| {
-                    groups
-                        .all()
-                        .into_par_iter()
-                        .map(|idx| {
-                            debug_assert!(idx.len() <= s.len());
-                            Some(if idx.is_empty() {
-                                Series::new_empty(PlSmallStr::EMPTY, s.dtype())
-                            } else {
-                                let take = s.take_slice_unchecked(idx);
-                                take.unique().unwrap()
-                            })
-                        })
-                        .collect::<ListChunked>()
-                })
-                .into_series(),
-            GroupsProxy::Slice { groups, .. } => POOL
-                .install(|| {
-                    groups
-                        .par_iter()
-                        .copied()
-                        .map(|[first, len]| {
-                            debug_assert!(len <= s.len() as IdxSize);
-                            Some(if len == 0 {
-                                Series::new_empty(PlSmallStr::EMPTY, s.dtype())
-                            } else {
-                                let take = s.slice_from_offsets(first, len);
-                                take.unique().unwrap()
-                            })
-                        })
-                        .collect::<ListChunked>()
-                })
-                .into_series(),
+            GroupsProxy::Idx(groups) => {
+                POOL.install(|| groups.all().into_par_iter().map(|idx| {
+                    debug_assert!(idx.len() <= s.len());
+                    Some(if idx.is_empty() {
+                        Series::new_empty(PlSmallStr::EMPTY, s.dtype())
+                    } else {
+                        let take = s.take_slice_unchecked(idx);
+                        take.unique().unwrap()
+                    })
+                }).collect::<ListChunked>()).into_series()
+            },
+            GroupsProxy::Slice { groups, .. } => {
+                POOL.install(|| groups.par_iter().copied().map(|[first, len]| {
+                    debug_assert!(len <= s.len() as IdxSize);
+                    Some(if len == 0 {
+                        Series::new_empty(PlSmallStr::EMPTY, s.dtype())
+                    } else {
+                        let take = s.slice_from_offsets(first, len);
+                        take.unique().unwrap()
+                    })
+                }).collect::<ListChunked>()).into_series()
+            },
         }
     }
 

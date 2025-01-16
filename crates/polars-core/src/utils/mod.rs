@@ -42,10 +42,10 @@ impl<T> Deref for Wrap<T> {
 pub enum ChannelType {
     Unknown,
     Sender,
-    Receiver,
+    Receiver
 }
 
-// The first element is a partition_id, so we can use the EQ on it
+// The first element is a partition_id, so we can use the EQ on it 
 #[derive(Clone, Debug)]
 pub struct ChannelWrap<T>(pub i32, pub ChannelType, pub Option<T>);
 

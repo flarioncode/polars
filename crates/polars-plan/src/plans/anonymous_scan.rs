@@ -18,12 +18,12 @@ pub struct AnonymousScanArgs {
 pub trait AnonymousScan: Send + Sync {
     fn as_any(&self) -> &dyn Any;
     /// Creates a DataFrame from the supplied function & scan options.
-    fn scan(&self, scan_opts: AnonymousScanArgs) -> PolarsResult<DataFrame>;
+    fn scan(&self, scan_opts: &AnonymousScanArgs) -> PolarsResult<DataFrame>;
 
     /// Produce the next batch Polars can consume. Implement this method to get proper
     /// streaming support.
-    fn next_batch(&self, scan_opts: AnonymousScanArgs) -> PolarsResult<Option<DataFrame>> {
-        self.scan(scan_opts).map(Some)
+    fn next_batch(&self, scan_opts: &AnonymousScanArgs) -> PolarsResult<Option<DataFrame>> {
+        self.scan(&scan_opts).map(Some)
     }
 
     /// function to supply the schema.

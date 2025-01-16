@@ -116,7 +116,7 @@ pub fn node_to_expr(node: Node, expr_arena: &Arena<AExpr>) -> Expr {
             IRAggExpr::Unique(expr) => {
                 let exp = node_to_expr(expr, expr_arena);
                 AggExpr::Unique(Arc::new(exp)).into()
-            },
+            }
             IRAggExpr::NUnique(expr) => {
                 let exp = node_to_expr(expr, expr_arena);
                 AggExpr::NUnique(Arc::new(exp)).into()
