@@ -154,9 +154,7 @@ impl PhysicalExpr for AggregationExpr {
                 allow_threading,
             ),
             GroupByMethod::Groups => unreachable!(),
-            GroupByMethod::Unique => {
-                s.unique()
-            }
+            GroupByMethod::Unique => s.unique(),
             GroupByMethod::NUnique => {
                 if MetadataEnv::experimental_enabled() {
                     if let Some(count) = s.get_metadata().and_then(|v| v.distinct_count()) {

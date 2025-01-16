@@ -296,7 +296,7 @@ pub struct AnonymousScanOptions {
 
 pub enum FlarionChannelMessage {
     Depleted,
-    DataReady(DataFrame)
+    DataReady(DataFrame),
 }
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
