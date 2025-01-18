@@ -27,12 +27,19 @@ impl Sink for ChannelSink {
     fn sink(&mut self, _context: &PExecutionContext, chunk: DataChunk) -> PolarsResult<SinkResult> {
         // don't add empty dataframes
         if chunk.data.height() > 0 {
-            if let Err(err) = self
-                .flarion_channel_tx
-                .send(FlarionChannelMessage::DataReady(chunk.data))
-            {
-                panic!("Failed to send data to channel: {}", err);
-            }
+            let stored_msg = FlarionChannelMessage::DataReady(chunk.data);
+            self.flarion_channel_tx.send(stored_msg).expect("Could not send message");
+            // loop {
+            //     match POOL.install(|| self.flarion_channel_tx.send(stored_msg)) {
+            //         Ok(_) => break,
+            //         Err(mpsc::TrySendError::Full(returned_msg)) => {
+            //             stored_msg = returned_msg;
+            //         },
+            //         Err(mpsc::TrySendError::Disconnected(_)) => {
+            //             panic!("Channel disconnected");
+            //         }
+            //     }
+            // }
         };
         Ok(SinkResult::CanHaveMoreInput)
     }

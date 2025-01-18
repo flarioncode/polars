@@ -196,7 +196,7 @@ impl AExpr {
                         float_type(&mut field);
                         Ok(field)
                     },
-                    Unique(expr) => {
+                    AggUnique(expr) => {
                         *nested = 0;
                         let mut field = arena.get(*expr).to_field_impl(schema, arena, nested)?;
                         field.coerce(List(field.dtype().clone().into()));

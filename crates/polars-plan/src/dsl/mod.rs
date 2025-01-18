@@ -212,7 +212,7 @@ impl Expr {
 
     /// Get a list of the unique values in the groups(exclude NULLs).
     pub fn agg_unique(self) -> Self {
-        AggExpr::Unique(Arc::new(self)).into()
+        AggExpr::AggUnique(Arc::new(self)).into()
     }
 
     /// Get the number of unique values in the groups.

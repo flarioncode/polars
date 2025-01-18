@@ -382,7 +382,7 @@ fn create_physical_expr_inner(
                         I::Max { propagate_nans, .. } if *propagate_nans => GBM::NanMax,
                         I::Max { .. } => GBM::Max,
                         I::Median(_) => GBM::Median,
-                        I::Unique(_) => GBM::Unique,
+                        I::AggUnique(_) => GBM::AggUnique,
                         I::NUnique(_) => GBM::NUnique,
                         I::First(_) => GBM::First,
                         I::Last(_) => GBM::Last,

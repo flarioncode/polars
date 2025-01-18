@@ -97,7 +97,7 @@ pub fn can_convert_to_hash_agg(
                         | IRAggExpr::Last(_)
                         | IRAggExpr::Mean(_)
                         | IRAggExpr::Count(_, false)
-                        | IRAggExpr::Unique(_)
+                        | IRAggExpr::AggUnique(_)
                 ) || {
                     matches!(
                         agg_fn,
@@ -305,7 +305,7 @@ where
                     AggregateFunction::Last(LastAgg::new(logical_dtype.to_physical())),
                 )
             },
-            IRAggExpr::Unique(input) => {
+            IRAggExpr::AggUnique(input) => {
                 let phys_expr = to_physical(
                     &ExprIR::from_node(*input, expr_arena),
                     expr_arena,
@@ -316,7 +316,7 @@ where
                 (
                     logical_dtype.clone(),
                     phys_expr,
-                    AggregateFunction::Unique(UniqueAgg::new(logical_dtype)),
+                    AggregateFunction::Unique(UniqueAgg::new(logical_dtype.to_physical())),
                 )
             },
             IRAggExpr::Count(input, _) => {

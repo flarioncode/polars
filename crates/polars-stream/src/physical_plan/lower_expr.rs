@@ -615,7 +615,7 @@ fn lower_exprs_with_ctx(
                     transformed_exprs.push(ctx.expr_arena.add(AExpr::Column(out_name)));
                 },
                 IRAggExpr::Median(_)
-                | IRAggExpr::Unique(_)
+                | IRAggExpr::AggUnique(_)
                 | IRAggExpr::NUnique(_)
                 | IRAggExpr::First(_)
                 | IRAggExpr::Last(_)

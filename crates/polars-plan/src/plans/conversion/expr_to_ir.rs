@@ -222,8 +222,8 @@ pub(super) fn to_aexpr_impl(
                 AggExpr::Median(expr) => {
                     IRAggExpr::Median(to_aexpr_impl_materialized_lit(owned(expr), arena, state)?)
                 },
-                AggExpr::Unique(expr) => {
-                    IRAggExpr::Unique(to_aexpr_impl_materialized_lit(owned(expr), arena, state)?)
+                AggExpr::AggUnique(expr) => {
+                    IRAggExpr::AggUnique(to_aexpr_impl_materialized_lit(owned(expr), arena, state)?)
                 },
                 AggExpr::NUnique(expr) => {
                     IRAggExpr::NUnique(to_aexpr_impl_materialized_lit(owned(expr), arena, state)?)

@@ -1,7 +1,4 @@
-use arrow::array::{
-    Array, BinaryArray, BinaryViewArray, BooleanArray, DictionaryArray, PrimitiveArray,
-    StructArray, Utf8ViewArray,
-};
+use arrow::array::{Array, BinaryArray, BinaryViewArray, BooleanArray, DictionaryArray, PrimitiveArray, StructArray, Utf8ViewArray};
 use arrow::bitmap::utils::ZipValidity;
 use arrow::compute::utils::combine_validities_and;
 use arrow::datatypes::ArrowDataType;
@@ -222,7 +219,7 @@ fn encode_primitive<T: NativeType + FixedLengthEncoding>(
     }
 }
 
-/// Ecnodes an array into `out`
+/// Encodes an array into `out`
 ///
 /// # Safety
 /// `out` must have enough bytes allocated otherwise it will be out of bounds.
@@ -301,6 +298,7 @@ fn allocate_rows_buf(
     let has_variable = columns.iter().any(|enc| enc.is_variable());
 
     let num_rows = columns[0].len();
+
     if has_variable {
         // row size of the fixed-length columns
         // those can be determined without looping over the arrays
@@ -329,7 +327,7 @@ fn allocate_rows_buf(
                     enc: inner_enc,
                     rows,
                     field,
-                    original,
+                    ..
                 } => {
                     let field = *field;
                     let fields = inner_enc.iter().map(|_| field).collect::<Vec<_>>();
@@ -338,12 +336,12 @@ fn allocate_rows_buf(
                     // encode the rows instead of only setting the length.
                     // This needs a bit refactoring, might require allocation and encoding to be in
                     // the same function.
-                    if let ArrowDataType::LargeList(inner) = original.dtype() {
-                        assert!(
-                            !matches!(inner.dtype, ArrowDataType::LargeList(_)),
-                            "should not be nested"
-                        )
-                    }
+                    // if let ArrowDataType::LargeList(inner) = original.dtype() {
+                    //     assert!(
+                    //         !matches!(inner.dtype, ArrowDataType::LargeList(_)),
+                    //         "should not be nested"
+                    //     )
+                    // }
                     // Create the row encoding for the inner type.
                     let mut values_rows = RowsEncoded::default();
 
