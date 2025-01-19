@@ -18,7 +18,7 @@ impl<const INCLUDE_NULL: bool> CountAgg<INCLUDE_NULL> {
 }
 
 impl<const INCLUDE_NULL: bool> AggregateFn for CountAgg<INCLUDE_NULL> {
-    fn has_physical_agg(&self) -> bool {
+    fn has_numeric_agg(&self) -> bool {
         false
     }
 

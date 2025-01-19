@@ -7,6 +7,7 @@ mod mean;
 mod min_max;
 mod null;
 mod sum;
+mod unique;
 
 pub use convert::*;
 pub(crate) use interface::{AggregateFn, AggregateFunction};

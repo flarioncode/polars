@@ -32,11 +32,11 @@ where
     K: NumericNative + Add<Output = K>,
     <K as Simd>::Simd: Add<Output = <K as Simd>::Simd> + Sum<K>,
 {
-    fn has_physical_agg(&self) -> bool {
+    fn has_numeric_agg(&self) -> bool {
         true
     }
 
-    fn pre_agg_primitive<T: NumCast>(&mut self, _chunk_idx: IdxSize, item: Option<T>) {
+    fn pre_agg_numeric<T: NumCast>(&mut self, _chunk_idx: IdxSize, item: Option<T>) {
         match (item.map(|v| K::from(v).unwrap()), self.sum) {
             (Some(val), Some(sum)) => {
                 self.sum = Some(sum + val);

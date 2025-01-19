@@ -154,7 +154,7 @@ impl PhysicalExpr for AggregationExpr {
                 allow_threading,
             ),
             GroupByMethod::Groups => unreachable!(),
-            GroupByMethod::Unique => s.unique(),
+            GroupByMethod::AggUnique => s.unique(),
             GroupByMethod::NUnique => {
                 if MetadataEnv::experimental_enabled() {
                     if let Some(count) = s.get_metadata().and_then(|v| v.distinct_count()) {
@@ -370,7 +370,7 @@ impl PhysicalExpr for AggregationExpr {
                     let agg_s = s.agg_last(&groups);
                     AggregatedScalar(rename_series(agg_s, keep_name))
                 },
-                GroupByMethod::Unique => {
+                GroupByMethod::AggUnique => {
                     let (s, groups) = ac.get_final_aggregation();
                     let agg_s = s.agg_unique(&groups);
                     AggregatedScalar(rename_series(agg_s, keep_name))

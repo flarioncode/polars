@@ -36,7 +36,7 @@ pub enum IRAggExpr {
         propagate_nans: bool,
     },
     Median(Node),
-    Unique(Node),
+    AggUnique(Node),
     NUnique(Node),
     First(Node),
     Last(Node),
@@ -116,7 +116,7 @@ impl From<IRAggExpr> for GroupByMethod {
                 }
             },
             Median(_) => GroupByMethod::Median,
-            Unique(_) => GroupByMethod::Unique,
+            AggUnique(_) => GroupByMethod::AggUnique,
             NUnique(_) => GroupByMethod::NUnique,
             First(_) => GroupByMethod::First,
             Last(_) => GroupByMethod::Last,

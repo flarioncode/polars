@@ -527,32 +527,32 @@ pub(super) fn apply_aggregate(
     chunk_idx: IdxSize,
     agg_idxs: &[IdxSize],
     aggregation_s: &Series,
-    has_physical_agg: bool,
+    has_numeric_agg: bool,
     aggregators: &mut [AggregateFunction],
 ) {
     macro_rules! apply_agg {
                 ($self:expr, $macro:ident $(, $opt_args:expr)*) => {{
                     match $self.dtype() {
                         #[cfg(feature = "dtype-u8")]
-                        DataType::UInt8 => $macro!($self.u8().unwrap(), pre_agg_primitive $(, $opt_args)*),
+                        DataType::UInt8 => $macro!($self.u8().unwrap(), pre_agg_numeric $(, $opt_args)*),
                         #[cfg(feature = "dtype-u16")]
-                        DataType::UInt16 => $macro!($self.u16().unwrap(), pre_agg_primitive $(, $opt_args)*),
-                        DataType::UInt32 => $macro!($self.u32().unwrap(), pre_agg_primitive $(, $opt_args)*),
-                        DataType::UInt64 => $macro!($self.u64().unwrap(), pre_agg_primitive $(, $opt_args)*),
+                        DataType::UInt16 => $macro!($self.u16().unwrap(), pre_agg_numeric $(, $opt_args)*),
+                        DataType::UInt32 => $macro!($self.u32().unwrap(), pre_agg_numeric $(, $opt_args)*),
+                        DataType::UInt64 => $macro!($self.u64().unwrap(), pre_agg_numeric $(, $opt_args)*),
                         #[cfg(feature = "dtype-i8")]
-                        DataType::Int8 => $macro!($self.i8().unwrap(), pre_agg_primitive $(, $opt_args)*),
+                        DataType::Int8 => $macro!($self.i8().unwrap(), pre_agg_numeric $(, $opt_args)*),
                         #[cfg(feature = "dtype-i16")]
-                        DataType::Int16 => $macro!($self.i16().unwrap(), pre_agg_primitive $(, $opt_args)*),
-                        DataType::Int32 => $macro!($self.i32().unwrap(), pre_agg_primitive $(, $opt_args)*),
-                        DataType::Int64 => $macro!($self.i64().unwrap(), pre_agg_primitive $(, $opt_args)*),
-                        DataType::Float32 => $macro!($self.f32().unwrap(), pre_agg_primitive $(, $opt_args)*),
-                        DataType::Float64 => $macro!($self.f64().unwrap(), pre_agg_primitive $(, $opt_args)*),
+                        DataType::Int16 => $macro!($self.i16().unwrap(), pre_agg_numeric $(, $opt_args)*),
+                        DataType::Int32 => $macro!($self.i32().unwrap(), pre_agg_numeric $(, $opt_args)*),
+                        DataType::Int64 => $macro!($self.i64().unwrap(), pre_agg_numeric $(, $opt_args)*),
+                        DataType::Float32 => $macro!($self.f32().unwrap(), pre_agg_numeric $(, $opt_args)*),
+                        DataType::Float64 => $macro!($self.f64().unwrap(), pre_agg_numeric $(, $opt_args)*),
                         dt => panic!("not implemented for {:?}", dt),
                     }
                 }};
             }
 
-    if has_physical_agg && aggregation_s.dtype().is_numeric() {
+    if has_numeric_agg && aggregation_s.dtype().is_numeric() {
         macro_rules! dispatch {
             ($ca:expr, $name:ident) => {{
                 let arr = $ca.downcast_iter().next().unwrap();

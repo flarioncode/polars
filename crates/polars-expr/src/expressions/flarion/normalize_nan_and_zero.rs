@@ -1,15 +1,71 @@
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use arrow::legacy::error::PolarsResult;
 use polars_core::datatypes::{DataType, Field, ListChunked};
 use polars_core::error::PolarsError;
 use polars_core::frame::DataFrame;
-use polars_core::prelude::{GroupsProxy, IntoSeries, Schema, Series};
+use polars_core::prelude::{Canonical, GroupsProxy, IntoSeries, Schema, Series};
 use polars_core::POOL;
 use polars_plan::dsl::Expr;
+use polars_utils::total_ord::TotalOrd;
 
 use crate::expressions::{AggregationContext, PhysicalExpr};
 use crate::prelude::ExecutionState;
+
+/// Wrapper around f32 and f64, that normalizes NaN and -0.0 to a canonical representation.
+/// This, along with implementing PartialEq to account for this, allows us to use this in Hash collections.
+#[derive(Copy, Clone, Debug)]
+pub struct NormalizedFloat<T: Copy + Canonical + TotalOrd>(T);
+
+impl<T: Copy + Canonical + TotalOrd> NormalizedFloat<T> {
+    pub fn new(val: T) -> Self {
+        Self(val.canonical())
+    }
+
+    pub fn new_opt(val: Option<T>) -> Option<Self> {
+        val.map(Self::new)
+    }
+
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
+impl<T: Copy + Canonical + TotalOrd> PartialEq for NormalizedFloat<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.tot_eq(&other.0)
+    }
+}
+
+impl<T: Copy + Canonical + TotalOrd> Eq for NormalizedFloat<T> {}
+
+impl<T: Copy + Canonical + TotalOrd> PartialOrd for NormalizedFloat<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(std::cmp::Ord::cmp(self, other))
+    }
+}
+
+impl<T: Copy + Canonical + TotalOrd> Ord for NormalizedFloat<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.tot_cmp(&other.0)
+    }
+}
+
+// These two are simply because to_bits() returns different things for f32 and f64
+
+impl Hash for NormalizedFloat<f32> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.to_bits().hash(state);
+    }
+}
+
+impl Hash for NormalizedFloat<f64> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.to_bits().hash(state);
+    }
+}
 
 fn normalize_series_with_dtype<const IS_AGG: bool>(input_series: &Series) -> PolarsResult<Series> {
     Ok(match input_series.dtype() {

@@ -559,13 +559,13 @@ pub(super) fn apply_aggregation(
 ) {
     let chunk_idx = chunk.chunk_index;
     for (agg_i, aggregation_s) in (0..num_aggs).zip(aggregation_series) {
-        let has_physical_agg = agg_fns[agg_i].has_physical_agg();
+        let has_numeric_agg = agg_fns[agg_i].has_numeric_agg();
         apply_aggregate(
             agg_i,
             chunk_idx,
             agg_idxs,
             aggregation_s,
-            has_physical_agg,
+            has_numeric_agg,
             aggregators,
         );
     }

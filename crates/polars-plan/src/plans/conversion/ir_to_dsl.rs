@@ -113,9 +113,9 @@ pub fn node_to_expr(node: Node, expr_arena: &Arena<AExpr>) -> Expr {
                 let exp = node_to_expr(expr, expr_arena);
                 AggExpr::Median(Arc::new(exp)).into()
             },
-            IRAggExpr::Unique(expr) => {
+            IRAggExpr::AggUnique(expr) => {
                 let exp = node_to_expr(expr, expr_arena);
-                AggExpr::Unique(Arc::new(exp)).into()
+                AggExpr::AggUnique(Arc::new(exp)).into()
             },
             IRAggExpr::NUnique(expr) => {
                 let exp = node_to_expr(expr, expr_arena);

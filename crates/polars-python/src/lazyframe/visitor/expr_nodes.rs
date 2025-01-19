@@ -657,8 +657,8 @@ pub(crate) fn into_py(py: Python<'_>, expr: &AExpr) -> PyResult<PyObject> {
                 arguments: vec![n.0],
                 options: py.None(),
             },
-            IRAggExpr::Unique(n) => Agg {
-                name: "unique".to_object(py),
+            IRAggExpr::AggUnique(n) => Agg {
+                name: "agg_unique".to_object(py),
                 arguments: vec![n.0],
                 options: py.None(),
             },
