@@ -1,4 +1,7 @@
-use arrow::array::{Array, BinaryArray, BinaryViewArray, BooleanArray, DictionaryArray, PrimitiveArray, StructArray, Utf8ViewArray};
+use arrow::array::{
+    Array, BinaryArray, BinaryViewArray, BooleanArray, DictionaryArray, PrimitiveArray,
+    StructArray, Utf8ViewArray,
+};
 use arrow::bitmap::utils::ZipValidity;
 use arrow::compute::utils::combine_validities_and;
 use arrow::datatypes::ArrowDataType;

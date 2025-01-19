@@ -28,7 +28,9 @@ impl Sink for ChannelSink {
         // don't add empty dataframes
         if chunk.data.height() > 0 {
             let stored_msg = FlarionChannelMessage::DataReady(chunk.data);
-            self.flarion_channel_tx.send(stored_msg).expect("Could not send message");
+            self.flarion_channel_tx
+                .send(stored_msg)
+                .expect("Could not send message");
             // loop {
             //     match POOL.install(|| self.flarion_channel_tx.send(stored_msg)) {
             //         Ok(_) => break,
